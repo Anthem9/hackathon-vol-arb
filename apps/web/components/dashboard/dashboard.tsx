@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   BarChart3,
   CircleDollarSign,
+  DatabaseZap,
   Gauge,
   HeartPulse,
   Radar,
@@ -85,7 +86,7 @@ function LoadingState() {
     <main className="terminal-grid flex min-h-screen items-center justify-center p-6">
       <div className="rounded-lg border border-white/10 bg-terminal-panel p-8 text-center shadow-glow">
         <Activity className="mx-auto h-8 w-8 animate-pulse text-terminal-cyan" />
-        <p className="mt-4 text-sm uppercase tracking-[0.25em] text-terminal-muted">Loading mock vol-arb terminal</p>
+        <p className="mt-4 text-sm uppercase tracking-[0.25em] text-terminal-muted">Loading vol-arb terminal</p>
       </div>
     </main>
   );
@@ -110,7 +111,7 @@ function Overview({ data }: { data: DashboardApiData }) {
       <MetricCard
         label="BTC Spot"
         value={money.format(data.overview.btcSpot)}
-        detail="Reference price used by mock SVI and binary markets."
+        detail={data.mode === "mock" ? "Reference price used by mock SVI and binary markets." : "Reference price from live BTC spot sources."}
         icon={<CircleDollarSign className="h-5 w-5" />}
       />
       <MetricCard
@@ -130,10 +131,39 @@ function Overview({ data }: { data: DashboardApiData }) {
       <MetricCard
         label="Paper PnL"
         value={money.format(data.overview.openPaperPnl)}
-        detail={data.overview.killSwitchActive ? "Full stop active." : "Kill switch inactive in mock mode."}
+        detail={data.overview.killSwitchActive ? "Dry-run or full-stop control active." : "Kill switch inactive."}
         icon={<ShieldCheck className="h-5 w-5" />}
         tone="violet"
       />
+    </section>
+  );
+}
+
+function SourceStatusPanel({ data }: { data: DashboardApiData }) {
+  return (
+    <section className="rounded-lg border border-white/10 bg-terminal-panel/90 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">Real Data Status</h2>
+          <p className="text-sm text-terminal-muted">Mode {data.mode}; public DeepBook, Sui, Polymarket, and BTC price source health.</p>
+        </div>
+        <DatabaseZap className="h-5 w-5 text-terminal-cyan" />
+      </div>
+      <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {data.sourceStatuses.map((source) => (
+          <div key={source.sourceId} className="rounded-md border border-white/10 bg-white/[0.035] p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold">{source.label}</p>
+              <StatusPill value={source.status} />
+            </div>
+            <p className="mt-2 text-xs text-terminal-muted">{source.detail}</p>
+            <div className="mt-3 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.14em] text-slate-300">
+              <span>{source.mode}</span>
+              {typeof source.latencyMs === "number" ? <span>{source.latencyMs}ms</span> : null}
+            </div>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }
@@ -309,7 +339,7 @@ function PaperTrading({ data }: { data: DashboardApiData }) {
     <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
       <div className="rounded-lg border border-white/10 bg-terminal-panel/90 p-5">
         <h2 className="text-lg font-semibold">Paper Trading</h2>
-        <p className="text-sm text-terminal-muted">Mock fills and position state. No real order is submitted.</p>
+        <p className="text-sm text-terminal-muted">Dry-run fills and position state. No real order is submitted.</p>
         <div className="mt-5 grid gap-3">
           {data.paperTrades.map((trade) => (
             <div key={trade.tradeId} className="rounded-md border border-white/10 bg-white/[0.035] p-4">
@@ -348,7 +378,7 @@ function RiskControl({ data }: { data: DashboardApiData }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">Risk Control</h2>
-          <p className="text-sm text-terminal-muted">Kill-switch rules and active alerts for the mock research terminal.</p>
+          <p className="text-sm text-terminal-muted">Kill-switch rules and active alerts for the research terminal.</p>
         </div>
         <Gauge className="h-5 w-5 text-terminal-amber" />
       </div>
@@ -411,13 +441,14 @@ export function Dashboard() {
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
             <StatusPill value={data.overview.systemStatus} />
-            <span className="text-terminal-muted">Mode: deterministic mock</span>
+            <span className="text-terminal-muted">Mode: {data.mode}</span>
             <span className="hidden text-terminal-muted sm:inline">API: localhost:4000</span>
           </div>
         </header>
 
         <div className="space-y-5 py-6">
           <Overview data={data} />
+          <SourceStatusPanel data={data} />
           <SurfaceComparison data={data} />
           <OpportunityTable data={data} />
           <SviHealth data={data} />

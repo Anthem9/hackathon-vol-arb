@@ -1,5 +1,25 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalPassThroughEnv": [
+    "API_PORT",
+    "BTC_PRICE_API_BASE",
+    "DATA_MODE",
+    "DEEPBOOK_PREDICT_SERVER_URL",
+    "DEEPBOOK_PREDICT_PACKAGE_ID",
+    "DEEPBOOK_PREDICT_REGISTRY_ID",
+    "DEEPBOOK_PREDICT_OBJECT_ID",
+    "DEEPBOOK_QUOTE_ASSET_TYPE",
+    "DEEPBOOK_QUOTE_ASSET_CURRENCY_ID",
+    "DEEPBOOK_BTC_MARKET_ID",
+    "NEXT_PUBLIC_API_BASE_URL",
+    "POLYGON_AMOY_RPC_HTTPS",
+    "POLYMARKET_API_BASE",
+    "POLYMARKET_GAMMA_API_BASE",
+    "SUI_NETWORK",
+    "SUI_TESTNET_RPC_HTTPS",
+    "SUI_TESTNET_GRPC_ENDPOINT",
+    "WEB_PORT"
+  ],
   "tasks": {
     "dev": {
       "cache": false,

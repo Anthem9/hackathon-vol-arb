@@ -2810,6 +2810,23 @@ Version 2 完成后，系统应该从“纯 demo”升级为：
 真实服务接入版研究终端。
 ```
 
+当前实现状态：
+
+```text
+已完成 Version 2 read-only / hybrid implementation。
+
+1. DATA_MODE=mock|hybrid|real 已接入 apps/api
+2. DeepBook Predict testnet /oracles 已接入
+3. Sui testnet sui_getObject OracleSVI 已接入
+4. Polymarket Gamma market discovery 已接入
+5. Polymarket CLOB book / midpoint public endpoints 已接入
+6. CoinGecko + Coinbase BTC spot 双价格源已接入
+7. /api/source-statuses 暴露真实数据源状态
+8. dashboard 展示 real data status、hybrid mode、真实 SVI surface 和真实 Polymarket opportunity
+9. API 失败时保留 mock fallback 和 source status error
+10. 真实下单仍未启用，只允许 dry-run / paper trade
+```
+
 ### Version 3：Functional Field Test
 
 目标：

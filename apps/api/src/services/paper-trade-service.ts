@@ -18,6 +18,6 @@ export async function createPaperTrade(body: unknown) {
     status: "open",
     requestedSizeUsd: sizeUsd,
     simulatedFill: opportunity ? Number((sizeUsd * (1 - opportunity.finalExecutableEdge)).toFixed(2)) : sizeUsd,
-    message: "Paper trade accepted in mock mode. No real order was submitted.",
+    message: `Paper trade accepted in ${data.mode} mode. No real order was submitted.`,
   };
 }

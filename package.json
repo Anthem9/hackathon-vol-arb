@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "turbo dev --parallel",
+    "dev:hybrid": "DATA_MODE=hybrid WEB_PORT=${WEB_PORT:-3001} turbo dev --parallel",
     "build": "turbo build",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck"

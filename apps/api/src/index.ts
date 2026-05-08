@@ -1,11 +1,38 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { DEFAULT_API_PORT, SUPPORTED_WEB_ORIGINS } from "@vol-arb/config";
 import { opportunitiesRoute } from "./routes/opportunities";
 import { overviewRoute } from "./routes/overview";
 import { paperTradesRoute } from "./routes/paper-trades";
 import { surfacesRoute } from "./routes/surfaces";
 import { sviHealthRoute } from "./routes/svi-health";
-import { getRiskRules } from "./services/dashboard-service";
+import { getRiskRules, getSourceStatuses } from "./services/dashboard-service";
+
+function loadLocalEnv() {
+  const currentDir = dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    join(currentDir, "../../../.env"),
+    join(process.cwd(), ".env"),
+  ];
+  const envPath = candidates.find((candidate) => existsSync(candidate));
+  if (!envPath) return;
+  const lines = readFileSync(envPath, "utf8").split(/\r?\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const separator = trimmed.indexOf("=");
+    if (separator === -1) continue;
+    const key = trimmed.slice(0, separator).trim();
+    const value = trimmed.slice(separator + 1).trim().replace(/^(['"])(.*)\1$/, "$2");
+    if (key && process.env[key] === undefined) {
+      process.env[key] = value;
+    }
+  }
+}
+
+loadLocalEnv();
 
 const port = Number(process.env.API_PORT ?? process.env.PORT ?? DEFAULT_API_PORT);
 
@@ -74,6 +101,10 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
     }
     if (url.pathname === "/api/risk-rules") {
       sendJson(req, res, 200, await getRiskRules());
+      return;
+    }
+    if (url.pathname === "/api/source-statuses") {
+      sendJson(req, res, 200, await getSourceStatuses());
       return;
     }
 

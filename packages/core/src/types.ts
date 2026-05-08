@@ -151,6 +151,19 @@ export type RiskRule = {
   active: boolean;
 };
 
+export type DataMode = "mock" | "real" | "hybrid";
+
+export type DataSourceStatus = {
+  sourceId: string;
+  label: string;
+  status: HealthStatus;
+  mode: DataMode;
+  lastUpdatedAt: number | null;
+  latencyMs?: number;
+  detail: string;
+  error?: string;
+};
+
 export type DashboardData = {
   overview: Overview;
   surfaces: VolSurface[];
@@ -158,4 +171,6 @@ export type DashboardData = {
   sviHealth: SviHealthReport[];
   paperTrades: PaperTrade[];
   riskRules: RiskRule[];
+  sourceStatuses: DataSourceStatus[];
+  mode: DataMode;
 };

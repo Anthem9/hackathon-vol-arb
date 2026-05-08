@@ -7,6 +7,7 @@ export function buildSurface(
   instruments: NormalizedInstrument[],
   deepbookFairValues: Map<number, number>,
   spot: number,
+  options: Partial<Pick<VolSurface, "venue" | "surfaceQualityScore" | "staleScore" | "lastUpdatedAt">> = {},
 ): VolSurface {
   const points: SurfacePoint[] = instruments
     .filter((instrument) => instrument.expiry === expiry && typeof instrument.strike === "number")
@@ -31,13 +32,13 @@ export function buildSurface(
     .sort((a, b) => a.strike - b.strike);
 
   return {
-    venue: "DeepBook + External Mock",
+    venue: options.venue ?? "DeepBook + External Mock",
     underlying: "BTC",
     expiry,
     label,
     points,
-    surfaceQualityScore: 0.87,
-    staleScore: 0.22,
-    lastUpdatedAt: Date.now(),
+    surfaceQualityScore: options.surfaceQualityScore ?? 0.87,
+    staleScore: options.staleScore ?? 0.22,
+    lastUpdatedAt: options.lastUpdatedAt ?? Date.now(),
   };
 }

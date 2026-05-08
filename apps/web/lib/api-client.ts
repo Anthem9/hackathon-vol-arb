@@ -1,4 +1,6 @@
 import type {
+  DataMode,
+  DataSourceStatus,
   ExecutableEdge,
   Overview,
   PaperTrade,
@@ -24,16 +26,19 @@ export type DashboardApiData = {
   sviHealth: SviHealthReport[];
   paperTrades: PaperTrade[];
   riskRules: RiskRule[];
+  sourceStatuses: DataSourceStatus[];
+  mode: DataMode;
 };
 
 export async function fetchDashboardData(): Promise<DashboardApiData> {
-  const [overview, surfaces, opportunities, sviHealth, paperTrades, riskRules] = await Promise.all([
+  const [overview, surfaces, opportunities, sviHealth, paperTrades, riskRules, sourceStatusPayload] = await Promise.all([
     getJson<Overview>("/api/overview"),
     getJson<VolSurface[]>("/api/surfaces"),
     getJson<ExecutableEdge[]>("/api/opportunities"),
     getJson<SviHealthReport[]>("/api/svi-health"),
     getJson<PaperTrade[]>("/api/paper-trades"),
     getJson<RiskRule[]>("/api/risk-rules"),
+    getJson<Pick<DashboardApiData, "mode" | "sourceStatuses">>("/api/source-statuses"),
   ]);
-  return { overview, surfaces, opportunities, sviHealth, paperTrades, riskRules };
+  return { overview, surfaces, opportunities, sviHealth, paperTrades, riskRules, ...sourceStatusPayload };
 }

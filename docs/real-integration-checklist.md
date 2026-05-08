@@ -56,13 +56,23 @@ This checklist is the handoff from the mock demo to the real-service integration
 ## Version 2 Exit Criteria
 
 - Mock mode still works.
-- Real read-only mode can fetch:
+- Hybrid read-only mode can fetch:
   - Sui/DeepBook Predict status and oracle list.
   - DeepBook Predict BTC oracle or market state.
   - Polymarket BTC-related markets and CLOB prices.
   - BTC spot from at least two free sources.
 - Hybrid mode can compare real surfaces with mock fallback when one source is stale.
 - No real order submission is enabled until explicit kill-switch and dry-run controls are visible in the UI.
+
+## Version 2 Implementation Status
+
+- `DATA_MODE=mock|hybrid|real` is wired through the API.
+- `DeepBookPredictAdapter` reads `/oracles` and Sui testnet `sui_getObject` for real BTC OracleSVI objects.
+- `PolymarketAdapter` reads Gamma market discovery plus public CLOB book and midpoint endpoints.
+- `BtcPriceAdapter` reads CoinGecko and Coinbase, then reports source divergence.
+- `RealDashboardAdapter` assembles a read-only research terminal payload with mock fallback.
+- `/api/source-statuses` exposes source health and fallback state to the dashboard.
+- Real order submission is still disabled; Version 2 is read-only plus paper-trading.
 
 ## Sources
 

@@ -5,6 +5,7 @@ import {
   hasKillSwitch,
   scoreExecutableEdge,
   totalOpenPnl,
+  type DataSourceStatus,
   type DashboardData,
   type ExecutableEdge,
   type Overview,
@@ -396,6 +397,17 @@ const overview: Overview = {
   },
 };
 
+const sourceStatuses: DataSourceStatus[] = [
+  {
+    sourceId: "mock-fixtures",
+    label: "Deterministic Mock Fixtures",
+    status: "healthy",
+    mode: "mock",
+    lastUpdatedAt: NOW,
+    detail: "Version 1 deterministic DeepBook, external market, SVI health, risk, and paper-trade fixtures.",
+  },
+];
+
 export const mockDashboardData: DashboardData = {
   overview,
   surfaces,
@@ -403,6 +415,8 @@ export const mockDashboardData: DashboardData = {
   sviHealth,
   paperTrades,
   riskRules,
+  sourceStatuses,
+  mode: "mock",
 };
 
 export const mockInstruments = instruments;

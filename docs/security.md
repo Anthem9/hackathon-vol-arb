@@ -1,6 +1,6 @@
 # Security Notes
 
-Version 1 requires no secrets. Keep all real credentials out of Git.
+Keep all real credentials out of Git.
 
 Never commit:
 
@@ -11,3 +11,11 @@ Never commit:
 - Local databases containing credentials
 
 Use `.env.example` for placeholders only.
+
+## Version 2 Runtime
+
+- Real service integration is read-only.
+- Polymarket CLOB calls use public market data endpoints only.
+- DeepBook Predict calls read public testnet objects only.
+- Wallet private keys may exist in local `.env` for later signing tests, but Version 2 does not import or use them for order execution.
+- Real order submission remains disabled by dry-run risk controls until a later explicit implementation stage.
