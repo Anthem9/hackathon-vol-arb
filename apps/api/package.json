@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "db:migrate": "tsx src/db/migrate.ts",
     "build": "tsc --noEmit",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit"
@@ -13,10 +14,12 @@
     "@vol-arb/adapters": "workspace:*",
     "@vol-arb/config": "workspace:*",
     "@vol-arb/core": "workspace:*",
+    "pg": "^8.20.0",
     "viem": "^2.48.11"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "@types/pg": "^8.20.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   }

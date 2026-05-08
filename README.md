@@ -13,6 +13,9 @@ Version 2 adds real read-only service integration:
 - BTC spot from two free sources, currently CoinGecko and Coinbase
 - `DATA_MODE=mock|hybrid|real` switching with mock fallback
 - Dry-run risk controls; no real order submission
+- Postgres persistence for dashboard snapshots, source status snapshots, alert events, and paper-trade events
+- Alert engine for source failures, SVI staleness, risk controls, and edge thresholds
+- Sui wallet connection UI with guarded DeepBook Predict testnet transaction intents
 
 ## Workspace
 
@@ -37,6 +40,13 @@ Hybrid read-only mode:
 npm run dev:hybrid
 ```
 
+Local Postgres for persistence:
+
+```bash
+docker compose up -d postgres
+npm run db:migrate
+```
+
 Default services:
 
 - Web: http://localhost:3000
@@ -54,6 +64,8 @@ Health checks:
 curl http://localhost:4000/api/health
 curl http://localhost:4000/api/overview
 curl http://localhost:4000/api/source-statuses
+curl http://localhost:4000/api/alerts
+curl http://localhost:4000/api/persistence
 ```
 
 ## Safety

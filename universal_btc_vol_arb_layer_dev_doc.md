@@ -2831,6 +2831,35 @@ Version 2 完成后，系统应该从“纯 demo”升级为：
 
 目标：
 
+当前 Version 3 foundation 已加入：
+
+```text
+1. Postgres persistence
+   - dashboard_snapshots
+   - source_status_snapshots
+   - alert_events
+   - paper_trade_events
+
+2. Alert engine
+   - source failure / degraded alerts
+   - DeepBook SVI stale alerts
+   - risk control alerts
+   - executable edge threshold alerts
+
+3. Sui wallet UI
+   - testnet wallet connect
+   - SUI balance display
+   - create_manager transaction intent
+   - guarded create_manager wallet execution
+   - binary mint transaction scaffold
+
+4. DeepBook Predict testnet transaction boundary
+   - predict::create_manager
+   - predict::get_trade_amounts intent
+   - predict::mint scaffold
+   - mainnet and Polymarket execution still disabled
+```
+
 ```text
 在真实服务接入完成后，进行完整功能实测，确认系统端到端可用。
 ```

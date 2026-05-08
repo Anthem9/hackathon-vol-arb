@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   Activity,
+  BellRing,
   AlertTriangle,
   BarChart3,
   CircleDollarSign,
@@ -30,6 +32,18 @@ import {
 import type { DashboardApiData } from "../../lib/api-client";
 import { fetchDashboardData } from "../../lib/api-client";
 import { StatusPill } from "../ui/status-pill";
+
+const WalletTradePanel = dynamic(
+  () => import("../wallet/wallet-trade-panel").then((mod) => mod.WalletTradePanel),
+  {
+    ssr: false,
+    loading: () => (
+      <section className="rounded-lg border border-white/10 bg-terminal-panel/90 p-5 text-sm text-terminal-muted">
+        Loading wallet controls...
+      </section>
+    ),
+  },
+);
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -163,6 +177,43 @@ function SourceStatusPanel({ data }: { data: DashboardApiData }) {
             </div>
           </div>
         ))}
+      </div>
+      <div className="mt-4 rounded-md border border-white/10 bg-white/[0.035] p-4 text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="font-semibold">Postgres Persistence</p>
+          <StatusPill value={data.persistence.status} />
+        </div>
+        <p className="mt-2 text-terminal-muted">{data.persistence.detail}</p>
+      </div>
+    </section>
+  );
+}
+
+function AlertPanel({ data }: { data: DashboardApiData }) {
+  return (
+    <section className="rounded-lg border border-white/10 bg-terminal-panel/90 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">Alert System</h2>
+          <p className="text-sm text-terminal-muted">Source, risk, SVI, and opportunity alerts generated from the current pipeline.</p>
+        </div>
+        <BellRing className="h-5 w-5 text-terminal-amber" />
+      </div>
+      <div className="mt-5 grid gap-3 lg:grid-cols-3">
+        {data.alerts.length === 0 ? (
+          <div className="rounded-md border border-white/10 bg-white/[0.035] p-4 text-sm text-terminal-muted">No active alerts.</div>
+        ) : (
+          data.alerts.slice(0, 6).map((alert) => (
+            <div key={alert.alertId} className={`rounded-md border p-4 ${alert.severity === "critical" ? "border-red-300/30 bg-red-300/10" : "border-amber-300/30 bg-amber-300/10"}`}>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-semibold">{alert.title}</p>
+                <span className="text-xs uppercase tracking-[0.14em] text-slate-300">{alert.severity}</span>
+              </div>
+              <p className="mt-2 text-xs text-slate-300">{alert.message}</p>
+              <p className="mt-3 text-[11px] uppercase tracking-[0.14em] text-terminal-muted">{alert.sourceId}</p>
+            </div>
+          ))
+        )}
       </div>
     </section>
   );
@@ -411,6 +462,8 @@ export function Dashboard() {
       "Surface",
       "Opportunities",
       "SVI Health",
+      "Wallet",
+      "Alerts",
       "Paper",
       "Risk",
     ],
@@ -452,6 +505,8 @@ export function Dashboard() {
           <SurfaceComparison data={data} />
           <OpportunityTable data={data} />
           <SviHealth data={data} />
+          <WalletTradePanel surfaces={data.surfaces} oracleId={data.sviHealth[0]?.oracleId} />
+          <AlertPanel data={data} />
           <PaperTrading data={data} />
           <RiskControl data={data} />
         </div>

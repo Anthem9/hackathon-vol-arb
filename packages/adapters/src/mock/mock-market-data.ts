@@ -416,6 +416,13 @@ export const mockDashboardData: DashboardData = {
   paperTrades,
   riskRules,
   sourceStatuses,
+  alerts: [],
+  persistence: {
+    enabled: false,
+    status: "warning",
+    detail: "Postgres persistence is disabled in mock mode unless DATABASE_URL is configured.",
+    lastWriteAt: null,
+  },
   mode: "mock",
 };
 

@@ -164,6 +164,28 @@ export type DataSourceStatus = {
   error?: string;
 };
 
+export type PersistenceStatus = {
+  enabled: boolean;
+  status: HealthStatus;
+  detail: string;
+  lastWriteAt: number | null;
+};
+
+export type AlertSeverity = "info" | "warning" | "critical";
+
+export type AlertEvent = {
+  alertId: string;
+  ruleId: string;
+  title: string;
+  message: string;
+  severity: AlertSeverity;
+  status: "active" | "resolved";
+  sourceId: string;
+  createdAt: number;
+  resolvedAt?: number;
+  metadata?: Record<string, unknown>;
+};
+
 export type DashboardData = {
   overview: Overview;
   surfaces: VolSurface[];
@@ -172,5 +194,7 @@ export type DashboardData = {
   paperTrades: PaperTrade[];
   riskRules: RiskRule[];
   sourceStatuses: DataSourceStatus[];
+  alerts: AlertEvent[];
+  persistence: PersistenceStatus;
   mode: DataMode;
 };

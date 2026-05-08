@@ -1,5 +1,7 @@
 import { MockVenueAdapter, RealDashboardAdapter } from "@vol-arb/adapters";
 import type { DashboardData, DataMode } from "@vol-arb/core";
+import { persistDashboardSnapshot } from "../db/postgres";
+import { buildAlerts } from "./alert-service";
 
 const REAL_SNAPSHOT_TTL_MS = 5000;
 
@@ -30,9 +32,17 @@ export async function getDashboardData() {
   cachedRealSnapshot = {
     mode,
     createdAt: now,
-    promise: new RealDashboardAdapter({ mode }).getDashboardData(),
+    promise: withRuntimeServices(new RealDashboardAdapter({ mode }).getDashboardData()),
   };
   return cachedRealSnapshot.promise;
+}
+
+async function withRuntimeServices(input: Promise<DashboardData>): Promise<DashboardData> {
+  const data = await input;
+  const alerts = buildAlerts(data);
+  const withAlerts = { ...data, alerts };
+  const persistence = await persistDashboardSnapshot(withAlerts);
+  return { ...withAlerts, persistence };
 }
 
 export async function getOverview() {
@@ -65,5 +75,16 @@ export async function getSourceStatuses() {
   return {
     mode: data.mode,
     sourceStatuses: data.sourceStatuses,
+    persistence: data.persistence,
   };
+}
+
+export async function getDashboardAlerts() {
+  const data = await getDashboardData();
+  return data.alerts;
+}
+
+export async function getPersistenceStatus() {
+  const data = await getDashboardData();
+  return data.persistence;
 }

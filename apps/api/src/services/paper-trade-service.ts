@@ -1,4 +1,5 @@
 import { getDashboardData } from "./dashboard-service";
+import { persistPaperTradeEvent } from "../db/postgres";
 
 export async function getPaperTrades() {
   const data = await getDashboardData();
@@ -12,7 +13,7 @@ export async function createPaperTrade(body: unknown) {
   const sizeUsd = typeof request.sizeUsd === "number" ? request.sizeUsd : 1000;
   const opportunity = data.opportunities.find((item) => item.opportunityId === opportunityId);
 
-  return {
+  const response = {
     tradeId: `paper-new-${opportunityId}`,
     opportunityId,
     status: "open",
@@ -20,4 +21,6 @@ export async function createPaperTrade(body: unknown) {
     simulatedFill: opportunity ? Number((sizeUsd * (1 - opportunity.finalExecutableEdge)).toFixed(2)) : sizeUsd,
     message: `Paper trade accepted in ${data.mode} mode. No real order was submitted.`,
   };
+  await persistPaperTradeEvent(response);
+  return response;
 }

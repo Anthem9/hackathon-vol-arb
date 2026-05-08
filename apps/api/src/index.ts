@@ -8,7 +8,8 @@ import { overviewRoute } from "./routes/overview";
 import { paperTradesRoute } from "./routes/paper-trades";
 import { surfacesRoute } from "./routes/surfaces";
 import { sviHealthRoute } from "./routes/svi-health";
-import { getRiskRules, getSourceStatuses } from "./services/dashboard-service";
+import { buildDeepBookTradeIntent } from "./services/deepbook-transaction-service";
+import { getDashboardAlerts, getPersistenceStatus, getRiskRules, getSourceStatuses } from "./services/dashboard-service";
 
 function loadLocalEnv() {
   const currentDir = dirname(fileURLToPath(import.meta.url));
@@ -105,6 +106,19 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
     }
     if (url.pathname === "/api/source-statuses") {
       sendJson(req, res, 200, await getSourceStatuses());
+      return;
+    }
+    if (url.pathname === "/api/alerts") {
+      sendJson(req, res, 200, await getDashboardAlerts());
+      return;
+    }
+    if (url.pathname === "/api/persistence") {
+      sendJson(req, res, 200, await getPersistenceStatus());
+      return;
+    }
+    if (url.pathname === "/api/deepbook/intent") {
+      const body = req.method === "POST" ? await parseBody(req) : undefined;
+      sendJson(req, res, 200, buildDeepBookTradeIntent(body));
       return;
     }
 

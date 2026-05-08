@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "turbo dev --parallel",
     "dev:hybrid": "DATA_MODE=hybrid WEB_PORT=${WEB_PORT:-3001} turbo dev --parallel",
+    "db:migrate": "pnpm --filter @vol-arb/api db:migrate",
     "build": "turbo build",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck"

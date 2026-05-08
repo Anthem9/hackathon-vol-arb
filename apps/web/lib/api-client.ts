@@ -1,9 +1,11 @@
 import type {
+  AlertEvent,
   DataMode,
   DataSourceStatus,
   ExecutableEdge,
   Overview,
   PaperTrade,
+  PersistenceStatus,
   RiskRule,
   SviHealthReport,
   VolSurface,
@@ -27,18 +29,51 @@ export type DashboardApiData = {
   paperTrades: PaperTrade[];
   riskRules: RiskRule[];
   sourceStatuses: DataSourceStatus[];
+  alerts: AlertEvent[];
+  persistence: PersistenceStatus;
   mode: DataMode;
 };
 
 export async function fetchDashboardData(): Promise<DashboardApiData> {
-  const [overview, surfaces, opportunities, sviHealth, paperTrades, riskRules, sourceStatusPayload] = await Promise.all([
+  const [overview, surfaces, opportunities, sviHealth, paperTrades, riskRules, sourceStatusPayload, alerts, persistence] = await Promise.all([
     getJson<Overview>("/api/overview"),
     getJson<VolSurface[]>("/api/surfaces"),
     getJson<ExecutableEdge[]>("/api/opportunities"),
     getJson<SviHealthReport[]>("/api/svi-health"),
     getJson<PaperTrade[]>("/api/paper-trades"),
     getJson<RiskRule[]>("/api/risk-rules"),
-    getJson<Pick<DashboardApiData, "mode" | "sourceStatuses">>("/api/source-statuses"),
+    getJson<Pick<DashboardApiData, "mode" | "sourceStatuses" | "persistence">>("/api/source-statuses"),
+    getJson<AlertEvent[]>("/api/alerts"),
+    getJson<PersistenceStatus>("/api/persistence"),
   ]);
-  return { overview, surfaces, opportunities, sviHealth, paperTrades, riskRules, ...sourceStatusPayload };
+  return {
+    overview,
+    surfaces,
+    opportunities,
+    sviHealth,
+    paperTrades,
+    riskRules,
+    alerts,
+    persistence: sourceStatusPayload.persistence ?? persistence,
+    mode: sourceStatusPayload.mode,
+    sourceStatuses: sourceStatusPayload.sourceStatuses,
+  };
+}
+
+export async function createDeepBookIntent(payload: Record<string, unknown>) {
+  const response = await fetch(`${API_BASE_URL}/api/deepbook/intent`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    throw new Error(`DeepBook intent failed with ${response.status}`);
+  }
+  return response.json() as Promise<{
+    network: string;
+    safeMode: string;
+    action: string;
+    description: string;
+    calls: Array<Record<string, unknown>>;
+  }>;
 }

@@ -146,6 +146,13 @@ export class RealDashboardAdapter {
         ...(hasRealDeepBook ? [] : [degradedStatus("deepbook-fallback", "DeepBook Fallback", "Using mock SVI surface because real OracleSVI data was unavailable.")]),
         ...(hasRealPolymarket ? [] : [degradedStatus("polymarket-fallback", "Polymarket Fallback", "Using mock external opportunities because Polymarket data was unavailable.")]),
       ],
+      alerts: [],
+      persistence: {
+        enabled: false,
+        status: "warning",
+        detail: "Postgres persistence status is attached by apps/api.",
+        lastWriteAt: null,
+      },
       mode: effectiveMode,
     };
   }

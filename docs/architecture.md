@@ -30,6 +30,21 @@ Polymarket Gamma crypto market discovery
 CoinGecko + Coinbase BTC spot
   -> source divergence check
   -> overview and status panels
+
+Postgres
+  -> dashboard_snapshots
+  -> source_status_snapshots
+  -> alert_events
+  -> paper_trade_events
+
+Sui Wallet
+  -> dApp Kit testnet connection
+  -> PredictManager create transaction
+  -> guarded binary mint transaction scaffold
 ```
 
 No adapter submits orders in Version 2. Opportunities can be scored, rejected, watched, or paper-traded only.
+
+## Version 3 Foundation
+
+The first Version 3 slice adds Postgres persistence, an alert engine, and Sui wallet controls. The API remains safe by default: DeepBook Predict testnet transaction intents are explicit and wallet-confirmed; Polymarket and mainnet execution remain disabled.
