@@ -446,14 +446,38 @@ function RiskControl({ data }: { data: DashboardApiData }) {
   );
 }
 
-export function Dashboard() {
-  const [data, setData] = useState<DashboardApiData | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export function Dashboard({
+  initialData,
+  initialError,
+}: {
+  initialData?: DashboardApiData;
+  initialError?: string;
+}) {
+  const [data, setData] = useState<DashboardApiData | null>(initialData ?? null);
+  const [error, setError] = useState<string | null>(initialError ?? null);
 
   useEffect(() => {
+    let cancelled = false;
+
     fetchDashboardData()
-      .then(setData)
-      .catch((caught: unknown) => setError(caught instanceof Error ? caught.message : "Unknown API error"));
+      .then((freshData) => {
+        if (!cancelled) {
+          setData(freshData);
+          setError(null);
+        }
+      })
+      .catch((caught: unknown) => {
+        if (!cancelled && !data) {
+          setError(caught instanceof Error ? caught.message : "Unknown API error");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  // The initial client refresh should run once after hydration; data is only used
+  // to decide whether a failed refresh should replace the first screen.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const nav = useMemo(
