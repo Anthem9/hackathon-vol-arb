@@ -71,10 +71,14 @@ function WalletTradeContent({ surfaces, oracleId }: { surfaces: VolSurface[]; or
       setTxStatus("No DeepBook surface point is available.");
       return;
     }
+    if (!oracleId) {
+      setTxStatus("A real oracle ID is required before mint intent preview.");
+      setIntentText("No mint preview built.");
+      return;
+    }
     const intent = await createDeepBookIntent({
-      action: "mint_binary",
+      action: "preview_binary",
       account: account?.address,
-      managerId,
       oracleId,
       expiry: selected.surface.expiry,
       strike: selected.point.strike,
@@ -84,24 +88,18 @@ function WalletTradeContent({ surfaces, oracleId }: { surfaces: VolSurface[]; or
       error: error instanceof Error ? error.message : "Unable to build mint intent. Manager and oracle IDs are required.",
     }));
     setIntentText(JSON.stringify(intent, null, 2));
-      setTxStatus(
-        oracleId
-          ? "Mint intent preview built. Real mint still requires manager balance and wallet confirmation."
-          : "Mint intent preview requested. Real mint remains blocked until a real oracle ID is available.",
-      );
+    setTxStatus("Read-only mint preview built. Real mint still requires a PredictManager ID, balance, and wallet confirmation.");
   }
 
   function buildLocalMintTransaction() {
-    if (!selected.surface || !selected.point || !managerId) {
+    if (!selected.surface || !selected.point || !managerId || !oracleId) {
       setTxStatus("Manager ID and a real oracle ID are required before mint transaction construction.");
       return null;
     }
-    const selectedOracleId = oracleId ?? window.prompt("Oracle object ID for this DeepBook Predict testnet market");
-    if (!selectedOracleId) return null;
     const tx = new Transaction();
     const marketKey = tx.moveCall({
       target: `${PACKAGE_ID}::market_key::up`,
-      arguments: [tx.pure.id(selectedOracleId), tx.pure.u64(selected.surface.expiry), tx.pure.u64(selected.point.strike)],
+      arguments: [tx.pure.id(oracleId), tx.pure.u64(selected.surface.expiry), tx.pure.u64(selected.point.strike)],
     });
     tx.moveCall({
       target: `${PACKAGE_ID}::predict::mint`,
@@ -109,7 +107,7 @@ function WalletTradeContent({ surfaces, oracleId }: { surfaces: VolSurface[]; or
       arguments: [
         tx.object(PREDICT_OBJECT_ID),
         tx.object(managerId),
-        tx.object(selectedOracleId),
+        tx.object(oracleId),
         marketKey,
         tx.pure.u64(1_000_000),
         tx.object(CLOCK_OBJECT_ID),
