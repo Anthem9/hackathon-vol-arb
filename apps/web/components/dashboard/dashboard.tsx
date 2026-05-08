@@ -121,7 +121,7 @@ function ErrorState({ message }: { message: string }) {
 
 function Overview({ data }: { data: DashboardApiData }) {
   return (
-    <section className="grid gap-4 lg:grid-cols-4">
+    <section id="overview" className="scroll-mt-32 grid gap-4 lg:grid-cols-4">
       <MetricCard
         label="BTC Spot"
         value={money.format(data.overview.btcSpot)}
@@ -155,7 +155,7 @@ function Overview({ data }: { data: DashboardApiData }) {
 
 function SourceStatusPanel({ data }: { data: DashboardApiData }) {
   return (
-    <section className="rounded-lg border border-white/10 bg-terminal-panel/90 p-5">
+    <section id="status" className="scroll-mt-32 rounded-lg border border-white/10 bg-terminal-panel/90 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">Real Data Status</h2>
@@ -191,7 +191,7 @@ function SourceStatusPanel({ data }: { data: DashboardApiData }) {
 
 function AlertPanel({ data }: { data: DashboardApiData }) {
   return (
-    <section className="rounded-lg border border-white/10 bg-terminal-panel/90 p-5">
+    <section id="alerts" className="scroll-mt-32 rounded-lg border border-white/10 bg-terminal-panel/90 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">Alert System</h2>
@@ -227,7 +227,7 @@ function SurfaceComparison({ data }: { data: DashboardApiData }) {
   }));
 
   return (
-    <section className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
+    <section id="surface" className="scroll-mt-32 grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
       <div className="rounded-lg border border-white/10 bg-terminal-panel/90 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -280,7 +280,7 @@ function SurfaceComparison({ data }: { data: DashboardApiData }) {
 
 function OpportunityTable({ data }: { data: DashboardApiData }) {
   return (
-    <section className="rounded-lg border border-white/10 bg-terminal-panel/90 p-5">
+    <section id="opportunities" className="scroll-mt-32 rounded-lg border border-white/10 bg-terminal-panel/90 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">Opportunity Table</h2>
@@ -332,7 +332,7 @@ function OpportunityTable({ data }: { data: DashboardApiData }) {
 
 function SviHealth({ data }: { data: DashboardApiData }) {
   return (
-    <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+    <section id="svi-health" className="scroll-mt-32 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
       <div className="rounded-lg border border-white/10 bg-terminal-panel/90 p-5">
         <h2 className="text-lg font-semibold">SVI Feeder Health</h2>
         <p className="text-sm text-terminal-muted">Freshness, jump score, external deviation, and abnormal points.</p>
@@ -387,7 +387,7 @@ function PaperTrading({ data }: { data: DashboardApiData }) {
     : [];
 
   return (
-    <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+    <section id="paper" className="scroll-mt-32 grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
       <div className="rounded-lg border border-white/10 bg-terminal-panel/90 p-5">
         <h2 className="text-lg font-semibold">Paper Trading</h2>
         <p className="text-sm text-terminal-muted">Dry-run fills and position state. No real order is submitted.</p>
@@ -425,7 +425,7 @@ function PaperTrading({ data }: { data: DashboardApiData }) {
 
 function RiskControl({ data }: { data: DashboardApiData }) {
   return (
-    <section className="rounded-lg border border-white/10 bg-terminal-panel/90 p-5">
+    <section id="risk" className="scroll-mt-32 rounded-lg border border-white/10 bg-terminal-panel/90 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">Risk Control</h2>
@@ -458,14 +458,14 @@ export function Dashboard() {
 
   const nav = useMemo(
     () => [
-      "Overview",
-      "Surface",
-      "Opportunities",
-      "SVI Health",
-      "Wallet",
-      "Alerts",
-      "Paper",
-      "Risk",
+      { label: "Overview", href: "#overview" },
+      { label: "Surface", href: "#surface" },
+      { label: "Opportunities", href: "#opportunities" },
+      { label: "SVI Health", href: "#svi-health" },
+      { label: "Wallet", href: "#wallet" },
+      { label: "Alerts", href: "#alerts" },
+      { label: "Paper", href: "#paper" },
+      { label: "Risk", href: "#risk" },
     ],
     [],
   );
@@ -486,9 +486,13 @@ export function Dashboard() {
             </div>
             <nav className="flex max-w-full flex-wrap gap-2 overflow-x-auto text-xs text-terminal-muted">
               {nav.map((item) => (
-                <span key={item} className="rounded border border-white/10 bg-white/[0.04] px-3 py-2">
-                  {item}
-                </span>
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className="rounded border border-white/10 bg-white/[0.04] px-3 py-2 transition hover:border-cyan-300/40 hover:bg-cyan-300/10 hover:text-cyan-100"
+                >
+                  {item.label}
+                </a>
               ))}
             </nav>
           </div>
@@ -505,7 +509,9 @@ export function Dashboard() {
           <SurfaceComparison data={data} />
           <OpportunityTable data={data} />
           <SviHealth data={data} />
-          <WalletTradePanel surfaces={data.surfaces} oracleId={data.sviHealth[0]?.oracleId} />
+          <section id="wallet" className="scroll-mt-32">
+            <WalletTradePanel surfaces={data.surfaces} oracleId={data.sviHealth[0]?.oracleId} />
+          </section>
           <AlertPanel data={data} />
           <PaperTrading data={data} />
           <RiskControl data={data} />
