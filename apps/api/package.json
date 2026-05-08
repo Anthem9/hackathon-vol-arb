@@ -1,0 +1,23 @@
+{
+  "name": "@vol-arb/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@vol-arb/adapters": "workspace:*",
+    "@vol-arb/config": "workspace:*",
+    "@vol-arb/core": "workspace:*",
+    "viem": "^2.48.11"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

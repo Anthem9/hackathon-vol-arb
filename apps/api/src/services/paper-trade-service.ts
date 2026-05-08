@@ -1,0 +1,23 @@
+import { getDashboardData } from "./dashboard-service";
+
+export async function getPaperTrades() {
+  const data = await getDashboardData();
+  return data.paperTrades;
+}
+
+export async function createPaperTrade(body: unknown) {
+  const data = await getDashboardData();
+  const request = typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
+  const opportunityId = typeof request.opportunityId === "string" ? request.opportunityId : "manual-paper-trade";
+  const sizeUsd = typeof request.sizeUsd === "number" ? request.sizeUsd : 1000;
+  const opportunity = data.opportunities.find((item) => item.opportunityId === opportunityId);
+
+  return {
+    tradeId: `paper-new-${opportunityId}`,
+    opportunityId,
+    status: "open",
+    requestedSizeUsd: sizeUsd,
+    simulatedFill: opportunity ? Number((sizeUsd * (1 - opportunity.finalExecutableEdge)).toFixed(2)) : sizeUsd,
+    message: "Paper trade accepted in mock mode. No real order was submitted.",
+  };
+}

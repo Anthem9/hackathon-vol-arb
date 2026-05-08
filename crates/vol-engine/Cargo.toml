@@ -1,0 +1,13 @@
+[package]
+name = "vol-engine"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "vol_engine"
+path = "src/lib.rs"
+
+[[bin]]
+name = "vol-engine"
+path = "src/main.rs"
