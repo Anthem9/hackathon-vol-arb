@@ -41,9 +41,12 @@ Current blocker:
 - Slush connected-wallet manager creation is proven on Sui Testnet.
 - Current Slush test wallet `0xd123...1dcd` owns PredictManager `0x3df8...411f`.
 - Slush received 20 DUSDC and deposited 1 DUSDC into its manager with digest `6B6zh4...6g2T`.
-- Slush mint dry-run now passes and is persisted through `/api/deepbook/mint-dry-runs`; signed mint execution stays blocked until a real executable signal exists.
+- Slush mint dry-run now passes and is persisted through `/api/deepbook/mint-dry-runs`.
+- `production-like` has an explicit Sui Testnet acceptance override for watch-only mint execution. This is not a fake mode: it still requires the real wallet, real Sui Testnet, real DeepBook Predict package, manager ownership, DUSDC, gas, risk limits, and a successful dry-run before wallet confirmation.
+- Wallet mint construction now dry-runs active OracleSVI candidates and signs the first candidate accepted by the protocol. This avoids blocking on early active candidates that fail `pricing_config` or `assert_mintable_ask` aborts.
+- Generated-wallet smoke execution has proven the new candidate-search mint path with digest `Yi6WhLkHqMEN8A2ohN9qRt8DgtZu2rXUdTGsqaFdCZh`; the manager now has one open position and withdraw is blocked by open exposure.
 - Slush withdrew 0.1 DUSDC from the manager with digest `9Fz2pt...Jm1R`.
-- Signed mint and redeem acceptance remain pending for the Slush wallet path.
+- Signed mint and redeem acceptance remain pending for the Slush wallet path; local macOS UI automation is currently unable to attach to Chrome (`cgWindowNotFound`), so resume manually or after browser automation recovers.
 - Resume from `docs/wallet-acceptance.md` Step 4.
 
 ## Stage 2: DeepBook Predict Testnet Product Hardening

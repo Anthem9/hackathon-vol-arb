@@ -148,11 +148,20 @@ Evidence to capture:
 
 Current run evidence, 2026-05-10:
 
-- UI gate fix: mint dry-run is allowed when wallet, manager ownership, manager DUSDC, gas, oracle, and risk limits are ready, even if execution remains blocked by missing strategy signal. `Execute mint` remains disabled until an executable trade signal exists.
+- UI gate fix: mint dry-run is allowed when wallet, manager ownership, manager DUSDC, gas, oracle, and risk limits are ready, even if execution remains blocked by missing strategy signal.
 - Slush mint dry-run passed for manager `0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f`, quantity `0.1`, direction `up`, oracle `0xd7a2...83ed`, and strike `81,000`.
 - Wallet panel displayed: `Mint dry-run passed. Execution remains blocked until an executable trade signal is available.`
 - No wallet signing prompt appeared and no mint digest was created, as expected while `Execute mint` is still disabled.
 - Mint dry-run evidence is persisted by `GET /api/deepbook/mint-dry-runs?owner=0xd123dbbb133f8f43abca110200ef72d2a81d7cbc88e69e11624e9ad62b851dcd&managerId=0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f&limit=5`; latest record has `status=success`, `quantity=100000`, `strike=81000000000000`, and dry-run digest `2Gp7RkhMyKg5KifBPPmUbpywf6td983wQn1HxW2SEdDy`.
+
+Current run evidence, 2026-05-11:
+
+- `production-like` enables the explicit testnet acceptance override with `NEXT_PUBLIC_ALLOW_TESTNET_WATCH_MINT=true`; this keeps real wallet signing, real Sui Testnet, and real DeepBook Predict transactions, but lets the acceptance run submit a watch-only signal.
+- Wallet mint construction now uses the same `oracleId + expiry` pair and asks the API for active OracleSVI candidates. The wallet path dry-runs candidates in order and signs only the first candidate accepted by DeepBook Predict.
+- The API now returns 8 active OracleSVI candidates from `/api/deepbook/status`; local dry-run evidence showed early candidates can fail with `pricing_config::quote_spread_from_fair_price` abort `1` or `predict::assert_mintable_ask` abort `7`, while later candidates pass.
+- Generated-wallet smoke execution proved the same candidate-search logic with a real Sui Testnet mint: digest `Yi6WhLkHqMEN8A2ohN9qRt8DgtZu2rXUdTGsqaFdCZh`, owner `0x2e7742...bb2305`, manager `0xa0845d...9387af`, oracle `0xfe57fb...dc24b`, expiry `2026-05-11 01:30:00 Asia/Shanghai`, strike `81000000000000`, quantity `100000`.
+- `/api/deepbook/positions?owner=0x2e7742f3f4edd234307f545ce772c666d2ebdfc24e64083d2375888e02bb2305&managerId=0xa0845da0646708f196fdb68ded467b8b345daaa0dc7d006bbc393a16769387af` reports `openPositions=1`, `open_exposure=98492`, `trading_balance=899664`, `redeemable_value=0`, and `canWithdrawQuote=false`.
+- Slush signed mint is still pending only because local macOS UI automation cannot currently attach to Chrome (`cgWindowNotFound`). Resume by opening `http://localhost:3001/#wallet`, confirming Slush account `0xd123...1dcd`, clicking `Dry-run mint`, then `Execute mint` if the wallet prompt is Sui Testnet and targets the DeepBook Predict package.
 
 ## Step 5: Redeem
 

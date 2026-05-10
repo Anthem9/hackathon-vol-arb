@@ -1,6 +1,6 @@
 # Completion Audit
 
-Date: 2026-05-10
+Date: 2026-05-11
 
 Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; complete the remaining non-mainnet stages to a real-usable standard.
 
@@ -25,8 +25,8 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 | Testnet-only DeepBook boundary | README, architecture, roadmap, runbook, env checker; `SUI_NETWORK=testnet` in production-like compose | Complete |
 | Monorepo and services | `apps/web`, `apps/api`, `packages/*`, `docker-compose.production-like.yml`, Postgres service | Complete |
 | Data modes | `DATA_MODE=mock\|hybrid\|real`; real adapter falls back with source status | Complete |
-| DeepBook real lifecycle | Verified chain records include create manager, deposit, mint, redeem, withdraw; `/api/deepbook/positions` shows reconciled transactions and `canWithdrawQuote=true` | Complete for generated-wallet testnet path |
-| Connected wallet UX | Wallet panel builds wallet-signed testnet transactions, enforces owner/gas/DUSDC/dry-run/risk guards, and has unit-tested deposit/mint/redeem/withdraw blockers | Manager creation, DUSDC deposit, persisted mint dry-run, and idle withdraw proven with Slush on testnet; signed mint/redeem still pending |
+| DeepBook real lifecycle | Verified chain records include create manager, deposit, mint, redeem, withdraw; latest real mint digest `Yi6WhLkHqMEN8A2ohN9qRt8DgtZu2rXUdTGsqaFdCZh` is reconciled and leaves `openPositions=1`, `open_exposure=98492`, `canWithdrawQuote=false` | Complete for generated-wallet testnet path |
+| Connected wallet UX | Wallet panel builds wallet-signed testnet transactions, enforces owner/gas/DUSDC/dry-run/risk guards, has unit-tested deposit/mint/redeem/withdraw blockers, and now dry-runs active OracleSVI candidates until one is accepted by the protocol | Manager creation, DUSDC deposit, persisted mint dry-run, and idle withdraw proven with Slush on testnet; signed mint/redeem still pending because Chrome UI automation is unavailable |
 | DeepBook failure handling | API and wallet UI decode balance/gas, ownership, settlement, market/oracle, network, and unknown Move abort failures into operator-readable messages with retry advice | Complete for known categories; unknown abort codes remain conservative |
 | Postgres persistence | `/api/health?deep=1` reports persistence healthy; schema includes snapshots, alerts, bindings, chain events, and wallet mint dry-run evidence | Complete |
 | Operations | `docs/runbook.md`, maintenance POST endpoint, scheduler, backup/restore scripts, production-like Docker stack | Complete |
@@ -56,13 +56,19 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 - `GET /api/deepbook/mint-dry-runs?owner=0xd123dbbb133f8f43abca110200ef72d2a81d7cbc88e69e11624e9ad62b851dcd&managerId=0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f&limit=5`: one persisted Slush dry-run record, `status=success`, `quantity=100000`, `strike=81000000000000`, dry-run digest `2Gp7RkhMyKg5KifBPPmUbpywf6td983wQn1HxW2SEdDy`
 - `GET /api/deepbook/positions?managerId=0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f&owner=0xd123dbbb133f8f43abca110200ef72d2a81d7cbc88e69e11624e9ad62b851dcd`: 0 positions, 1 create_manager transaction
 - `npx playwright test dashboard-smoke.spec.js --config empty.config.js --reporter=line`: 3 passed
-- GitHub Actions `CI` on `main`: pass (`25631310515`)
+- `pnpm --filter @vol-arb/api deepbook:testnet execute:mint 0.1 81000 up`: success, digest `Yi6WhLkHqMEN8A2ohN9qRt8DgtZu2rXUdTGsqaFdCZh`, oracle `0xfe57fb1ab64888de060b1f50bd011ce054d6fb24b201ab77972f66a6fa8dc24b`, expiry `1778434200000`
+- `GET /api/deepbook/positions?owner=0x2e7742f3f4edd234307f545ce772c666d2ebdfc24e64083d2375888e02bb2305&managerId=0xa0845da0646708f196fdb68ded467b8b345daaa0dc7d006bbc393a16769387af`: `openPositions=1`, `open_exposure=98492`, `trading_balance=899664`, `redeemable_value=0`, `canWithdrawQuote=false`
+- `GET /api/deepbook/status?owner=0xd123dbbb133f8f43abca110200ef72d2a81d7cbc88e69e11624e9ad62b851dcd&managerId=0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f`: API returns 8 active OracleSVI candidates for wallet mint candidate-search
+- Local dry-run probe for Slush manager: current early active candidates can fail with `pricing_config::quote_spread_from_fair_price` abort `1` or `predict::assert_mintable_ask` abort `7`; later active candidates pass, validating the candidate-search fix
+- GitHub Actions `CI` on `main`: pass (`25634623060`)
 - `GET /api/maintenance/run`: 405, POST required
 - `POST /api/maintenance/run`: success
 
 ## Known Gaps
 
 1. The Slush connected-wallet path has proven manager creation, DUSDC deposit, mint dry-run, idle withdraw, binding, recording, and reconcile. It still needs signed mint, wait/settle, and redeem.
+   - Implementation is ready to try signed mint: `production-like` enables the explicit testnet acceptance override, and wallet mint now dry-runs 8 active OracleSVI candidates before signing.
+   - Current local blocker is environmental, not code-path logic: macOS UI automation cannot attach to Chrome and returns `cgWindowNotFound`.
 2. Polymarket L2 API credentials are not configured, so authenticated open-order reads cannot be proven in the local live environment; unit tests cover the HMAC path.
 3. Polymarket order submission and cancel execution are intentionally not implemented as product actions. They require separate approval, credentials, risk review, and manual confirmation controls.
 4. BTC free price sources can hit public rate limits. The app degrades and alerts, but sustained production use should add a paid or higher-quota source.
