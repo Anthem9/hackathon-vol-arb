@@ -59,10 +59,10 @@ Previous run evidence, 2026-05-10:
 Current run evidence, 2026-05-10:
 
 - Slush connected successfully on Sui Testnet in the normal Chrome profile.
-- The wallet panel shows connected account `0xd123...1dcd` and `SUI balance: 18.461`.
-- The wallet panel shows `DUSDC wallet: 0`, so deposit and mint remain blocked until this Slush account receives DUSDC.
+- The wallet panel shows connected account `0xd123...1dcd`.
+- The wallet was funded with 20 DUSDC from the generated testnet address.
 - The wallet panel loaded the owner-matched PredictManager `0x3df8...411f`.
-- The next safe action is to fund the connected wallet with DUSDC, then deposit into the manager.
+- After the first deposit, the wallet panel shows `DUSDC wallet: 19` and `Manager balance 1 DUSDC`.
 
 ## Step 2: Create Manager
 
@@ -114,6 +114,16 @@ Evidence to capture:
 - Deposit digest.
 - Manager DUSDC balance after refresh.
 - Chain transaction lifecycle status.
+
+Current run evidence, 2026-05-10:
+
+- Funding transfer to Slush: `20 DUSDC`, digest `B47U6y5LrSyQz7gcHbUVUhqtSndhcf8cyKQauppCiPnr`.
+- Slush deposit dry-run passed for `1 DUSDC`.
+- Slush wallet prompt was confirmed on `network=testnet`; target was `predict_manager::deposit`; manager was `0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f`; coin outflow was `-1 DUSDC`.
+- Deposit digest: `6B6zh4mBLwxQLfv2VBLyAhPsVDouL5AeEr83U25z6g2T`.
+- After refresh, wallet DUSDC is `19`, manager DUSDC is `1`, open exposure is `0`, and open positions are `0`.
+- `/api/deepbook/status?managerId=0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f&owner=0xd123dbbb133f8f43abca110200ef72d2a81d7cbc88e69e11624e9ad62b851dcd` reports `trading_balance=1000000` and `nextAction=ready_to_mint`.
+- `/api/deepbook/transactions` records `6B6zh4mBLwxQLfv2VBLyAhPsVDouL5AeEr83U25z6g2T` as `deposit_quote`, `status=success`, `lifecycleStatus=confirmed`, `source=wallet_ui`.
 
 ## Step 4: Mint
 

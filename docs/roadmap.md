@@ -40,8 +40,9 @@ Current blocker:
 
 - Slush connected-wallet manager creation is proven on Sui Testnet.
 - Current Slush test wallet `0xd123...1dcd` owns PredictManager `0x3df8...411f`.
-- Deposit, mint, redeem, and withdraw acceptance are blocked until the Slush wallet receives DUSDC test tokens.
-- After DUSDC arrives, resume from `docs/wallet-acceptance.md` Step 3.
+- Slush received 20 DUSDC and deposited 1 DUSDC into its manager with digest `6B6zh4...6g2T`.
+- Mint, redeem, and withdraw acceptance remain pending for the Slush wallet path.
+- Resume from `docs/wallet-acceptance.md` Step 4.
 
 ## Stage 2: DeepBook Predict Testnet Product Hardening
 
@@ -124,7 +125,7 @@ Deliverables:
 
 - Keep all package IDs, object IDs, asset types, RPC endpoints, and profile selection environment-driven.
 - Add a mainnet profile that is read-only by default.
-- Require an explicit migration checklist before enabling mainnet signing.
+- Require the explicit checklist in `docs/mainnet-migration-checklist.md` before enabling mainnet signing.
 - Re-run the connected-wallet lifecycle against official mainnet targets with minimum funds only after protocol support exists.
 
 Exit criteria:

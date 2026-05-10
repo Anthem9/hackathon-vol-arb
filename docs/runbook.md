@@ -218,3 +218,4 @@ Restore is destructive.
 - If the production-like dashboard shows `API connection failed`, check `API_INTERNAL_BASE_URL` in the Web container first.
 - If Polymarket credentials are absent, the app should stay read-only.
 - If DeepBook Predict mainnet IDs are unavailable, do not attempt mainnet execution.
+- If mainnet support is published later, complete `docs/mainnet-migration-checklist.md` before adding or enabling any mainnet signing path.
