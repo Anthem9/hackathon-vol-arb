@@ -44,6 +44,8 @@ This checklist is the handoff from the mock demo to real-service integration. De
   - Authenticated CLOB endpoints require L2 API credentials.
   - L2 credentials are created or derived by signing with the wallet private key via the official CLOB SDK.
   - Builder API keys are separate credentials for builder/relayer attribution and are created in the Polymarket builder settings page.
+  - `pnpm --filter @vol-arb/api polymarket:credentials` checks local wallet/private-key/L2 credential readiness without calling authenticated Polymarket endpoints.
+  - `pnpm --filter @vol-arb/api polymarket:credentials --create-or-derive --write-env .env` uses the official CLOB v2 SDK to create or derive L2 credentials and writes them to an ignored local env file without printing secrets.
   - `/api/polymarket/trading-readiness` verifies CLOB reachability, L2 credentials, wallet signing material, optional funder address, and the live-trading feature flag without returning secrets.
   - `/api/polymarket/account` reads public Data API positions for the configured wallet and reads authenticated CLOB open orders with backend L2 HMAC signing when credentials are configured.
   - `/api/polymarket/order-preview` calculates notional, max loss, max profit, and blockers without signing or submitting an order.
@@ -92,6 +94,7 @@ This checklist is the handoff from the mock demo to real-service integration. De
 - The API package includes a read-only connected-wallet monitor for Slush/manual signing acceptance evidence.
 - The API exposes dry-run/status-only maintenance endpoints for source refresh, Postgres check, transaction reconcile, and configured-wallet backfill.
 - The dashboard exposes Polymarket authenticated trading readiness while keeping order submission read-only unless explicitly enabled.
+- The API package includes a CLI-only Polymarket L2 credential readiness and derivation helper.
 - The dashboard exposes public Polymarket wallet positions, authenticated open orders when L2 credentials are configured, and cancel-order gates.
 - The dashboard exposes a Polymarket order preview panel for risk calculation only; it does not sign or submit orders.
 - The dashboard exposes a Polymarket cancel preview panel; it does not submit cancel requests.

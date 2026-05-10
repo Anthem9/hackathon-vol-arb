@@ -9,6 +9,7 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "deepbook:testnet": "tsx src/services/deepbook-testnet-executor-cli.ts",
     "deepbook:wallet-monitor": "tsx src/services/deepbook-wallet-monitor-cli.ts",
+    "polymarket:credentials": "tsx src/services/polymarket-credentials-cli.ts",
     "build": "tsc --noEmit",
     "lint": "tsc --noEmit",
     "test": "tsx src/services/deepbook-transaction-service.test.ts && tsx src/services/runtime-services.test.ts",
@@ -16,6 +17,7 @@
   },
   "dependencies": {
     "@mysten/sui": "^2.16.2",
+    "@polymarket/clob-client-v2": "^1.0.6",
     "@vol-arb/adapters": "workspace:*",
     "@vol-arb/config": "workspace:*",
     "@vol-arb/core": "workspace:*",

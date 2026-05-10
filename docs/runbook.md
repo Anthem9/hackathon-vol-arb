@@ -118,6 +118,31 @@ Expected result:
 - `/api/polymarket/order-preview` calculates notional, max loss, max profit, and blockers without signing or submitting an order.
 - `/api/polymarket/cancel-preview` validates an order id against authenticated open orders when credentials are configured, but does not cancel.
 
+## Polymarket L2 Credentials
+
+Use this to check whether the configured Polygon/Polymarket wallet can derive CLOB L2 API credentials. The default command is read-only and does not call authenticated Polymarket endpoints:
+
+```bash
+pnpm --filter @vol-arb/api polymarket:credentials
+```
+
+Expected result:
+
+- `privateKeyConfigured=true`
+- `configuredWalletValid=true`
+- `walletMatchesPrivateKey=true`
+- `l2CredentialsConfigured=false` until credentials are created or configured
+
+Only run credential creation intentionally. It signs L1 auth with the configured local private key and may create or derive API credentials at Polymarket:
+
+```bash
+pnpm --filter @vol-arb/api polymarket:credentials \
+  --create-or-derive \
+  --write-env .env
+```
+
+The command writes `POLYMARKET_API_KEY`, `POLYMARKET_API_SECRET`, and `POLYMARKET_API_PASSPHRASE` to an ignored local env file and does not print secret values. Use `--write-env .env.polymarket.local` instead if you want a staging file before updating the runtime `.env`. Keep `POLYMARKET_ENABLE_LIVE_TRADING=false` until authenticated account reads, order preview, risk review, and manual confirmation controls have been completed.
+
 ## Browser Smoke
 
 Use the temporary Playwright harness if it exists:
