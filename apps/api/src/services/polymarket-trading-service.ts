@@ -22,6 +22,15 @@ function dataUrl() {
   return envValue("POLYMARKET_DATA_API_BASE") || "https://data-api.polymarket.com";
 }
 
+function polymarketChainId() {
+  const value = Number(envValue("POLYMARKET_CHAIN_ID") || "137");
+  return value === 80002 ? 80002 : 137;
+}
+
+function polymarketNetwork() {
+  return polymarketChainId() === 80002 ? "polygon-amoy" : "polygon";
+}
+
 function isPolygonAddress(value: string) {
   return /^0x[0-9a-fA-F]{40}$/.test(value);
 }
@@ -142,6 +151,8 @@ export async function getPolymarketTradingReadiness() {
   const apiSecret = envValue("POLYMARKET_API_SECRET");
   const apiPassphrase = envValue("POLYMARKET_API_PASSPHRASE");
   const signatureType = envValue("POLYMARKET_SIGNATURE_TYPE") || "0";
+  const chainId = polymarketChainId();
+  const liveTradingChainReady = chainId === 137;
   const liveTradingEnabled = envValue("POLYMARKET_ENABLE_LIVE_TRADING") === "true";
   const health = await clobHealth();
 
@@ -160,6 +171,11 @@ export async function getPolymarketTradingReadiness() {
       label: "Local Order Signing",
       ready: isPrivateKey(privateKey),
       detail: privateKey ? "Private key format is valid; value is never returned by the API." : "POLYMARKET_PRIVATE_KEY or POLYGON_TEST_PRIVATE_KEY is missing.",
+    },
+    {
+      label: "Polymarket Chain",
+      ready: chainId === 137 || chainId === 80002,
+      detail: chainId === 137 ? "POLYMARKET_CHAIN_ID=137." : "POLYMARKET_CHAIN_ID=80002; use only for wallet/RPC signing rehearsal, not live Polymarket trading.",
     },
     {
       label: "L2 API Key",
@@ -191,15 +207,17 @@ export async function getPolymarketTradingReadiness() {
   const credentialsReady = checks
     .filter((check) => ["Wallet Address", "Local Order Signing", "L2 API Key", "L2 API Secret", "L2 Passphrase"].includes(check.label))
     .every((check) => check.ready);
-  const orderSubmissionReady = liveTradingEnabled && credentialsReady && health.ready;
+  const orderSubmissionReady = liveTradingEnabled && liveTradingChainReady && credentialsReady && health.ready;
   const blockers = checks.filter((check) => !check.ready && check.label !== "Live Trading Flag" && check.label !== "Funder").map((check) => check.detail);
   if (!liveTradingEnabled) blockers.push("POLYMARKET_ENABLE_LIVE_TRADING is not true; order submission remains disabled.");
+  if (!liveTradingChainReady) blockers.push("Polymarket live trading requires POLYMARKET_CHAIN_ID=137.");
 
   return {
     clobUrl: clobUrl(),
     gammaUrl: gammaUrl(),
     dataUrl: dataUrl(),
-    network: "polygon",
+    network: polymarketNetwork(),
+    chainId,
     signatureType,
     liveTradingEnabled,
     orderSubmissionReady,
@@ -236,7 +254,8 @@ export async function buildPolymarketOrderPreview(body: unknown) {
   const blockers = [...validationBlockers, ...readiness.blockers];
 
   return {
-    network: "polygon",
+    network: polymarketNetwork(),
+    chainId: polymarketChainId(),
     safeMode: readiness.safeMode,
     orderSubmissionReady: readiness.orderSubmissionReady && validationBlockers.length === 0,
     liveTradingEnabled: readiness.liveTradingEnabled,
@@ -282,7 +301,8 @@ export async function getPolymarketAccountState(owner?: string) {
   if (!isPolygonAddress(walletAddress)) {
     blockers.push("A valid POLYMARKET_WALLET_ADDRESS or owner query parameter is required.");
     return {
-      network: "polygon",
+      network: polymarketNetwork(),
+      chainId: polymarketChainId(),
       dataUrl: dataUrl(),
       walletAddress: walletAddress || null,
       positions: [],
@@ -329,7 +349,8 @@ export async function getPolymarketAccountState(owner?: string) {
   );
 
   return {
-    network: "polygon",
+    network: polymarketNetwork(),
+    chainId: polymarketChainId(),
     dataUrl: dataUrl(),
     walletAddress,
     positions: positions.slice(0, 25).map((position) => ({
@@ -378,7 +399,8 @@ export async function buildPolymarketCancelPreview(body: unknown) {
   if (!readiness.liveTradingEnabled) blockers.push("POLYMARKET_ENABLE_LIVE_TRADING is not true; cancel execution remains disabled.");
 
   return {
-    network: "polygon",
+    network: polymarketNetwork(),
+    chainId: polymarketChainId(),
     safeMode: "read_only",
     cancelReady: blockers.length === 0,
     cancelExecutionEnabled: false,

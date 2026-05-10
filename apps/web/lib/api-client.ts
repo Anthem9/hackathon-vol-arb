@@ -261,7 +261,8 @@ export type PolymarketTradingReadiness = {
   clobUrl: string;
   gammaUrl: string;
   dataUrl: string;
-  network: "polygon";
+  network: "polygon" | "polygon-amoy";
+  chainId: 137 | 80002;
   signatureType: string;
   liveTradingEnabled: boolean;
   orderSubmissionReady: boolean;
@@ -281,7 +282,8 @@ export type PolymarketTradingReadiness = {
 };
 
 export type PolymarketAccountState = {
-  network: "polygon";
+  network: "polygon" | "polygon-amoy";
+  chainId: 137 | 80002;
   dataUrl: string;
   walletAddress: string | null;
   positions: Array<{
@@ -334,7 +336,8 @@ export type PolymarketAccountState = {
 };
 
 export type PolymarketOrderPreview = {
-  network: "polygon";
+  network: "polygon" | "polygon-amoy";
+  chainId: 137 | 80002;
   safeMode: "read_only" | "manual_confirm_required";
   orderSubmissionReady: boolean;
   liveTradingEnabled: boolean;
@@ -353,7 +356,8 @@ export type PolymarketOrderPreview = {
 };
 
 export type PolymarketCancelPreview = {
-  network: "polygon";
+  network: "polygon" | "polygon-amoy";
+  chainId: 137 | 80002;
   safeMode: "read_only";
   cancelReady: boolean;
   cancelExecutionEnabled: boolean;

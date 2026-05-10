@@ -195,6 +195,7 @@ process.env.POLYMARKET_PRIVATE_KEY = `0x${"8".repeat(64)}`;
 process.env.POLYMARKET_API_KEY = "key";
 process.env.POLYMARKET_API_SECRET = Buffer.from("secret").toString("base64");
 process.env.POLYMARKET_API_PASSPHRASE = "passphrase";
+process.env.POLYMARKET_CHAIN_ID = "137";
 process.env.POLYMARKET_ENABLE_LIVE_TRADING = "false";
 globalThis.fetch = async (input, init) => {
   const url = String(input);
@@ -248,10 +249,18 @@ globalThis.fetch = async (input, init) => {
   throw new Error(`unexpected fetch ${url}`);
 };
 const polymarketReadiness = await getPolymarketTradingReadiness();
+assert.equal(polymarketReadiness.network, "polygon");
+assert.equal(polymarketReadiness.chainId, 137);
 assert.equal(polymarketReadiness.capabilities.authenticatedRequests, true);
 assert.equal(polymarketReadiness.capabilities.orderSubmission, false);
 assert.equal(polymarketReadiness.safeMode, "read_only");
 assert.ok(polymarketReadiness.blockers.includes("POLYMARKET_ENABLE_LIVE_TRADING is not true; order submission remains disabled."));
+process.env.POLYMARKET_CHAIN_ID = "80002";
+const polymarketAmoyReadiness = await getPolymarketTradingReadiness();
+assert.equal(polymarketAmoyReadiness.network, "polygon-amoy");
+assert.equal(polymarketAmoyReadiness.chainId, 80002);
+assert.ok(polymarketAmoyReadiness.blockers.includes("Polymarket live trading requires POLYMARKET_CHAIN_ID=137."));
+process.env.POLYMARKET_CHAIN_ID = "137";
 const polymarketPreview = await buildPolymarketOrderPreview({
   market: "btc-test-market",
   tokenId: "123",
