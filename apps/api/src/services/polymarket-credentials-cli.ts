@@ -180,7 +180,7 @@ async function main() {
   };
 
   if (!args.createOrDerive) {
-    console.log(JSON.stringify({ mode: "check", report, nextAction: "Use --create-or-derive --write-env .env.polymarket.local to create or derive L2 credentials." }, null, 2));
+    console.log(JSON.stringify({ mode: "check", report, nextAction: "Use --create-or-derive --write-env .env to create or derive L2 credentials." }, null, 2));
     return;
   }
 
