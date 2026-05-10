@@ -175,6 +175,13 @@ Current run evidence, 2026-05-11:
 - `/api/deepbook/positions?owner=0x2e7742f3f4edd234307f545ce772c666d2ebdfc24e64083d2375888e02bb2305&managerId=0xa0845da0646708f196fdb68ded467b8b345daaa0dc7d006bbc393a16769387af` reports `openPositions=1`, `open_exposure=98492`, `trading_balance=899664`, `redeemable_value=0`, and `canWithdrawQuote=false`.
 - Slush signed mint is still pending only because local macOS UI automation cannot currently attach to Chrome (`cgWindowNotFound`). Resume by opening `http://localhost:3001/#wallet`, confirming Slush account `0xd123...1dcd`, clicking `Dry-run mint`, then `Execute mint` if the wallet prompt is Sui Testnet and targets the DeepBook Predict package.
 
+Latest generated-wallet execution, 2026-05-11:
+
+- After the prior generated-wallet withdraw, a direct mint attempt failed because the manager had no DUSDC balance; this was the expected `balance_manager::withdraw_with_proof` abort for insufficient manager balance and did not create a position.
+- Re-deposited `1 DUSDC` into generated-wallet manager `0xa0845d...9387af`; digest `gzGQ5J1nrTWQfYbUUVzbVEhr9BfFEfiPjH24HVVaR6b`.
+- Executed a real Sui Testnet mint for `0.1 DUSDC`, direction `up`, strike `81000000000000`; digest `B7WTzjDN83r85LSJ2YQztpTgy9khjTWtmiGFx9jw2v3M`, oracle `0x84eddaf7a86112c8c14e4ca34fac3a22477a3b0feaf8f3b954570fb5a0c8df15`, expiry `2026-05-11 05:45:00 Asia/Shanghai`.
+- Monitor snapshot after mint reports `openPositions=1`, `open_exposure=1057`, `trading_balance=998943`, `account_value=1000170`, `redeemable_value=0`, `canWithdrawQuote=false`, and blocker `Position has not reached expiry.`
+
 ## Step 5: Redeem
 
 Only run after the position is expired and protocol state exposes redeemable value.
