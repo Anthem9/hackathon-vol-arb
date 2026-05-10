@@ -181,6 +181,9 @@ Latest generated-wallet execution, 2026-05-11:
 - Re-deposited `1 DUSDC` into generated-wallet manager `0xa0845d...9387af`; digest `gzGQ5J1nrTWQfYbUUVzbVEhr9BfFEfiPjH24HVVaR6b`.
 - Executed a real Sui Testnet mint for `0.1 DUSDC`, direction `up`, strike `81000000000000`; digest `B7WTzjDN83r85LSJ2YQztpTgy9khjTWtmiGFx9jw2v3M`, oracle `0x84eddaf7a86112c8c14e4ca34fac3a22477a3b0feaf8f3b954570fb5a0c8df15`, expiry `2026-05-11 05:45:00 Asia/Shanghai`.
 - Monitor snapshot after mint reports `openPositions=1`, `open_exposure=1057`, `trading_balance=998943`, `account_value=1000170`, `redeemable_value=0`, `canWithdrawQuote=false`, and blocker `Position has not reached expiry.`
+- After expiry, redeem dry-run and real redeem both succeeded with digest `7RDdWGzYWsmQpNQKKGzDzicnWnaxrpGyrchJL3RUqE3x`.
+- With `openPositions=0`, `open_exposure=0`, and `canWithdrawQuote=true`, withdraw dry-run and real withdraw of `0.998943 DUSDC` both succeeded with digest `8PQTQ3ThSdkJxtTmVUkiAAudHrezAkQ1arf6WzgEtQkz`.
+- Final monitor snapshot reports `trading_balance=0`, `open_exposure=0`, `open_positions=0`, `redeemable_value=0`, `account_value=0`, and position `B7WTzjDN83r85LSJ2YQztpTgy9khjTWtmiGFx9jw2v3M` marked `redeemed`.
 
 ## Step 5: Redeem
 
