@@ -40,7 +40,7 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 | Testnet-only DeepBook boundary | README, architecture, roadmap, runbook, env checker; `SUI_NETWORK=testnet` in production-like compose | Complete |
 | Monorepo and services | `apps/web`, `apps/api`, `packages/*`, `docker-compose.production-like.yml`, Postgres service | Complete |
 | Data modes | `DATA_MODE=mock\|hybrid\|real`; real adapter falls back with source status | Complete |
-| DeepBook real lifecycle | Verified chain records include create manager, deposit, mint, redeem, withdraw; latest full generated-wallet cycle minted `Yi6WhLkHqMEN8A2ohN9qRt8DgtZu2rXUdTGsqaFdCZh`, redeemed `5YUsHuYMUjua4r5wV6NEhSVe6PL5EmRvVEEHr8JL3NXs`, and withdrew `GdfYVCj2quGYUyLdRBsNuSGzQGRJ7rSpSAYB6cTLxcfN` | Complete for generated-wallet testnet path |
+| DeepBook real lifecycle | Verified chain records include create manager, deposit, mint, redeem, withdraw; latest full generated-wallet cycle deposited `gzGQ5J1nrTWQfYbUUVzbVEhr9BfFEfiPjH24HVVaR6b`, minted `B7WTzjDN83r85LSJ2YQztpTgy9khjTWtmiGFx9jw2v3M`, redeemed `7RDdWGzYWsmQpNQKKGzDzicnWnaxrpGyrchJL3RUqE3x`, and withdrew `8PQTQ3ThSdkJxtTmVUkiAAudHrezAkQ1arf6WzgEtQkz` | Complete for generated-wallet testnet path |
 | Connected wallet UX | Wallet panel builds wallet-signed testnet transactions, enforces owner/gas/DUSDC/dry-run/risk guards, has unit-tested deposit/mint/redeem/withdraw blockers, and now dry-runs active OracleSVI candidates until one is accepted by the protocol | Manager creation, DUSDC deposit, persisted mint dry-run, idle withdraw, and read-only monitor proven with Slush on testnet; signed mint/redeem still pending because Chrome UI automation is unavailable |
 | DeepBook failure handling | API and wallet UI decode balance/gas, ownership, settlement, market/oracle, network, and unknown Move abort failures into operator-readable messages with retry advice | Complete for known categories; unknown abort codes remain conservative |
 | Postgres persistence | `/api/health?deep=1` reports persistence healthy; schema includes snapshots, alerts, bindings, chain events, and wallet mint dry-run evidence | Complete |
@@ -91,7 +91,7 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 - Production-like dashboard smoke after fixed timezone rendering: `npx playwright test dashboard-smoke.spec.js --config empty.config.js --reporter=line` passed 3/3 with no React hydration text mismatch
 - `pnpm run db:backup`: pass, wrote an ignored Postgres dump under `backups/`
 - `pnpm run db:restore:check -- backups/volarb-2026-05-10T20-37-16-231Z.dump`: pass, verified 68 archive entries without touching a database
-- GitHub Actions `CI` on `main`: pass (`25639140074`)
+- GitHub Actions `CI` on `main`: pass (`25640671609`)
 - `GET /api/maintenance/run`: 405, POST required
 - `POST /api/maintenance/run`: success
 
