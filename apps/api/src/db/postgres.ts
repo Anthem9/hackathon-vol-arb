@@ -249,6 +249,23 @@ export type WalletManagerBinding = {
   updatedAt: number;
 };
 
+export type WalletMintDryRunEvent = {
+  id?: number;
+  network: "testnet";
+  owner: string;
+  managerId: string;
+  oracleId: string;
+  expiry: number;
+  strike: string;
+  direction: "up" | "down";
+  quantity: string;
+  status: "success" | "failed";
+  dryRunDigest?: string;
+  failureReason?: string;
+  payload: Record<string, unknown>;
+  createdAt: number;
+};
+
 export async function persistChainTransactionEvent(input: ChainTransactionEvent): Promise<PersistenceStatus> {
   try {
     const db = await ensureDatabase();
@@ -300,6 +317,111 @@ export async function persistChainTransactionEvent(input: ChainTransactionEvent)
     lastError = error instanceof Error ? error.message : "Unknown Postgres chain transaction write error";
   }
   return getDatabaseStatus();
+}
+
+export async function persistWalletMintDryRunEvent(input: WalletMintDryRunEvent): Promise<{ event: WalletMintDryRunEvent; persistence: PersistenceStatus }> {
+  try {
+    const db = await ensureDatabase();
+    if (!db) return { event: input, persistence: getDatabaseStatus() };
+    const result = await db.query<{
+      id: string;
+      created_at: Date;
+    }>(
+      `insert into wallet_mint_dry_run_events
+        (network, owner, manager_id, oracle_id, expiry, strike, direction, quantity, status, dry_run_digest, failure_reason, payload, created_at)
+       values ('testnet', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, to_timestamp($12 / 1000.0))
+       returning id, created_at`,
+      [
+        input.owner,
+        input.managerId,
+        input.oracleId,
+        input.expiry,
+        input.strike,
+        input.direction,
+        input.quantity,
+        input.status,
+        input.dryRunDigest ?? null,
+        input.failureReason ?? null,
+        JSON.stringify(input.payload ?? {}),
+        input.createdAt,
+      ],
+    );
+    lastError = null;
+    lastWriteAt = Date.now();
+    const row = result.rows[0];
+    return {
+      event: {
+        ...input,
+        id: Number(row.id),
+        createdAt: row.created_at.getTime(),
+      },
+      persistence: getDatabaseStatus(),
+    };
+  } catch (error) {
+    lastError = error instanceof Error ? error.message : "Unknown Postgres wallet mint dry-run write error";
+    return { event: input, persistence: getDatabaseStatus() };
+  }
+}
+
+export async function readRecentWalletMintDryRunEvents(input: { owner?: string; managerId?: string; limit?: number } = {}): Promise<WalletMintDryRunEvent[]> {
+  try {
+    const db = await ensureDatabase();
+    if (!db) return [];
+    const clauses = ["network = 'testnet'"];
+    const params: unknown[] = [];
+    if (input.owner) {
+      params.push(input.owner);
+      clauses.push(`owner = $${params.length}`);
+    }
+    if (input.managerId) {
+      params.push(input.managerId);
+      clauses.push(`manager_id = $${params.length}`);
+    }
+    const limit = Math.max(1, Math.min(100, Math.trunc(input.limit ?? 25)));
+    params.push(limit);
+    const result = await db.query<{
+      id: string;
+      network: "testnet";
+      owner: string;
+      manager_id: string;
+      oracle_id: string;
+      expiry: string;
+      strike: string;
+      direction: "up" | "down";
+      quantity: string;
+      status: "success" | "failed";
+      dry_run_digest: string | null;
+      failure_reason: string | null;
+      payload: Record<string, unknown>;
+      created_at: Date;
+    }>(
+      `select id, network, owner, manager_id, oracle_id, expiry, strike, direction, quantity, status, dry_run_digest, failure_reason, payload, created_at
+       from wallet_mint_dry_run_events
+       where ${clauses.join(" and ")}
+       order by created_at desc
+       limit $${params.length}`,
+      params,
+    );
+    return result.rows.map((row) => ({
+      id: Number(row.id),
+      network: row.network,
+      owner: row.owner,
+      managerId: row.manager_id,
+      oracleId: row.oracle_id,
+      expiry: Number(row.expiry),
+      strike: row.strike,
+      direction: row.direction,
+      quantity: row.quantity,
+      status: row.status,
+      dryRunDigest: row.dry_run_digest ?? undefined,
+      failureReason: row.failure_reason ?? undefined,
+      payload: row.payload ?? {},
+      createdAt: row.created_at.getTime(),
+    }));
+  } catch (error) {
+    lastError = error instanceof Error ? error.message : "Unknown Postgres wallet mint dry-run read error";
+    return [];
+  }
 }
 
 export async function upsertWalletManagerBinding(input: { owner: string; managerId: string; source?: string }): Promise<WalletManagerBinding | null> {

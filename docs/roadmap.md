@@ -41,7 +41,7 @@ Current blocker:
 - Slush connected-wallet manager creation is proven on Sui Testnet.
 - Current Slush test wallet `0xd123...1dcd` owns PredictManager `0x3df8...411f`.
 - Slush received 20 DUSDC and deposited 1 DUSDC into its manager with digest `6B6zh4...6g2T`.
-- Slush mint dry-run now passes while signed mint execution stays blocked until a real executable signal exists.
+- Slush mint dry-run now passes and is persisted through `/api/deepbook/mint-dry-runs`; signed mint execution stays blocked until a real executable signal exists.
 - Slush withdrew 0.1 DUSDC from the manager with digest `9Fz2pt...Jm1R`.
 - Signed mint and redeem acceptance remain pending for the Slush wallet path.
 - Resume from `docs/wallet-acceptance.md` Step 4.

@@ -152,6 +152,7 @@ Current run evidence, 2026-05-10:
 - Slush mint dry-run passed for manager `0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f`, quantity `0.1`, direction `up`, oracle `0xd7a2...83ed`, and strike `81,000`.
 - Wallet panel displayed: `Mint dry-run passed. Execution remains blocked until an executable trade signal is available.`
 - No wallet signing prompt appeared and no mint digest was created, as expected while `Execute mint` is still disabled.
+- Mint dry-run evidence is persisted by `GET /api/deepbook/mint-dry-runs?owner=0xd123dbbb133f8f43abca110200ef72d2a81d7cbc88e69e11624e9ad62b851dcd&managerId=0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f&limit=5`; latest record has `status=success`, `quantity=100000`, `strike=81000000000000`, and dry-run digest `2Gp7RkhMyKg5KifBPPmUbpywf6td983wQn1HxW2SEdDy`.
 
 ## Step 5: Redeem
 

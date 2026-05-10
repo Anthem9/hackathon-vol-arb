@@ -116,6 +116,23 @@ export type DeepBookChainTransaction = {
   createdAt: number;
 };
 
+export type DeepBookMintDryRunEvent = {
+  id?: number;
+  network: "testnet";
+  owner: string;
+  managerId: string;
+  oracleId: string;
+  expiry: number;
+  strike: string;
+  direction: "up" | "down";
+  quantity: string;
+  status: "success" | "failed";
+  dryRunDigest?: string;
+  failureReason?: string;
+  payload: Record<string, unknown>;
+  createdAt: number;
+};
+
 export async function postAlertAction(payload: { alertId: string; action: "resolve" | "silence"; reason?: string }) {
   return postJson<{ alertId: string; action: "resolve" | "silence"; reason?: string; createdAt: number }>("/api/alerts/action", payload);
 }
@@ -391,6 +408,17 @@ export async function fetchDeepBookPositions(managerId?: string, owner?: string)
 
 export async function recordDeepBookTransaction(payload: Record<string, unknown>) {
   return postJson<{ event: DeepBookChainTransaction; persistence: PersistenceStatus }>("/api/deepbook/transactions", payload);
+}
+
+export async function recordDeepBookMintDryRun(payload: Record<string, unknown>) {
+  return postJson<{ event: DeepBookMintDryRunEvent; persistence: PersistenceStatus }>("/api/deepbook/mint-dry-runs", payload);
+}
+
+export async function fetchDeepBookMintDryRuns(owner?: string, managerId?: string, limit = 25) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (owner) params.set("owner", owner);
+  if (managerId) params.set("managerId", managerId);
+  return getJson<DeepBookMintDryRunEvent[]>(`/api/deepbook/mint-dry-runs?${params.toString()}`);
 }
 
 export async function reconcileDeepBookTransactions(limit = 10) {

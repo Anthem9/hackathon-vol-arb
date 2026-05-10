@@ -26,9 +26,9 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 | Monorepo and services | `apps/web`, `apps/api`, `packages/*`, `docker-compose.production-like.yml`, Postgres service | Complete |
 | Data modes | `DATA_MODE=mock\|hybrid\|real`; real adapter falls back with source status | Complete |
 | DeepBook real lifecycle | Verified chain records include create manager, deposit, mint, redeem, withdraw; `/api/deepbook/positions` shows reconciled transactions and `canWithdrawQuote=true` | Complete for generated-wallet testnet path |
-| Connected wallet UX | Wallet panel builds wallet-signed testnet transactions, enforces owner/gas/DUSDC/dry-run/risk guards, and has unit-tested deposit/mint/redeem/withdraw blockers | Manager creation, DUSDC deposit, mint dry-run, and idle withdraw proven with Slush on testnet; signed mint/redeem still pending |
+| Connected wallet UX | Wallet panel builds wallet-signed testnet transactions, enforces owner/gas/DUSDC/dry-run/risk guards, and has unit-tested deposit/mint/redeem/withdraw blockers | Manager creation, DUSDC deposit, persisted mint dry-run, and idle withdraw proven with Slush on testnet; signed mint/redeem still pending |
 | DeepBook failure handling | API and wallet UI decode balance/gas, ownership, settlement, market/oracle, network, and unknown Move abort failures into operator-readable messages with retry advice | Complete for known categories; unknown abort codes remain conservative |
-| Postgres persistence | `/api/health?deep=1` reports persistence healthy; schema includes snapshots, alerts, bindings, chain events | Complete |
+| Postgres persistence | `/api/health?deep=1` reports persistence healthy; schema includes snapshots, alerts, bindings, chain events, and wallet mint dry-run evidence | Complete |
 | Operations | `docs/runbook.md`, maintenance POST endpoint, scheduler, backup/restore scripts, production-like Docker stack | Complete |
 | Polymarket readiness | Public CLOB reachable; account/readiness/order-preview/cancel-preview implemented; live trading disabled and blocked without L2 credentials | Read-only complete; live trading intentionally deferred |
 | Secret safety | `.dockerignore`, `.gitignore`, `scripts/secret-scan.mjs`, CI workflow, `npm run secret:scan` passes | Complete |
@@ -53,6 +53,7 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 - `GET /api/deepbook/status?managerId=0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f&owner=0xd123dbbb133f8f43abca110200ef72d2a81d7cbc88e69e11624e9ad62b851dcd`: after Slush withdraw, `trading_balance=900000`, `open_exposure=0`, `open_positions=0`
 - `GET /api/deepbook/transactions`: Slush withdraw `9Fz2ptgxk4Ne2To6Jn2UgjLLp462De2BLrN9LMoWJm1R` recorded as `withdraw_quote`, `status=success`, `lifecycleStatus=confirmed`
 - Chrome Slush wallet panel: `Dry-run mint` enabled while `Execute mint` remains disabled; mint dry-run passed and reported `Execution remains blocked until an executable trade signal is available.`
+- `GET /api/deepbook/mint-dry-runs?owner=0xd123dbbb133f8f43abca110200ef72d2a81d7cbc88e69e11624e9ad62b851dcd&managerId=0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f&limit=5`: one persisted Slush dry-run record, `status=success`, `quantity=100000`, `strike=81000000000000`, dry-run digest `2Gp7RkhMyKg5KifBPPmUbpywf6td983wQn1HxW2SEdDy`
 - `GET /api/deepbook/positions?managerId=0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f&owner=0xd123dbbb133f8f43abca110200ef72d2a81d7cbc88e69e11624e9ad62b851dcd`: 0 positions, 1 create_manager transaction
 - `npx playwright test dashboard-smoke.spec.js --config empty.config.js --reporter=line`: 3 passed
 - GitHub Actions `CI` on `main`: pass (`25631310515`)

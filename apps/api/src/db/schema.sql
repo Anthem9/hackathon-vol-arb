@@ -105,6 +105,23 @@ create table if not exists wallet_manager_bindings (
   primary key (network, owner)
 );
 
+create table if not exists wallet_mint_dry_run_events (
+  id bigserial primary key,
+  network text not null default 'testnet',
+  owner text not null,
+  manager_id text not null,
+  oracle_id text not null,
+  expiry bigint not null,
+  strike text not null,
+  direction text not null check (direction in ('up', 'down')),
+  quantity text not null,
+  status text not null check (status in ('success', 'failed')),
+  dry_run_digest text,
+  failure_reason text,
+  payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
 create index if not exists dashboard_snapshots_created_at_idx
   on dashboard_snapshots (created_at desc);
 
@@ -138,3 +155,9 @@ create index if not exists chain_transaction_events_manager_created_idx
 
 create index if not exists wallet_manager_bindings_manager_idx
   on wallet_manager_bindings (network, manager_id);
+
+create index if not exists wallet_mint_dry_run_events_owner_created_idx
+  on wallet_mint_dry_run_events (network, owner, created_at desc);
+
+create index if not exists wallet_mint_dry_run_events_market_idx
+  on wallet_mint_dry_run_events (network, owner, manager_id, oracle_id, expiry, strike, direction, created_at desc);

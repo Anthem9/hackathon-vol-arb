@@ -157,7 +157,7 @@ assert.ok(hybridDashboard.opportunities.every((opportunity) => opportunity.decis
 assert.ok(hybridDashboard.opportunities.every((opportunity) => opportunity.recommendedSizeUsd === 0));
 assert.ok(
   hybridDashboard.opportunities.every((opportunity) =>
-    opportunity.rejectReasons?.includes("Connected-wallet DeepBook Predict mint dry-run has not passed for this opportunity"),
+    opportunity.rejectReasons?.includes("Matching connected-wallet DeepBook Predict mint dry-run has not passed for this opportunity"),
   ),
 );
 const deepHealth = await getApiHealth({ deep: true });

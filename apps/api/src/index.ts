@@ -14,10 +14,12 @@ import {
   buildDeepBookTradeIntent,
   getDeepBookChainTransactions,
   getDeepBookManagerBinding,
+  getDeepBookMintDryRuns,
   getDeepBookPositionState,
   getDeepBookStatus,
   getDeepBookTestnetReadiness,
   recordDeepBookChainTransaction,
+  recordDeepBookMintDryRun,
   reconcileRecentDeepBookChainTransactions,
 } from "./services/deepbook-transaction-service";
 import { createAlertOperatorAction } from "./services/alert-service";
@@ -200,6 +202,24 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
     if (url.pathname === "/api/deepbook/transactions") {
       const body = req.method === "POST" ? await parseBody(req) : undefined;
       sendJson(req, res, 200, req.method === "POST" ? await recordDeepBookChainTransaction(body) : await getDeepBookChainTransactions());
+      return;
+    }
+    if (url.pathname === "/api/deepbook/mint-dry-runs") {
+      if (req.method === "POST") {
+        sendJson(req, res, 200, await recordDeepBookMintDryRun(await parseBody(req)));
+        return;
+      }
+      const limit = Number(url.searchParams.get("limit") ?? 25);
+      sendJson(
+        req,
+        res,
+        200,
+        await getDeepBookMintDryRuns({
+          owner: url.searchParams.get("owner") ?? undefined,
+          managerId: url.searchParams.get("managerId") ?? undefined,
+          limit: Number.isFinite(limit) ? limit : 25,
+        }),
+      );
       return;
     }
     if (url.pathname === "/api/deepbook/reconcile") {

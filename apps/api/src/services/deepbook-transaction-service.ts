@@ -1,9 +1,12 @@
 import {
   persistChainTransactionEvent,
+  persistWalletMintDryRunEvent,
   readWalletManagerBinding,
   readRecentChainTransactionEvents,
+  readRecentWalletMintDryRunEvents,
   upsertWalletManagerBinding,
   type ChainTransactionEvent,
+  type WalletMintDryRunEvent,
   type WalletManagerBinding,
 } from "../db/postgres";
 
@@ -40,6 +43,7 @@ type RecordedChainTransaction = ChainTransactionEvent;
 
 const fallbackChainEvents: RecordedChainTransaction[] = [];
 const fallbackManagerBindings = new Map<string, WalletManagerBinding>();
+const fallbackMintDryRuns: WalletMintDryRunEvent[] = [];
 
 type DeepBookPosition = {
   id: string;
@@ -497,6 +501,12 @@ function normalizeLifecycleStatus(value: unknown, status: RecordedChainTransacti
   return lifecycleFromStatus(status);
 }
 
+function normalizeDirection(value: unknown) {
+  const direction = asString(value, "up");
+  if (direction === "up" || direction === "down") return direction;
+  throw new Error("direction must be up or down");
+}
+
 export function decodeDeepBookFailureReason(raw: unknown) {
   const message = asString(raw, "Transaction failed.");
   const normalized = message.toLowerCase();
@@ -764,6 +774,57 @@ export async function getDeepBookChainTransactions(limit = 50) {
     byDigest.set(event.digest, event);
   }
   return Array.from(byDigest.values())
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .slice(0, limit);
+}
+
+export async function recordDeepBookMintDryRun(body: unknown) {
+  const input = isRecord(body) ? body : {};
+  const owner = normalizeSuiAddress(input.owner, "owner");
+  const managerId = normalizeSuiObjectId(input.managerId, "managerId");
+  const oracleId = normalizeSuiObjectId(input.oracleId, "oracleId");
+  const status = asString(input.status, "success");
+  if (status !== "success" && status !== "failed") throw new Error("status must be success or failed");
+  const event: WalletMintDryRunEvent = {
+    network: "testnet",
+    owner,
+    managerId,
+    oracleId,
+    expiry: requiredNumber(input.expiry, "expiry"),
+    strike: String(input.strike ?? ""),
+    direction: normalizeDirection(input.direction),
+    quantity: String(input.quantity ?? ""),
+    status,
+    dryRunDigest: asString(input.dryRunDigest) || undefined,
+    failureReason: asString(input.failureReason) || undefined,
+    payload: isRecord(input.payload) ? input.payload : {},
+    createdAt: input.createdAt === undefined ? Date.now() : requiredNumber(input.createdAt, "createdAt"),
+  };
+  if (!event.strike) throw new Error("strike is required");
+  if (!event.quantity) throw new Error("quantity is required");
+  fallbackMintDryRuns.unshift(event);
+  fallbackMintDryRuns.splice(100);
+  return persistWalletMintDryRunEvent(event);
+}
+
+export async function getDeepBookMintDryRuns(input: { owner?: string; managerId?: string; limit?: number } = {}) {
+  const normalizedOwner = input.owner ? normalizeSuiAddress(input.owner, "owner") : undefined;
+  const normalizedManager = input.managerId ? normalizeSuiObjectId(input.managerId, "managerId") : undefined;
+  const limit = Math.max(1, Math.min(100, Math.trunc(input.limit ?? 25)));
+  const persisted = await readRecentWalletMintDryRunEvents({ owner: normalizedOwner, managerId: normalizedManager, limit });
+  const rows = [...fallbackMintDryRuns, ...persisted].filter((event) => {
+    const ownerMatches = normalizedOwner ? event.owner === normalizedOwner : true;
+    const managerMatches = normalizedManager ? event.managerId === normalizedManager : true;
+    return ownerMatches && managerMatches;
+  });
+  const byKey = new Map<string, WalletMintDryRunEvent>();
+  for (const event of rows) {
+    const key = event.dryRunDigest
+      ? `dry-run:${event.dryRunDigest}`
+      : `${event.owner}:${event.managerId}:${event.oracleId}:${event.expiry}:${event.strike}:${event.direction}:${event.quantity}:${event.createdAt}`;
+    byKey.set(key, event);
+  }
+  return Array.from(byKey.values())
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, limit);
 }

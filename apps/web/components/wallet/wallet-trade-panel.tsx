@@ -12,6 +12,7 @@ import {
   fetchDeepBookManagerBinding,
   fetchDeepBookPositions,
   fetchDeepBookStatus,
+  recordDeepBookMintDryRun,
   recordDeepBookTransaction,
   type DeepBookPositionState,
   type DeepBookStatus,
@@ -89,6 +90,10 @@ function resultDigest(result: { Transaction?: { digest?: string }; FailedTransac
     throw new Error(formatWalletFailure(typeof error === "string" ? error : error?.message ?? "Transaction failed."));
   }
   return result.Transaction?.digest ?? "digest pending";
+}
+
+function dryRunDigest(result: { Transaction?: { digest?: string; effects?: { transactionDigest?: string } } }) {
+  return result.Transaction?.effects?.transactionDigest ?? result.Transaction?.digest;
 }
 
 function sleep(ms: number) {
@@ -793,7 +798,23 @@ function WalletTradeContent({
     try {
       const tx = buildLocalMintTransaction();
       if (!tx) return;
-      await simulate(tx);
+      const dryRun = await simulate(tx);
+      await recordDeepBookMintDryRun({
+        owner: account?.address,
+        managerId,
+        oracleId,
+        expiry: selected.surface?.expiry,
+        strike: selected.point ? toChainStrike(selected.point.strike).toString() : undefined,
+        direction: "up",
+        quantity: parseBaseUnits(mintQuantity).toString(),
+        status: "success",
+        dryRunDigest: dryRunDigest(dryRun),
+        payload: {
+          source: "wallet_ui",
+          displayStrike: selected.point?.strike,
+          executableTradeAvailable: hasExecutableTrade,
+        },
+      });
       setTxStatus(hasExecutableTrade ? "Mint dry-run passed. Execution remains behind wallet confirmation." : "Mint dry-run passed. Execution remains blocked until an executable trade signal is available.");
     } catch (error) {
       setTxStatus(error instanceof Error ? error.message : "Mint dry-run failed.");

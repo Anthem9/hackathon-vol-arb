@@ -1,5 +1,12 @@
 import assert from "node:assert/strict";
-import { buildDeepBookTradeIntent, decodeDeepBookFailureReason, getDeepBookStatus, getDeepBookTestnetReadiness } from "./deepbook-transaction-service";
+import {
+  buildDeepBookTradeIntent,
+  decodeDeepBookFailureReason,
+  getDeepBookMintDryRuns,
+  getDeepBookStatus,
+  getDeepBookTestnetReadiness,
+  recordDeepBookMintDryRun,
+} from "./deepbook-transaction-service";
 
 const managerId = `0x${"1".repeat(64)}`;
 const oracleId = `0x${"2".repeat(64)}`;
@@ -70,6 +77,24 @@ assert.equal(networkFailure.category, "network");
 const abortFailure = decodeDeepBookFailureReason("MoveAbort in module predict with code 1204");
 assert.equal(abortFailure.category, "move_abort");
 assert.equal(abortFailure.abortCode, "1204");
+
+const dryRun = await recordDeepBookMintDryRun({
+  owner: `0x${"9".repeat(64)}`,
+  managerId,
+  oracleId,
+  expiry: 1_800_000_000_000,
+  strike: "100000000000000",
+  direction: "up",
+  quantity: "100000",
+  status: "success",
+  dryRunDigest: "dryRunDigest",
+  payload: { source: "unit_test" },
+});
+assert.equal(dryRun.event.owner, `0x${"9".repeat(64)}`);
+assert.equal(dryRun.event.status, "success");
+const dryRuns = await getDeepBookMintDryRuns({ owner: `0x${"9".repeat(64)}`, managerId });
+assert.equal(dryRuns[0]?.oracleId, oracleId);
+assert.equal(dryRuns[0]?.quantity, "100000");
 
 const originalFetch = globalThis.fetch;
 const originalManagerId = process.env.DEEPBOOK_PREDICT_MANAGER_ID;

@@ -75,7 +75,7 @@ function applyExecutionGates(
       ...(opportunity.rejectReasons ?? []),
       ...(context.hasRealDeepBook ? [] : ["DeepBook Predict OracleSVI is unavailable"]),
       ...(context.hasRealPolymarket ? [] : ["Polymarket public market data is unavailable"]),
-      "Connected-wallet DeepBook Predict mint dry-run has not passed for this opportunity",
+      "Matching connected-wallet DeepBook Predict mint dry-run has not passed for this opportunity",
     ];
     const missingRequiredSource = !context.hasRealDeepBook || !context.hasRealPolymarket;
     return {
