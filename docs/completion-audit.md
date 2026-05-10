@@ -22,7 +22,7 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 
 | Requirement from objective/thread | Artifact or command checked | Current result |
 | --- | --- | --- |
-| Do not migrate DeepBook Predict to mainnet while it is testnet-only | `docs/architecture.md`, `docs/runbook.md`, `docs/mainnet-migration-checklist.md`, `docker-compose.production-like.yml`, env checker | Sui execution remains testnet-only; mainnet migration is documented as deferred |
+| Do not migrate DeepBook Predict to mainnet while it is testnet-only | `docs/architecture.md`, `docs/runbook.md`, `docs/mainnet-migration-checklist.md`, `docker-compose.production-like.yml`, env checker, `scripts/env-check-boundary.test.mjs` | Sui execution remains testnet-only; mainnet migration is documented as deferred and boundary-tested |
 | Complete the non-mainnet DeepBook Predict flow | `deepbook-testnet-executor-cli.ts`, `/api/deepbook/positions`, `/api/deepbook/transactions` | Generated-wallet deposit, mint, redeem, and withdraw are proven on real Sui Testnet |
 | Prove connected wallet path where possible | `docs/wallet-acceptance.md`, `deepbook:wallet-monitor`, Slush API state, persisted wallet mint dry-run events | Slush manager creation, deposit, mint dry-run, idle withdraw, binding, reconciliation, and read-only live monitoring are proven; signed mint/redeem still need browser signing |
 | Keep the product real, not hackathon fake-only | `docs/roadmap.md`, wallet gates, risk blockers, production-like env | Acceptance override stays on real Sui Testnet with real wallet signing, manager ownership, DUSDC, gas, risk limits, and dry-run gates |
@@ -56,7 +56,7 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 ## Latest Verification
 
 - `npm run typecheck`: pass
-- `npm test`: pass
+- `npm test`: pass, including `scripts/env-check-boundary.test.mjs`
 - `npm run lint`: pass
 - `npm run build -- --force`: pass
 - `npm run secret:scan`: pass
