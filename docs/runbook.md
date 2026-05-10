@@ -216,6 +216,12 @@ Back up before schema changes or long testnet sessions:
 npm run db:backup
 ```
 
+Check that a dump is readable without touching any database:
+
+```bash
+npm run db:restore:check -- backups/<file>.dump
+```
+
 Restore only with explicit confirmation:
 
 ```bash

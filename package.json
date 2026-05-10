@@ -9,6 +9,7 @@
     "db:backup": "node scripts/db-backup.mjs",
     "db:migrate": "pnpm --filter @vol-arb/api db:migrate",
     "db:restore": "node scripts/db-restore.mjs",
+    "db:restore:check": "node scripts/db-restore-check.mjs",
     "env:check": "node scripts/env-check.mjs",
     "build": "turbo build",
     "lint": "turbo lint",
