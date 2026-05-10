@@ -18,6 +18,21 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 10. Provide browser-level smoke coverage for the production-like dashboard.
 11. Maintain an explicit product roadmap from current testnet state to full real-world usability without treating hackathon-only demo behavior as the product target.
 
+## Prompt-To-Artifact Checklist
+
+| Requirement from objective/thread | Artifact or command checked | Current result |
+| --- | --- | --- |
+| Do not migrate DeepBook Predict to mainnet while it is testnet-only | `docs/architecture.md`, `docs/runbook.md`, `docs/mainnet-migration-checklist.md`, `docker-compose.production-like.yml`, env checker | Sui execution remains testnet-only; mainnet migration is documented as deferred |
+| Complete the non-mainnet DeepBook Predict flow | `deepbook-testnet-executor-cli.ts`, `/api/deepbook/positions`, `/api/deepbook/transactions` | Generated-wallet deposit, mint, redeem, and withdraw are proven on real Sui Testnet |
+| Prove connected wallet path where possible | `docs/wallet-acceptance.md`, Slush API state, persisted wallet mint dry-run events | Slush manager creation, deposit, mint dry-run, idle withdraw, binding, and reconciliation are proven; signed mint/redeem still need browser signing |
+| Keep the product real, not hackathon fake-only | `docs/roadmap.md`, wallet gates, risk blockers, production-like env | Acceptance override stays on real Sui Testnet with real wallet signing, manager ownership, DUSDC, gas, risk limits, and dry-run gates |
+| Use Postgres persistence | `docker compose ... ps`, `/api/health?deep=1`, schema and transaction tables | Postgres is healthy and stores chain transactions, wallet-manager bindings, alerts, snapshots, and dry-run evidence |
+| Provide operations and recovery procedures | `docs/runbook.md`, maintenance endpoint, backup/restore scripts | Runbook, maintenance, backup, and restore are present and locally verified |
+| Keep secrets out of Git | `.gitignore`, `.dockerignore`, `scripts/secret-scan.mjs`, CI | Local secret scan and GitHub CI secret scan pass |
+| Integrate Polymarket without unsafe live trading | `/api/polymarket/trading-readiness`, `/account`, `/order-preview`, `/cancel-preview` | Public/read-only and preview paths work; L2 credentials and live trading remain blocked |
+| Produce final roadmap and acceptance docs | `docs/roadmap.md`, `docs/wallet-acceptance.md`, `docs/real-integration-checklist.md` | Roadmap and acceptance docs are current through the full generated-wallet lifecycle |
+| Verify browser/dashboard usability | Playwright dashboard smoke and local production-like stack | Dashboard smoke is green; Chrome/Slush automation is currently blocked by local `cgWindowNotFound` |
+
 ## Evidence
 
 | Criterion | Current evidence | Status |
@@ -66,7 +81,12 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 - `suix_getBalance` for generated-wallet DUSDC after withdraw: `totalBalance=4959999664`
 - `GET /api/deepbook/status?owner=0xd123dbbb133f8f43abca110200ef72d2a81d7cbc88e69e11624e9ad62b851dcd&managerId=0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f`: API returns 8 active OracleSVI candidates for wallet mint candidate-search
 - Local dry-run probe for Slush manager: current early active candidates can fail with `pricing_config::quote_spread_from_fair_price` abort `1` or `predict::assert_mintable_ask` abort `7`; later active candidates pass, validating the candidate-search fix
-- GitHub Actions `CI` on `main`: pass (`25634623060`)
+- `GET /api/polymarket/trading-readiness`: public CLOB reachable, wallet address and local signing material configured, L2 API key/secret/passphrase missing, `POLYMARKET_ENABLE_LIVE_TRADING=false`, `safeMode=read_only`
+- `GET /api/polymarket/account`: Data API account read returns configured wallet, zero positions, zero orders; authenticated open-order reads disabled because L2 credentials are missing
+- `POST /api/polymarket/order-preview`: returns notional/max loss/max profit and blocks submission on missing token id, missing L2 credentials, and disabled live trading
+- `POST /api/polymarket/cancel-preview`: validates order-id shape but blocks cancel because L2 credentials are missing, order is not in authenticated open orders, and live trading is disabled
+- Chrome automation retry on 2026-05-11: opening `http://localhost:3001/#wallet` succeeded through macOS, but Computer Use still returns `Apple event error -10005: cgWindowNotFound`
+- GitHub Actions `CI` on `main`: pass (`25635294711`)
 - `GET /api/maintenance/run`: 405, POST required
 - `POST /api/maintenance/run`: success
 
