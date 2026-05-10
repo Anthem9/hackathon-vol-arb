@@ -682,7 +682,7 @@ function PolymarketReadiness() {
             {readiness?.orderSubmissionReady ? "MANUAL CONFIRM REQUIRED" : "READ ONLY"}
           </p>
           <p className="mt-2 text-xs text-terminal-muted">
-            L2 auth {readiness?.capabilities.authenticatedRequests ? "ready" : "blocked"} · Signing {readiness?.capabilities.localOrderSigning ? "ready" : "blocked"}
+            {readiness ? `${readiness.network} #${readiness.chainId}` : "network loading"} · L2 auth {readiness?.capabilities.authenticatedRequests ? "ready" : "blocked"} · Signing {readiness?.capabilities.localOrderSigning ? "ready" : "blocked"}
           </p>
         </div>
         <div className="rounded-md border border-white/10 bg-black/20 p-4 text-sm">
