@@ -89,6 +89,7 @@ This checklist is the handoff from the mock demo to real-service integration. De
 - The Sui wallet panel enforces configurable per-wallet deposit, mint, and open-exposure limits from `NEXT_PUBLIC_MAX_*_DUSDC`.
 - The API can discover a connected wallet's owned PredictManager from Sui Testnet and persist the binding after owner verification.
 - The API package includes a CLI-only Sui Testnet executor for smoke tests.
+- The API package includes a read-only connected-wallet monitor for Slush/manual signing acceptance evidence.
 - The API exposes dry-run/status-only maintenance endpoints for source refresh, Postgres check, transaction reconcile, and configured-wallet backfill.
 - The dashboard exposes Polymarket authenticated trading readiness while keeping order submission read-only unless explicitly enabled.
 - The dashboard exposes public Polymarket wallet positions, authenticated open orders when L2 credentials are configured, and cancel-order gates.

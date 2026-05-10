@@ -176,6 +176,20 @@ curl http://localhost:4000/api/deepbook/positions
 
 Expected result: transaction lifecycle moves to `reconciled` or `failed` with an explainable failure reason.
 
+## Connected Wallet Monitor
+
+Use this while manually completing the Slush wallet acceptance flow in Chrome:
+
+```bash
+pnpm --filter @vol-arb/api deepbook:wallet-monitor \
+  --owner 0xd123dbbb133f8f43abca110200ef72d2a81d7cbc88e69e11624e9ad62b851dcd \
+  --manager 0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f \
+  --watch \
+  --interval 10
+```
+
+This is a read-only monitor. It prints JSON snapshots for manager readiness, OracleSVI candidate count, balances, open exposure, open positions, redeemable value, and withdraw readiness. It does not sign or submit transactions.
+
 ## Maintenance
 
 Manual maintenance:
