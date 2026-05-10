@@ -92,7 +92,7 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 - Production-like dashboard smoke after fixed timezone rendering: `npx playwright test dashboard-smoke.spec.js --config empty.config.js --reporter=line` passed 3/3 with no React hydration text mismatch
 - `pnpm run db:backup`: pass, wrote an ignored Postgres dump under `backups/`
 - `pnpm run db:restore:check -- backups/volarb-2026-05-10T20-37-16-231Z.dump`: pass, verified 68 archive entries without touching a database
-- GitHub Actions `CI` on `main`: pass (`25640671609`)
+- GitHub Actions `CI` on `main`: pass (`25641220175`)
 - `GET /api/maintenance/run`: 405, POST required
 - `POST /api/maintenance/run`: success
 
