@@ -31,6 +31,9 @@ jobs:
       - name: Secret scan
         run: npm run secret:scan
 
+      - name: Prepare CI env
+        run: cp .env.example .env
+
       - name: Environment check
         run: npm run env:check -- local
 
