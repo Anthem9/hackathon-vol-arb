@@ -16,7 +16,7 @@ import {
   type DeepBookPositionState,
   type DeepBookStatus,
 } from "../../lib/api-client";
-import { extractCreatedPredictManagerId, getDepositBlockReasons, getMintBlockReasons, getRedeemBlockReasons, getRiskLimitBlockReasons, getWithdrawBlockReasons, isFreshOracle, isSuiObjectId, suiExplorerTxUrl } from "../../lib/wallet-guards";
+import { extractCreatedPredictManagerId, formatWalletFailure, getDepositBlockReasons, getMintBlockReasons, getRedeemBlockReasons, getRiskLimitBlockReasons, getWithdrawBlockReasons, isFreshOracle, isSuiObjectId, suiExplorerTxUrl } from "../../lib/wallet-guards";
 import { dAppKit } from "../../app/dapp-kit";
 
 const PACKAGE_ID = "0xf5ea2b3749c65d6e56507cc35388719aadb28f9cab873696a2f8687f5c785138";
@@ -86,7 +86,7 @@ function resultDigest(result: { Transaction?: { digest?: string }; FailedTransac
   const failure = result.FailedTransaction;
   if (failure) {
     const error = failure.status?.error;
-    throw new Error(typeof error === "string" ? error : error?.message ?? "Transaction failed.");
+    throw new Error(formatWalletFailure(typeof error === "string" ? error : error?.message ?? "Transaction failed."));
   }
   return result.Transaction?.digest ?? "digest pending";
 }
@@ -563,7 +563,7 @@ function WalletTradeContent({
       include: { effects: true, balanceChanges: true },
     });
     if (result.FailedTransaction) {
-      throw new Error(result.FailedTransaction.status?.error?.message ?? "Dry-run failed.");
+      throw new Error(formatWalletFailure(result.FailedTransaction.status?.error?.message ?? "Dry-run failed."));
     }
     return result;
   }

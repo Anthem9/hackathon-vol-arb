@@ -43,8 +43,20 @@ export type WalletWithdrawGuardInput = {
   managerHasDusdc: boolean;
 };
 
+export type WalletFailureReason = {
+  category: "balance" | "ownership" | "settlement" | "market" | "network" | "move_abort" | "unknown";
+  message: string;
+  advice: string;
+  raw: string;
+  abortCode?: string;
+};
+
 export function isSuiObjectId(value: string) {
   return /^0x[0-9a-fA-F]{64}$/.test(value.trim());
+}
+
+function asString(value: unknown, fallback = "") {
+  return typeof value === "string" ? value : fallback;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -73,6 +85,81 @@ export function extractCreatedPredictManagerId(transactionResult: unknown, packa
   }
 
   return null;
+}
+
+export function decodeWalletFailureReason(raw: unknown): WalletFailureReason {
+  const error = raw instanceof Error ? raw.message : raw;
+  const message = asString(error, "Transaction failed.");
+  const normalized = message.toLowerCase();
+  const abortMatch = message.match(/moveabort\D*(\d+)/i) ?? message.match(/abort(?:ed)?(?: with code)?\D*(\d+)/i);
+  const abortCode = abortMatch?.[1];
+
+  if (normalized.includes("insufficient") || normalized.includes("balance") || normalized.includes("coin") || normalized.includes("no valid gas coins")) {
+    return {
+      category: "balance",
+      message: "Balance or gas is insufficient for this DeepBook Predict transaction.",
+      advice: "Refresh balances, confirm DUSDC is in the connected wallet or manager, and keep at least 0.05 testnet SUI for gas.",
+      raw: message,
+      abortCode,
+    };
+  }
+  if (normalized.includes("owner") || normalized.includes("permission") || normalized.includes("not authorized")) {
+    return {
+      category: "ownership",
+      message: "The connected wallet is not authorized to operate this PredictManager.",
+      advice: "Load or create the PredictManager owned by the connected wallet before submitting this action.",
+      raw: message,
+      abortCode,
+    };
+  }
+  if (normalized.includes("expiry") || normalized.includes("expired") || normalized.includes("settlement") || normalized.includes("redeem")) {
+    return {
+      category: "settlement",
+      message: "The market expiry or settlement state does not allow this action yet.",
+      advice: "Refresh positions and wait until the position is redeemable before redeeming or withdrawing.",
+      raw: message,
+      abortCode,
+    };
+  }
+  if (normalized.includes("oracle") || normalized.includes("svi") || normalized.includes("market_key") || normalized.includes("strike")) {
+    return {
+      category: "market",
+      message: "The OracleSVI, strike, direction, or market key is not valid for this transaction.",
+      advice: "Refresh real market data and only execute a signal that passes the current oracle and strike guards.",
+      raw: message,
+      abortCode,
+    };
+  }
+  if (normalized.includes("timeout") || normalized.includes("network") || normalized.includes("rpc") || normalized.includes("429") || normalized.includes("503")) {
+    return {
+      category: "network",
+      message: "The Sui RPC or Predict service request failed before a reliable result was available.",
+      advice: "Retry status refresh, then reconcile or backfill from chain history before submitting another transaction.",
+      raw: message,
+      abortCode,
+    };
+  }
+  if (abortCode) {
+    return {
+      category: "move_abort",
+      message: `DeepBook Predict Move abort ${abortCode}.`,
+      advice: "Check manager balance, market expiry, oracle freshness, and action-specific guards before retrying.",
+      raw: message,
+      abortCode,
+    };
+  }
+  return {
+    category: "unknown",
+    message,
+    advice: "Refresh state and use Reconcile or Backfill to confirm whether anything reached chain before retrying.",
+    raw: message,
+    abortCode,
+  };
+}
+
+export function formatWalletFailure(raw: unknown) {
+  const decoded = decodeWalletFailureReason(raw);
+  return decoded.category === "unknown" ? decoded.message : `${decoded.message} ${decoded.advice}`;
 }
 
 export function isFreshOracle(input: {

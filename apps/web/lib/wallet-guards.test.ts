@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import {
   extractCreatedPredictManagerId,
+  decodeWalletFailureReason,
+  formatWalletFailure,
   getDepositBlockReasons,
   getMintBlockReasons,
   getRedeemBlockReasons,
@@ -17,6 +19,17 @@ const packageId = `0x${"b".repeat(64)}`;
 assert.equal(isSuiObjectId(validId), true);
 assert.equal(isSuiObjectId("0x6"), false);
 assert.equal(isSuiObjectId("not-an-id"), false);
+
+const balanceFailure = decodeWalletFailureReason("Insufficient gas balance for transaction");
+assert.equal(balanceFailure.category, "balance");
+assert.match(formatWalletFailure("Insufficient gas balance for transaction"), /0.05 testnet SUI/);
+
+const ownerFailure = decodeWalletFailureReason("MoveAbort in predict_manager: not authorized owner");
+assert.equal(ownerFailure.category, "ownership");
+
+const abortFailure = decodeWalletFailureReason("MoveAbort in module predict with code 1204");
+assert.equal(abortFailure.category, "move_abort");
+assert.equal(abortFailure.abortCode, "1204");
 
 assert.equal(
   isFreshOracle({
