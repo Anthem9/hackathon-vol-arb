@@ -191,6 +191,16 @@ Evidence to capture:
 - Manager DUSDC balance after refresh.
 - `/api/deepbook/positions` lifecycle summary.
 
+Current run evidence, 2026-05-10:
+
+- Preconditions held: `openExposure=0`, `openPositions=0`, and manager had `1 DUSDC`.
+- Slush withdraw dry-run passed for `0.1 DUSDC`.
+- Slush wallet prompt was confirmed on `network=testnet`; target was `predict_manager::withdraw`; manager was `0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f`; expected coin inflow was `+0.1 DUSDC`.
+- Withdraw digest: `9Fz2ptgxk4Ne2To6Jn2UgjLLp462De2BLrN9LMoWJm1R`.
+- After refresh, wallet DUSDC is `19.1`, manager DUSDC is `0.9`, open exposure is `0`, and open positions are `0`.
+- `/api/deepbook/status?managerId=0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f&owner=0xd123dbbb133f8f43abca110200ef72d2a81d7cbc88e69e11624e9ad62b851dcd` reports `trading_balance=900000` and `nextAction=ready_to_mint`.
+- `/api/deepbook/transactions` records `9Fz2ptgxk4Ne2To6Jn2UgjLLp462De2BLrN9LMoWJm1R` as `withdraw_quote`, `status=success`, `lifecycleStatus=confirmed`, `source=wallet_ui`.
+
 ## Final Acceptance
 
 The connected-wallet path is accepted only when:
