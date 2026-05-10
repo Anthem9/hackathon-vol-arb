@@ -15,6 +15,18 @@ This checklist validates the real connected-wallet Sui Testnet path. It does not
 - The wallet has DUSDC if the test should cover deposit and mint.
 - Never paste or commit wallet private keys, mnemonics, API secrets, or recovery files.
 
+Optional monitor while signing manually:
+
+```bash
+pnpm --filter @vol-arb/api deepbook:wallet-monitor \
+  --owner 0xd123dbbb133f8f43abca110200ef72d2a81d7cbc88e69e11624e9ad62b851dcd \
+  --manager 0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f \
+  --watch \
+  --interval 10
+```
+
+This command is read-only. It does not sign or submit transactions; it records manager readiness, balances, positions, redeemability, and withdraw blockers while the wallet flow is completed in Chrome/Slush.
+
 ## Stop Conditions
 
 Stop the test and do not sign if any of these appear:

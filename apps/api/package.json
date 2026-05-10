@@ -8,6 +8,7 @@
     "start": "tsx src/index.ts",
     "db:migrate": "tsx src/db/migrate.ts",
     "deepbook:testnet": "tsx src/services/deepbook-testnet-executor-cli.ts",
+    "deepbook:wallet-monitor": "tsx src/services/deepbook-wallet-monitor-cli.ts",
     "build": "tsc --noEmit",
     "lint": "tsc --noEmit",
     "test": "tsx src/services/deepbook-transaction-service.test.ts && tsx src/services/runtime-services.test.ts",
