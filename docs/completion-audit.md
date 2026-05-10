@@ -16,6 +16,7 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 8. Integrate Polymarket public data and authenticated readiness/account reads while keeping live trading disabled until separately approved.
 9. Keep secrets out of Git and validate the repo with automated checks.
 10. Provide browser-level smoke coverage for the production-like dashboard.
+11. Maintain an explicit product roadmap from current testnet state to full real-world usability without treating hackathon-only demo behavior as the product target.
 
 ## Evidence
 
@@ -31,8 +32,9 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 | Polymarket readiness | Public CLOB reachable; account/readiness/order-preview/cancel-preview implemented; live trading disabled and blocked without L2 credentials | Read-only complete; live trading intentionally deferred |
 | Secret safety | `.dockerignore`, `.gitignore`, `scripts/secret-scan.mjs`, CI workflow, `npm run secret:scan` passes | Complete |
 | Browser smoke | `/tmp/volarb-e2e/dashboard-smoke.spec.js` passes against `http://localhost:3001` | Complete for dashboard, maintenance, execution panels |
-| Chrome wallet environment | Chrome can load `http://localhost:3001/#wallet`; the wallet extension entry is visible; the wallet panel shows `Connect Wallet` and no connected account | Ready for manual wallet authorization |
+| Chrome wallet environment | Chrome loaded `http://localhost:3001/#wallet`; MoneyPrinter connected on Sui Testnet; the wallet panel shows connected account `0xfdf4...44cc` | Connected; transaction execution blocked by wallet funding and manager ownership |
 | Connected wallet acceptance plan | `docs/wallet-acceptance.md` defines connect, create manager, deposit, mint, redeem, withdraw steps with stop conditions and evidence | Ready for manual execution |
+| Product readiness roadmap | `docs/roadmap.md` now defines connected-wallet acceptance, DeepBook testnet hardening, strategy executability, Polymarket real account integration, small-capital operation, mainnet readiness, and final UX/submission stages | Complete as planning artifact |
 
 ## Latest Verification
 
@@ -44,13 +46,13 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 - `git diff --check`: pass
 - `docker compose -f docker-compose.production-like.yml ps`: web, api, postgres running
 - `npx playwright test dashboard-smoke.spec.js --config empty.config.js --reporter=line`: 3 passed
-- GitHub Actions `CI` on `main`: pass (`25631071162`)
+- GitHub Actions `CI` on `main`: pass (`25631310515`)
 - `GET /api/maintenance/run`: 405, POST required
 - `POST /api/maintenance/run`: success
 
 ## Known Gaps
 
-1. A fresh browser extension wallet still needs manual end-to-end execution: connect wallet, create manager, deposit, mint, wait/settle, redeem, withdraw.
+1. A fresh browser extension wallet is connected, but still needs funded end-to-end execution: create manager, deposit, mint, wait/settle, redeem, withdraw.
 2. Polymarket L2 API credentials are not configured, so authenticated open-order reads cannot be proven in the local live environment; unit tests cover the HMAC path.
 3. Polymarket order submission and cancel execution are intentionally not implemented as product actions. They require separate approval, credentials, risk review, and manual confirmation controls.
 4. BTC free price sources can hit public rate limits. The app degrades and alerts, but sustained production use should add a paid or higher-quota source.
@@ -58,4 +60,4 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 
 ## Completion Decision
 
-Do not mark the objective complete yet. The codebase is production-like for DeepBook Predict Sui Testnet generated-wallet and guarded connected-wallet paths, and Chrome is ready at the wallet panel, but the fresh extension-wallet execution path has not been manually authorized and proven end to end in the browser.
+Do not mark the objective complete yet. The codebase is production-like for DeepBook Predict Sui Testnet generated-wallet and guarded connected-wallet paths, and Chrome has connected a real wallet, but that wallet currently shows `0.000` SUI, `0` DUSDC, and no owner-matched PredictManager. The fresh extension-wallet execution path is therefore not proven end to end yet.

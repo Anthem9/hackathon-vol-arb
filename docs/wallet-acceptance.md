@@ -48,6 +48,14 @@ Evidence to capture:
 - Whether a wallet-manager binding was found or created.
 - Any blocker text shown by the Wallet panel.
 
+Current run evidence, 2026-05-10:
+
+- MoneyPrinter connected successfully on Sui Testnet.
+- The wallet panel shows connected account `0xfdf4...44cc`.
+- The wallet panel shows `SUI balance: 0.000` and `DUSDC wallet: 0`.
+- The wallet panel still displays the generated-wallet manager `0xa084...87af`, so execution is blocked by owner mismatch until the connected wallet creates or loads its own PredictManager.
+- Stop before signing: the connected wallet needs at least `0.05 SUI` for gas before manager creation can be executed.
+
 ## Step 2: Create Manager
 
 Only run if the connected wallet has no PredictManager.
