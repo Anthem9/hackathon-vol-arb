@@ -186,6 +186,14 @@ Evidence to capture:
 - Position lifecycle after refresh.
 - Manager summary after reconcile.
 
+Current run evidence, 2026-05-11:
+
+- Generated-wallet position `Yi6WhLkHqMEN8A2ohN9qRt8DgtZu2rXUdTGsqaFdCZh` became redeemable at `2026-05-11 01:30:39 Asia/Shanghai`; `/api/deepbook/positions` reported `redeemableValue=100000` and `redeemReady=true`.
+- Redeem dry-run passed for owner `0x2e7742...bb2305`, manager `0xa0845d...9387af`, oracle `0xfe57fb...dc24b`, expiry `1778434200000`, strike `81000000000000`, quantity `100000`.
+- Real Sui Testnet redeem executed successfully with digest `5YUsHuYMUjua4r5wV6NEhSVe6PL5EmRvVEEHr8JL3NXs`.
+- After refresh, manager summary reported `open_positions=0`, `open_exposure=0`, `redeemable_value=0`, and `trading_balance=999664`.
+- Lifecycle reconciliation now marks chain-backfilled redeem events as `redeemed` by matching `oracleId + expiry + strike + direction + quantity`, not only by local `mintDigest` payload.
+
 ## Step 6: Withdraw
 
 Only run after `openPositions=0`, `openExposure=0`, and `canWithdrawQuote=true`.
@@ -217,6 +225,14 @@ Current run evidence, 2026-05-10:
 - After refresh, wallet DUSDC is `19.1`, manager DUSDC is `0.9`, open exposure is `0`, and open positions are `0`.
 - `/api/deepbook/status?managerId=0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f&owner=0xd123dbbb133f8f43abca110200ef72d2a81d7cbc88e69e11624e9ad62b851dcd` reports `trading_balance=900000` and `nextAction=ready_to_mint`.
 - `/api/deepbook/transactions` records `9Fz2ptgxk4Ne2To6Jn2UgjLLp462De2BLrN9LMoWJm1R` as `withdraw_quote`, `status=success`, `lifecycleStatus=confirmed`, `source=wallet_ui`.
+
+Current run evidence, 2026-05-11:
+
+- Preconditions held after generated-wallet redeem: `openPositions=0`, `openExposure=0`, and `canWithdrawQuote=true`.
+- Withdraw dry-run passed for `0.999664 DUSDC`.
+- Real Sui Testnet withdraw executed successfully with digest `GdfYVCj2quGYUyLdRBsNuSGzQGRJ7rSpSAYB6cTLxcfN`.
+- Transaction balance changes include `+999664` base units DUSDC to `0x2e7742...bb2305`.
+- Final `/api/deepbook/positions` state reports `trading_balance=0`, `open_exposure=0`, `open_positions=0`, `redeemable_value=0`, `canWithdrawQuote=false`, and the generated-wallet positions as `redeemed`.
 
 ## Final Acceptance
 

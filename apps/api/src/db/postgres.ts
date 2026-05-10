@@ -285,7 +285,7 @@ export async function persistChainTransactionEvent(input: ChainTransactionEvent)
          strike = excluded.strike,
          direction = excluded.direction,
          quantity = excluded.quantity,
-         payload = excluded.payload,
+         payload = excluded.payload || chain_transaction_events.payload,
          failure_reason = excluded.failure_reason,
          observed_at = excluded.observed_at,
          confirmed_at = coalesce(excluded.confirmed_at, chain_transaction_events.confirmed_at),

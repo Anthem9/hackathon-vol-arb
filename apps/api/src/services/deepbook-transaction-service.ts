@@ -142,6 +142,11 @@ function quoteAssetSymbol() {
   return typeName ?? moduleName ?? "DUSDC";
 }
 
+function positionMatchKey(event: Pick<RecordedChainTransaction, "oracleId" | "expiry" | "strike" | "direction" | "quantity">) {
+  if (!event.oracleId || typeof event.expiry !== "number" || !event.strike || !event.quantity) return null;
+  return [event.oracleId.toLowerCase(), event.expiry, event.strike, event.direction ?? "up", event.quantity].join(":");
+}
+
 async function rpcCall<T>(method: string, params: unknown[]): Promise<T> {
   const response = await fetch(suiRpcUrl(), {
     method: "POST",
@@ -935,8 +940,15 @@ export async function getDeepBookPositionState(managerId?: string, owner?: strin
       .map((event) => (isRecord(event.payload) ? asString(event.payload.mintDigest) : ""))
       .filter(Boolean),
   );
+  const redeemedPositionKeys = new Set(
+    transactions
+      .filter((event) => event.action === "redeem_binary" && event.status !== "failed")
+      .map(positionMatchKey)
+      .filter((key): key is string => Boolean(key)),
+  );
   const positions: DeepBookPosition[] = mintEvents.map((event) => {
-    const redeemed = redeemedMintDigests.has(event.digest);
+    const key = positionMatchKey(event);
+    const redeemed = redeemedMintDigests.has(event.digest) || Boolean(key && redeemedPositionKeys.has(key));
     const expired = typeof event.expiry === "number" && event.expiry <= now;
     const redeemable = Boolean(managerSummary && managerSummary.redeemable_value > 0);
     const awaitingSettlement = Boolean(managerSummary && managerSummary.awaiting_settlement_positions > 0);

@@ -25,7 +25,7 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 | Testnet-only DeepBook boundary | README, architecture, roadmap, runbook, env checker; `SUI_NETWORK=testnet` in production-like compose | Complete |
 | Monorepo and services | `apps/web`, `apps/api`, `packages/*`, `docker-compose.production-like.yml`, Postgres service | Complete |
 | Data modes | `DATA_MODE=mock\|hybrid\|real`; real adapter falls back with source status | Complete |
-| DeepBook real lifecycle | Verified chain records include create manager, deposit, mint, redeem, withdraw; latest real mint digest `Yi6WhLkHqMEN8A2ohN9qRt8DgtZu2rXUdTGsqaFdCZh` is reconciled and leaves `openPositions=1`, `open_exposure=98492`, `canWithdrawQuote=false` | Complete for generated-wallet testnet path |
+| DeepBook real lifecycle | Verified chain records include create manager, deposit, mint, redeem, withdraw; latest full generated-wallet cycle minted `Yi6WhLkHqMEN8A2ohN9qRt8DgtZu2rXUdTGsqaFdCZh`, redeemed `5YUsHuYMUjua4r5wV6NEhSVe6PL5EmRvVEEHr8JL3NXs`, and withdrew `GdfYVCj2quGYUyLdRBsNuSGzQGRJ7rSpSAYB6cTLxcfN` | Complete for generated-wallet testnet path |
 | Connected wallet UX | Wallet panel builds wallet-signed testnet transactions, enforces owner/gas/DUSDC/dry-run/risk guards, has unit-tested deposit/mint/redeem/withdraw blockers, and now dry-runs active OracleSVI candidates until one is accepted by the protocol | Manager creation, DUSDC deposit, persisted mint dry-run, and idle withdraw proven with Slush on testnet; signed mint/redeem still pending because Chrome UI automation is unavailable |
 | DeepBook failure handling | API and wallet UI decode balance/gas, ownership, settlement, market/oracle, network, and unknown Move abort failures into operator-readable messages with retry advice | Complete for known categories; unknown abort codes remain conservative |
 | Postgres persistence | `/api/health?deep=1` reports persistence healthy; schema includes snapshots, alerts, bindings, chain events, and wallet mint dry-run evidence | Complete |
@@ -57,7 +57,13 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 - `GET /api/deepbook/positions?managerId=0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f&owner=0xd123dbbb133f8f43abca110200ef72d2a81d7cbc88e69e11624e9ad62b851dcd`: 0 positions, 1 create_manager transaction
 - `npx playwright test dashboard-smoke.spec.js --config empty.config.js --reporter=line`: 3 passed
 - `pnpm --filter @vol-arb/api deepbook:testnet execute:mint 0.1 81000 up`: success, digest `Yi6WhLkHqMEN8A2ohN9qRt8DgtZu2rXUdTGsqaFdCZh`, oracle `0xfe57fb1ab64888de060b1f50bd011ce054d6fb24b201ab77972f66a6fa8dc24b`, expiry `1778434200000`
-- `GET /api/deepbook/positions?owner=0x2e7742f3f4edd234307f545ce772c666d2ebdfc24e64083d2375888e02bb2305&managerId=0xa0845da0646708f196fdb68ded467b8b345daaa0dc7d006bbc393a16769387af`: `openPositions=1`, `open_exposure=98492`, `trading_balance=899664`, `redeemable_value=0`, `canWithdrawQuote=false`
+- `pnpm --filter @vol-arb/api exec tsx src/services/deepbook-testnet-executor-cli.ts dry-run:redeem`: success for oracle `0xfe57fb1ab64888de060b1f50bd011ce054d6fb24b201ab77972f66a6fa8dc24b`, expiry `1778434200000`, strike `81000000000000`, quantity `100000`
+- `pnpm --filter @vol-arb/api exec tsx src/services/deepbook-testnet-executor-cli.ts execute:redeem`: success, digest `5YUsHuYMUjua4r5wV6NEhSVe6PL5EmRvVEEHr8JL3NXs`
+- `GET /api/deepbook/positions?owner=0x2e7742f3f4edd234307f545ce772c666d2ebdfc24e64083d2375888e02bb2305&managerId=0xa0845da0646708f196fdb68ded467b8b345daaa0dc7d006bbc393a16769387af`: after redeem, `openPositions=0`, `open_exposure=0`, `trading_balance=999664`, `redeemable_value=0`, `canWithdrawQuote=true`
+- `pnpm --filter @vol-arb/api exec tsx src/services/deepbook-testnet-executor-cli.ts dry-run:withdraw 0.999664`: success
+- `pnpm --filter @vol-arb/api exec tsx src/services/deepbook-testnet-executor-cli.ts execute:withdraw 0.999664`: success, digest `GdfYVCj2quGYUyLdRBsNuSGzQGRJ7rSpSAYB6cTLxcfN`
+- `GET /api/deepbook/positions?owner=0x2e7742f3f4edd234307f545ce772c666d2ebdfc24e64083d2375888e02bb2305&managerId=0xa0845da0646708f196fdb68ded467b8b345daaa0dc7d006bbc393a16769387af`: after withdraw, `trading_balance=0`, `open_exposure=0`, `open_positions=0`, `redeemable_value=0`, `canWithdrawQuote=false`, positions marked `redeemed`
+- `suix_getBalance` for generated-wallet DUSDC after withdraw: `totalBalance=4959999664`
 - `GET /api/deepbook/status?owner=0xd123dbbb133f8f43abca110200ef72d2a81d7cbc88e69e11624e9ad62b851dcd&managerId=0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f`: API returns 8 active OracleSVI candidates for wallet mint candidate-search
 - Local dry-run probe for Slush manager: current early active candidates can fail with `pricing_config::quote_spread_from_fair_price` abort `1` or `predict::assert_mintable_ask` abort `7`; later active candidates pass, validating the candidate-search fix
 - GitHub Actions `CI` on `main`: pass (`25634623060`)
@@ -76,4 +82,4 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 
 ## Completion Decision
 
-Do not mark the objective complete yet. The codebase is production-like for DeepBook Predict Sui Testnet generated-wallet and guarded connected-wallet paths, and Slush has proven the connected-wallet manager creation, deposit, mint dry-run, and idle withdraw path. Signed mint and redeem remain unproven for the extension-wallet path.
+Do not mark the objective complete yet. The codebase is production-like for the full generated-wallet DeepBook Predict Sui Testnet lifecycle and guarded connected-wallet paths, and Slush has proven the connected-wallet manager creation, deposit, mint dry-run, and idle withdraw path. Signed mint and redeem remain unproven for the extension-wallet path.
