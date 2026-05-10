@@ -58,7 +58,7 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 - `npm run typecheck`: pass
 - `npm test`: pass, including `scripts/env-check-boundary.test.mjs`
 - `npm run lint`: pass
-- `npm run build -- --force`: pass
+- `npm run build`: pass
 - `npm run secret:scan`: pass
 - `git diff --check`: pass
 - `docker compose -f docker-compose.production-like.yml ps`: web, api, postgres running
@@ -86,6 +86,7 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 - `POST /api/polymarket/order-preview`: returns notional/max loss/max profit and blocks submission on missing token id, missing L2 credentials, and disabled live trading
 - `POST /api/polymarket/cancel-preview`: validates order-id shape but blocks cancel because L2 credentials are missing, order is not in authenticated open orders, and live trading is disabled
 - Chrome automation retry on 2026-05-11: opening `http://localhost:3001/#wallet` succeeded through macOS, but Computer Use still returns `Apple event error -10005: cgWindowNotFound`
+- Direct `BtcPriceAdapter.fetchSpot()` check after adding Kraken redundancy: sources `CoinGecko`, `Coinbase`, and `Kraken`, `status=healthy`, divergence `0.04%`
 - GitHub Actions `CI` on `main`: pass (`25635294711`)
 - `GET /api/maintenance/run`: 405, POST required
 - `POST /api/maintenance/run`: success
@@ -97,7 +98,7 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
    - Current local blocker is environmental, not code-path logic: macOS UI automation cannot attach to Chrome and returns `cgWindowNotFound`.
 2. Polymarket L2 API credentials are not configured, so authenticated open-order reads cannot be proven in the local live environment; unit tests cover the HMAC path.
 3. Polymarket order submission and cancel execution are intentionally not implemented as product actions. They require separate approval, credentials, risk review, and manual confirmation controls.
-4. BTC free price sources can hit public rate limits. The app degrades and alerts, but sustained production use should add a paid or higher-quota source.
+4. BTC free price sources can hit public rate limits. The app now uses CoinGecko, Coinbase, and Kraken redundancy and degrades with alerts, but sustained production use should still add a paid or higher-quota source.
 5. DeepBook Predict mainnet migration is not possible until official mainnet package IDs, objects, and operational guidance exist.
 
 ## Completion Decision

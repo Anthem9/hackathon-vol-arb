@@ -50,8 +50,10 @@ export class BtcPriceAdapter {
 
   async fetchSpot(): Promise<BtcPriceState> {
     const startedAt = this.now();
-    const settled = await Promise.allSettled([this.fetchCoinGecko(), this.fetchCoinbase()]);
-    const sources = settled.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
+    const settled = await Promise.allSettled([this.fetchCoinGecko(), this.fetchCoinbase(), this.fetchKraken()]);
+    const sources = settled
+      .flatMap((result) => (result.status === "fulfilled" ? [result.value] : []))
+      .filter((source) => Number.isFinite(source.price) && source.price > 0);
     const errors = settled.flatMap((result) => (result.status === "rejected" ? [String(result.reason)] : []));
     const spot = sources.length > 0 ? sources.reduce((sum, source) => sum + source.price, 0) / sources.length : 0;
     const max = Math.max(...sources.map((source) => source.price));
@@ -96,6 +98,18 @@ export class BtcPriceAdapter {
     return {
       source: "Coinbase",
       price: asNumber(data.amount),
+      lastUpdatedAt: this.now(),
+    };
+  }
+
+  private async fetchKraken() {
+    const payload = await fetchJson<unknown>("https://api.kraken.com/0/public/Ticker?pair=XBTUSD");
+    const result = isRecord(payload) && isRecord(payload.result) ? payload.result : {};
+    const ticker = Object.values(result).find(isRecord) ?? {};
+    const close = Array.isArray(ticker.c) ? ticker.c[0] : undefined;
+    return {
+      source: "Kraken",
+      price: asNumber(close),
       lastUpdatedAt: this.now(),
     };
   }

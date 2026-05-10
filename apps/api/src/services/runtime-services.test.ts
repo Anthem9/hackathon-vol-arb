@@ -145,6 +145,12 @@ globalThis.fetch = async (input, init) => {
   if (url.includes("coinbase")) {
     return new Response(JSON.stringify({ data: { amount: "100000" } }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
+  if (url.includes("kraken")) {
+    return new Response(JSON.stringify({ result: { XXBTZUSD: { c: ["100000.0", "1"] } } }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
   return new Response(JSON.stringify({}), { status: 404 });
 };
 
