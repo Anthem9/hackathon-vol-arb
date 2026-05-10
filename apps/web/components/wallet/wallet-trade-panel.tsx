@@ -10,10 +10,12 @@ import {
   bindDeepBookManager,
   createDeepBookIntent,
   fetchDeepBookManagerBinding,
+  fetchDeepBookMintDryRuns,
   fetchDeepBookPositions,
   fetchDeepBookStatus,
   recordDeepBookMintDryRun,
   recordDeepBookTransaction,
+  type DeepBookMintDryRunEvent,
   type DeepBookPositionState,
   type DeepBookStatus,
 } from "../../lib/api-client";
@@ -42,6 +44,9 @@ function envDusdcLimit(name: string, fallback: string) {
 const MAX_DEPOSIT_BASE_UNITS = envDusdcLimit("NEXT_PUBLIC_MAX_DEPOSIT_DUSDC", "5");
 const MAX_MINT_BASE_UNITS = envDusdcLimit("NEXT_PUBLIC_MAX_MINT_DUSDC", "1");
 const MAX_OPEN_EXPOSURE_BASE_UNITS = envDusdcLimit("NEXT_PUBLIC_MAX_OPEN_EXPOSURE_DUSDC", "5");
+const ALLOW_TESTNET_WATCH_MINT =
+  process.env.NEXT_PUBLIC_ALLOW_TESTNET_WATCH_MINT === "true" ||
+  process.env.NEXT_PUBLIC_APP_ENV === "production-like";
 
 type PendingChainRecord = {
   digest: string;
@@ -60,6 +65,16 @@ function formatBaseUnits(value: bigint | number | string, decimals = DUSDC_DECIM
   const fraction = amount % divisor;
   const fractionText = fraction.toString().padStart(Number(decimals), "0").replace(/0+$/, "");
   return fractionText ? `${whole}.${fractionText}` : whole.toString();
+}
+
+function formatChainStrike(value: string) {
+  try {
+    const amount = BigInt(value);
+    const whole = amount / STRIKE_SCALE;
+    return whole.toLocaleString();
+  } catch {
+    return value;
+  }
 }
 
 function parseBaseUnits(value: string, decimals = DUSDC_DECIMALS) {
@@ -206,6 +221,7 @@ function WalletTradeContent({
   const [txStatus, setTxStatus] = useState("Connect Sui Wallet on testnet to build a transaction.");
   const [txDigest, setTxDigest] = useState<string | null>(null);
   const [positionState, setPositionState] = useState<DeepBookPositionState | null>(null);
+  const [mintDryRuns, setMintDryRuns] = useState<DeepBookMintDryRunEvent[]>([]);
   const [bindingStatus, setBindingStatus] = useState("No wallet manager binding loaded.");
   const [recoveryStatus, setRecoveryStatus] = useState("");
 
@@ -216,6 +232,19 @@ function WalletTradeContent({
   }, [surfaces]);
 
   const selectedStrike = selected.point?.strike ?? 0;
+  const selectedExpiry = oracleExpiry ?? selected.surface?.expiry;
+  const mintOracleCandidates = useMemo(() => {
+    const candidates = new Map<string, { oracleId: string; expiry: number }>();
+    for (const candidate of deepBookStatus?.oracleCandidates ?? []) {
+      if (candidate.status === "active" && candidate.expiry > Date.now() && isSuiObjectId(candidate.oracleId)) {
+        candidates.set(`${candidate.oracleId}:${candidate.expiry}`, { oracleId: candidate.oracleId, expiry: candidate.expiry });
+      }
+    }
+    if (oracleId && selectedExpiry && isSuiObjectId(oracleId)) {
+      candidates.set(`${oracleId}:${selectedExpiry}`, { oracleId, expiry: selectedExpiry });
+    }
+    return [...candidates.values()];
+  }, [deepBookStatus?.oracleCandidates, oracleId, selectedExpiry]);
   const managerQuoteBalance = BigInt(deepBookStatus?.readiness.managerBalance ?? 0);
   const depositAmountBaseUnits = tryParseBaseUnits(depositAmount);
   const mintQuantityBaseUnits = tryParseBaseUnits(mintQuantity);
@@ -223,6 +252,7 @@ function WalletTradeContent({
   const managerIdValid = !managerId || isSuiObjectId(managerId);
   const hasManager = Boolean(managerIdValid && managerId && deepBookStatus?.managerSummary);
   const managerOwnerMatches = Boolean(account && deepBookStatus?.managerSummary?.owner === account.address);
+  const effectiveHasExecutableTrade = hasExecutableTrade || ALLOW_TESTNET_WATCH_MINT;
   const walletHasDusdc = dusdcBalance > 0n;
   const managerHasDusdc = managerQuoteBalance > 0n;
   const gasReady = suiMistBalance >= MIN_GAS_MIST;
@@ -242,7 +272,7 @@ function WalletTradeContent({
     managerOwnerMatches,
     gasReady,
     oracleFresh,
-    hasExecutableTrade,
+    hasExecutableTrade: effectiveHasExecutableTrade,
   };
   const riskLimitBlockReasons = getRiskLimitBlockReasons({
     depositAmountBaseUnits,
@@ -381,10 +411,11 @@ function WalletTradeContent({
   ].slice(0, 5);
 
   useEffect(() => {
-    Promise.all([fetchDeepBookStatus(undefined, account?.address), fetchDeepBookPositions(undefined, account?.address)])
-      .then(([status, positions]) => {
+    Promise.all([fetchDeepBookStatus(undefined, account?.address), fetchDeepBookPositions(undefined, account?.address), account?.address ? fetchDeepBookMintDryRuns(account.address, undefined, 3) : Promise.resolve([])])
+      .then(([status, positions, dryRuns]) => {
         setDeepBookStatus(status);
         setPositionState(positions);
+        setMintDryRuns(dryRuns);
         if (status.walletBinding?.managerId) {
           setManagerId(status.walletBinding.managerId);
           setBindingStatus(`Loaded manager binding for ${shortAddress(status.walletBinding.owner)}.`);
@@ -400,10 +431,11 @@ function WalletTradeContent({
 
   useEffect(() => {
     if (!managerId || !managerIdValid) return;
-    Promise.all([fetchDeepBookStatus(managerId, account?.address), fetchDeepBookPositions(managerId, account?.address)])
-      .then(([status, positions]) => {
+    Promise.all([fetchDeepBookStatus(managerId, account?.address), fetchDeepBookPositions(managerId, account?.address), account?.address ? fetchDeepBookMintDryRuns(account.address, managerId, 3) : Promise.resolve([])])
+      .then(([status, positions, dryRuns]) => {
         setDeepBookStatus(status);
         setPositionState(positions);
+        setMintDryRuns(dryRuns);
       })
       .catch((error: unknown) => {
         setTxStatus(error instanceof Error ? error.message : "Unable to refresh PredictManager status.");
@@ -469,9 +501,14 @@ function WalletTradeContent({
   }, [account?.address]);
 
   async function refreshStatus() {
-    const [status, positions] = await Promise.all([fetchDeepBookStatus(managerId || undefined, account?.address), fetchDeepBookPositions(managerId || undefined, account?.address)]);
+    const [status, positions, dryRuns] = await Promise.all([
+      fetchDeepBookStatus(managerId || undefined, account?.address),
+      fetchDeepBookPositions(managerId || undefined, account?.address),
+      account?.address ? fetchDeepBookMintDryRuns(account.address, managerId || undefined, 3) : Promise.resolve([]),
+    ]);
     setDeepBookStatus(status);
     setPositionState(positions);
+    setMintDryRuns(dryRuns);
     if (account) {
       const [sui, dusdc, dusdcCoins] = await Promise.all([
         client.getBalance({ owner: account.address }),
@@ -746,7 +783,7 @@ function WalletTradeContent({
       account: account?.address,
       managerId,
       oracleId,
-      expiry: selected.surface.expiry,
+      expiry: selectedExpiry,
       strike: Number(toChainStrike(selected.point.strike)),
       quantity: Number(parseBaseUnits(mintQuantity)),
       direction: "up",
@@ -757,8 +794,9 @@ function WalletTradeContent({
     setTxStatus("Read-only mint preview built. Real mint still requires a PredictManager ID, balance, and wallet confirmation.");
   }
 
-  function buildLocalMintTransaction() {
-    if (!selected.surface || !selected.point || !managerId || !oracleId) {
+  function buildLocalMintTransaction(candidate?: { oracleId: string; expiry: number }) {
+    const mintOracle = candidate ?? mintOracleCandidates[0];
+    if (!mintOracle || !selected.point || !managerId) {
       setTxStatus("Manager ID and a real oracle ID are required before mint transaction construction.");
       return null;
     }
@@ -771,7 +809,7 @@ function WalletTradeContent({
     const tx = new Transaction();
     const marketKey = tx.moveCall({
       target: `${PACKAGE_ID}::market_key::up`,
-      arguments: [tx.pure.id(oracleId), tx.pure.u64(selected.surface.expiry), tx.pure.u64(chainStrike)],
+      arguments: [tx.pure.id(mintOracle.oracleId), tx.pure.u64(mintOracle.expiry), tx.pure.u64(chainStrike)],
     });
     tx.moveCall({
       target: `${PACKAGE_ID}::predict::mint`,
@@ -779,7 +817,7 @@ function WalletTradeContent({
       arguments: [
         tx.object(PREDICT_OBJECT_ID),
         tx.object(managerId),
-        tx.object(oracleId),
+        tx.object(mintOracle.oracleId),
         marketKey,
         tx.pure.u64(quantity),
         tx.object(CLOCK_OBJECT_ID),
@@ -789,6 +827,21 @@ function WalletTradeContent({
     return tx;
   }
 
+  async function buildPassingMintTransaction() {
+    const errors: string[] = [];
+    for (const candidate of mintOracleCandidates) {
+      const tx = buildLocalMintTransaction(candidate);
+      if (!tx) return null;
+      try {
+        const dryRun = await simulate(tx);
+        return { tx, dryRun, candidate };
+      } catch (error) {
+        errors.push(`${shortAddress(candidate.oracleId)}: ${error instanceof Error ? error.message : "dry-run failed"}`);
+      }
+    }
+    throw new Error(`No active OracleSVI candidate passed mint dry-run. ${errors.join(" | ")}`);
+  }
+
   async function dryRunMint() {
     if (!mintDryRunReady) {
       setTxStatus("Mint dry-run is blocked until wallet, gas, manager DUSDC balance, and a fresh oracle are ready.");
@@ -796,26 +849,29 @@ function WalletTradeContent({
     }
     setTxStatus("Dry-running DeepBook Predict mint...");
     try {
-      const tx = buildLocalMintTransaction();
-      if (!tx) return;
-      const dryRun = await simulate(tx);
+      const result = await buildPassingMintTransaction();
+      if (!result) return;
       await recordDeepBookMintDryRun({
         owner: account?.address,
         managerId,
-        oracleId,
-        expiry: selected.surface?.expiry,
+        oracleId: result.candidate.oracleId,
+        expiry: result.candidate.expiry,
         strike: selected.point ? toChainStrike(selected.point.strike).toString() : undefined,
         direction: "up",
         quantity: parseBaseUnits(mintQuantity).toString(),
         status: "success",
-        dryRunDigest: dryRunDigest(dryRun),
+        dryRunDigest: dryRunDigest(result.dryRun),
         payload: {
           source: "wallet_ui",
           displayStrike: selected.point?.strike,
           executableTradeAvailable: hasExecutableTrade,
+          acceptanceOverrideEnabled: ALLOW_TESTNET_WATCH_MINT,
         },
       });
-      setTxStatus(hasExecutableTrade ? "Mint dry-run passed. Execution remains behind wallet confirmation." : "Mint dry-run passed. Execution remains blocked until an executable trade signal is available.");
+      if (account?.address) {
+        setMintDryRuns(await fetchDeepBookMintDryRuns(account.address, managerId, 3));
+      }
+      setTxStatus(effectiveHasExecutableTrade ? "Mint dry-run passed. Execution remains behind wallet confirmation." : "Mint dry-run passed. Execution remains blocked until an executable trade signal is available.");
     } catch (error) {
       setTxStatus(error instanceof Error ? error.message : "Mint dry-run failed.");
     }
@@ -828,23 +884,22 @@ function WalletTradeContent({
     }
     setTxStatus("Dry-running mint before wallet confirmation...");
     try {
-      const tx = buildLocalMintTransaction();
-      if (!tx) return;
-      await simulate(tx);
+      const result = await buildPassingMintTransaction();
+      if (!result) return;
       setTxStatus("Waiting for wallet confirmation to mint position...");
-      const result = await kit.signAndExecuteTransaction({ transaction: tx });
-      const digest = resultDigest(result);
+      const execution = await kit.signAndExecuteTransaction({ transaction: result.tx });
+      const digest = resultDigest(execution);
       setTxDigest(digest === "digest pending" ? null : digest);
       setTxStatus(`Mint submitted: ${digest}`);
-      if (digest !== "digest pending" && selected.surface && selected.point && oracleId) {
+      if (digest !== "digest pending" && selected.point) {
         await recordChainTransactionWithRecovery({
           digest,
           action: "mint_binary",
           status: "success",
           owner: account?.address,
           managerId,
-          oracleId,
-          expiry: selected.surface.expiry,
+          oracleId: result.candidate.oracleId,
+          expiry: result.candidate.expiry,
           strike: toChainStrike(selected.point.strike).toString(),
           direction: "up",
           quantity: parseBaseUnits(mintQuantity).toString(),
@@ -1086,8 +1141,14 @@ function WalletTradeContent({
             />
             <ReadinessItem
               label="Signal"
-              ready={hasExecutableTrade}
-              detail={hasExecutableTrade ? "At least one opportunity is executable." : "Current opportunities are rejected or watch-only; mint execution is hidden behind rejection."}
+              ready={effectiveHasExecutableTrade}
+              detail={
+                hasExecutableTrade
+                  ? "At least one opportunity is executable."
+                  : ALLOW_TESTNET_WATCH_MINT
+                    ? "Testnet acceptance override allows wallet mint execution for watch-only signals."
+                    : "Current opportunities are rejected or watch-only; mint execution is hidden behind rejection."
+              }
             />
           </div>
           <div className="mt-4 grid gap-2">
@@ -1162,7 +1223,7 @@ function WalletTradeContent({
             <button className="rounded border border-white/15 px-3 py-2 text-sm text-slate-200" onClick={buildMintIntent}>
               Preview mint intent
             </button>
-            <button className="rounded border border-amber-300/40 px-3 py-2 text-sm text-terminal-amber" onClick={buildLocalMintTransaction}>
+            <button className="rounded border border-amber-300/40 px-3 py-2 text-sm text-terminal-amber" onClick={() => buildLocalMintTransaction()}>
               Build local mint tx
             </button>
             <button className="rounded border border-white/15 px-3 py-2 text-sm text-slate-200" onClick={dryRunMint} disabled={!mintDryRunReady}>
@@ -1200,6 +1261,9 @@ function WalletTradeContent({
             <p className="mt-1">Redeem: {redeemReady ? "ready" : activePosition?.redeemBlockedReason ?? "no persisted position"}</p>
             <p className="mt-1">Settlement: protocol-side OracleSVICap is required; this wallet waits for redeemable value.</p>
             <p className="mt-1">Withdraw: {withdrawReady ? "ready" : withdrawBlockedReason}</p>
+            {ALLOW_TESTNET_WATCH_MINT ? (
+              <p className="mt-1 text-terminal-amber">Acceptance override: watch-only testnet mint execution is enabled.</p>
+            ) : null}
           </div>
           <div className="mt-3 rounded border border-white/10 bg-black/20 p-3 text-xs text-terminal-muted">
             <p className="font-semibold uppercase tracking-[0.14em] text-slate-300">Wallet Risk Limits</p>
@@ -1250,6 +1314,28 @@ function WalletTradeContent({
             ) : (
               <p className="mt-3">No persisted mint position yet.</p>
             )}
+            <div className="mt-3 border-t border-white/10 pt-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-semibold uppercase tracking-[0.14em] text-slate-300">Recent Mint Dry-runs</p>
+                <p>{mintDryRuns.length} recorded</p>
+              </div>
+              {mintDryRuns.length > 0 ? (
+                <div className="mt-2 grid gap-2">
+                  {mintDryRuns.map((event) => (
+                    <div key={event.dryRunDigest ?? `${event.oracleId}:${event.createdAt}`} className="rounded border border-white/10 bg-white/[0.03] p-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-slate-200">
+                        <p>{event.status} · {event.direction} · strike {formatChainStrike(event.strike)}</p>
+                        <p>{formatBaseUnits(event.quantity)} DUSDC</p>
+                      </div>
+                      <p className="mt-1 truncate">Oracle {shortAddress(event.oracleId)} · dry-run {event.dryRunDigest ? shortAddress(event.dryRunDigest) : "not returned"}</p>
+                      <p className="mt-1">Expiry {new Date(event.expiry).toLocaleString()} · {new Date(event.createdAt).toLocaleString()}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2">No wallet mint dry-run evidence recorded yet.</p>
+              )}
+            </div>
             {positionState?.transactions.length ? (
               <div className="mt-3 max-h-28 overflow-auto border-t border-white/10 pt-2">
                 {positionState.transactions.slice(0, 5).map((event) => (

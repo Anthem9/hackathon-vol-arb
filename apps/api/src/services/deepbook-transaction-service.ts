@@ -230,7 +230,7 @@ async function fetchManagerSummary(managerId: string) {
   return (await response.json()) as ManagerSummary;
 }
 
-async function fetchActiveBtcOracleCandidates(limit = 3) {
+async function fetchActiveBtcOracleCandidates(limit = 8) {
   const response = await fetch(`${predictServerUrl()}/oracles`, { cache: "no-store" });
   if (!response.ok) {
     throw new Error(`Predict oracle list returned ${response.status}`);
@@ -324,6 +324,12 @@ export async function getDeepBookStatus(managerId?: string, owner?: string) {
   }
 
   const managerBalance = managerSummary?.balances.find((balance) => balance.quote_asset.includes(quoteAssetSymbol()))?.balance ?? 0;
+  let oracleCandidates: Awaited<ReturnType<typeof fetchActiveBtcOracleCandidates>> = [];
+  try {
+    oracleCandidates = await fetchActiveBtcOracleCandidates();
+  } catch {
+    oracleCandidates = [];
+  }
 
   return {
     network: "testnet",
@@ -347,6 +353,7 @@ export async function getDeepBookStatus(managerId?: string, owner?: string) {
         : null),
     managerSummary,
     managerError: managerError ?? discoveryError,
+    oracleCandidates,
     readiness: {
       hasManager: Boolean(resolvedManagerId && managerSummary),
       hasQuoteBalance: managerBalance > 0,

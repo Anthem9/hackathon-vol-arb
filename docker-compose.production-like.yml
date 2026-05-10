@@ -44,6 +44,7 @@ services:
       target: web
       args:
         NEXT_PUBLIC_API_BASE_URL: http://localhost:4000
+        NEXT_PUBLIC_ALLOW_TESTNET_WATCH_MINT: "true"
     restart: unless-stopped
     environment:
       WEB_PORT: 3000
@@ -51,6 +52,7 @@ services:
       API_INTERNAL_BASE_URL: http://api:4000
       API_REQUEST_TIMEOUT_MS: 10000
       NEXT_PUBLIC_API_BASE_URL: http://localhost:4000
+      NEXT_PUBLIC_ALLOW_TESTNET_WATCH_MINT: "true"
     ports:
       - "3001:3000"
     depends_on:

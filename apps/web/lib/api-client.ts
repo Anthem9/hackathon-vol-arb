@@ -162,6 +162,14 @@ export type DeepBookStatus = {
   walletBinding: DeepBookWalletManagerBinding | null;
   managerSummary: DeepBookManagerSummary | null;
   managerError: string | null;
+  oracleCandidates: Array<{
+    oracleId: string;
+    predictId: string;
+    expiry: number;
+    minStrike: number;
+    tickSize: number;
+    status: string;
+  }>;
   readiness: {
     hasManager: boolean;
     hasQuoteBalance: boolean;
