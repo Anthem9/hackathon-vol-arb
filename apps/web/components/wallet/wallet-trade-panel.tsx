@@ -259,7 +259,9 @@ function WalletTradeContent({
     ...(mintQuantityBaseUnits === undefined ? ["mint quantity format invalid"] : []),
     ...mintRiskBlockReasons,
   ];
+  const mintDryRunBlockReasons = mintBlockReasons.filter((reason) => reason !== "no executable trade signal");
   const depositReady = depositBlockReasons.length === 0;
+  const mintDryRunReady = mintDryRunBlockReasons.length === 0;
   const mintReady = mintBlockReasons.length === 0;
   const activePosition =
     positionState?.positions.find((position) => position.lifecycle !== "open_unattributed" && position.lifecycle !== "redeemed") ??
@@ -783,8 +785,8 @@ function WalletTradeContent({
   }
 
   async function dryRunMint() {
-    if (!mintReady) {
-      setTxStatus("Mint is blocked until wallet, gas, manager DUSDC balance, fresh oracle, and an executable trade signal are ready.");
+    if (!mintDryRunReady) {
+      setTxStatus("Mint dry-run is blocked until wallet, gas, manager DUSDC balance, and a fresh oracle are ready.");
       return;
     }
     setTxStatus("Dry-running DeepBook Predict mint...");
@@ -792,7 +794,7 @@ function WalletTradeContent({
       const tx = buildLocalMintTransaction();
       if (!tx) return;
       await simulate(tx);
-      setTxStatus("Mint dry-run passed. Execution remains behind wallet confirmation.");
+      setTxStatus(hasExecutableTrade ? "Mint dry-run passed. Execution remains behind wallet confirmation." : "Mint dry-run passed. Execution remains blocked until an executable trade signal is available.");
     } catch (error) {
       setTxStatus(error instanceof Error ? error.message : "Mint dry-run failed.");
     }
@@ -1142,7 +1144,7 @@ function WalletTradeContent({
             <button className="rounded border border-amber-300/40 px-3 py-2 text-sm text-terminal-amber" onClick={buildLocalMintTransaction}>
               Build local mint tx
             </button>
-            <button className="rounded border border-white/15 px-3 py-2 text-sm text-slate-200" onClick={dryRunMint} disabled={!mintReady}>
+            <button className="rounded border border-white/15 px-3 py-2 text-sm text-slate-200" onClick={dryRunMint} disabled={!mintDryRunReady}>
               Dry-run mint
             </button>
             <button className="rounded border border-green-300/40 px-3 py-2 text-sm text-terminal-green" onClick={executeMint} disabled={!mintReady}>

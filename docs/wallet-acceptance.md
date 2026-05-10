@@ -146,6 +146,13 @@ Evidence to capture:
 - Oracle ID, expiry, strike, direction, quantity.
 - Wallet panel blocker showing withdraw is blocked.
 
+Current run evidence, 2026-05-10:
+
+- UI gate fix: mint dry-run is allowed when wallet, manager ownership, manager DUSDC, gas, oracle, and risk limits are ready, even if execution remains blocked by missing strategy signal. `Execute mint` remains disabled until an executable trade signal exists.
+- Slush mint dry-run passed for manager `0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f`, quantity `0.1`, direction `up`, oracle `0xd7a2...83ed`, and strike `81,000`.
+- Wallet panel displayed: `Mint dry-run passed. Execution remains blocked until an executable trade signal is available.`
+- No wallet signing prompt appeared and no mint digest was created, as expected while `Execute mint` is still disabled.
+
 ## Step 5: Redeem
 
 Only run after the position is expired and protocol state exposes redeemable value.

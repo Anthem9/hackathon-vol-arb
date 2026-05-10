@@ -26,14 +26,14 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 | Monorepo and services | `apps/web`, `apps/api`, `packages/*`, `docker-compose.production-like.yml`, Postgres service | Complete |
 | Data modes | `DATA_MODE=mock\|hybrid\|real`; real adapter falls back with source status | Complete |
 | DeepBook real lifecycle | Verified chain records include create manager, deposit, mint, redeem, withdraw; `/api/deepbook/positions` shows reconciled transactions and `canWithdrawQuote=true` | Complete for generated-wallet testnet path |
-| Connected wallet UX | Wallet panel builds wallet-signed testnet transactions, enforces owner/gas/DUSDC/dry-run/risk guards, and has unit-tested deposit/mint/redeem/withdraw blockers | Manager creation, DUSDC deposit, and idle withdraw proven with Slush on testnet; mint/redeem still pending |
+| Connected wallet UX | Wallet panel builds wallet-signed testnet transactions, enforces owner/gas/DUSDC/dry-run/risk guards, and has unit-tested deposit/mint/redeem/withdraw blockers | Manager creation, DUSDC deposit, mint dry-run, and idle withdraw proven with Slush on testnet; signed mint/redeem still pending |
 | DeepBook failure handling | API and wallet UI decode balance/gas, ownership, settlement, market/oracle, network, and unknown Move abort failures into operator-readable messages with retry advice | Complete for known categories; unknown abort codes remain conservative |
 | Postgres persistence | `/api/health?deep=1` reports persistence healthy; schema includes snapshots, alerts, bindings, chain events | Complete |
 | Operations | `docs/runbook.md`, maintenance POST endpoint, scheduler, backup/restore scripts, production-like Docker stack | Complete |
 | Polymarket readiness | Public CLOB reachable; account/readiness/order-preview/cancel-preview implemented; live trading disabled and blocked without L2 credentials | Read-only complete; live trading intentionally deferred |
 | Secret safety | `.dockerignore`, `.gitignore`, `scripts/secret-scan.mjs`, CI workflow, `npm run secret:scan` passes | Complete |
 | Browser smoke | `/tmp/volarb-e2e/dashboard-smoke.spec.js` passes against `http://localhost:3001` | Complete for dashboard, maintenance, execution panels |
-| Chrome wallet environment | Chrome loaded `http://localhost:3001/#wallet`; Slush connected on Sui Testnet; wallet account `0xd123...1dcd` created owner-matched manager `0x3df8...411f`, deposited `1 DUSDC`, and withdrew `0.1 DUSDC` | Connected wallet manager creation, deposit, and withdraw checkpoints complete |
+| Chrome wallet environment | Chrome loaded `http://localhost:3001/#wallet`; Slush connected on Sui Testnet; wallet account `0xd123...1dcd` created owner-matched manager `0x3df8...411f`, deposited `1 DUSDC`, passed mint dry-run, and withdrew `0.1 DUSDC` | Connected wallet manager creation, deposit, mint dry-run, and withdraw checkpoints complete |
 | Connected wallet acceptance plan | `docs/wallet-acceptance.md` defines connect, create manager, deposit, mint, redeem, withdraw steps with stop conditions and evidence | Ready for manual execution |
 | Product readiness roadmap | `docs/roadmap.md` now defines connected-wallet acceptance, DeepBook testnet hardening, strategy executability, Polymarket real account integration, small-capital operation, mainnet readiness, and final UX/submission stages | Complete as planning artifact |
 | Mainnet migration gate | `docs/mainnet-migration-checklist.md` defines official-input, configuration, implementation, acceptance, first-run, and stop-condition gates before any future mainnet signing path | Complete as safety artifact; execution remains disabled |
@@ -52,6 +52,7 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 - `GET /api/deepbook/transactions`: Slush deposit `6B6zh4mBLwxQLfv2VBLyAhPsVDouL5AeEr83U25z6g2T` recorded as `deposit_quote`, `status=success`, `lifecycleStatus=confirmed`
 - `GET /api/deepbook/status?managerId=0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f&owner=0xd123dbbb133f8f43abca110200ef72d2a81d7cbc88e69e11624e9ad62b851dcd`: after Slush withdraw, `trading_balance=900000`, `open_exposure=0`, `open_positions=0`
 - `GET /api/deepbook/transactions`: Slush withdraw `9Fz2ptgxk4Ne2To6Jn2UgjLLp462De2BLrN9LMoWJm1R` recorded as `withdraw_quote`, `status=success`, `lifecycleStatus=confirmed`
+- Chrome Slush wallet panel: `Dry-run mint` enabled while `Execute mint` remains disabled; mint dry-run passed and reported `Execution remains blocked until an executable trade signal is available.`
 - `GET /api/deepbook/positions?managerId=0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f&owner=0xd123dbbb133f8f43abca110200ef72d2a81d7cbc88e69e11624e9ad62b851dcd`: 0 positions, 1 create_manager transaction
 - `npx playwright test dashboard-smoke.spec.js --config empty.config.js --reporter=line`: 3 passed
 - GitHub Actions `CI` on `main`: pass (`25631310515`)
@@ -60,7 +61,7 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 
 ## Known Gaps
 
-1. The Slush connected-wallet path has proven manager creation, DUSDC deposit, idle withdraw, binding, recording, and reconcile. It still needs mint, wait/settle, and redeem.
+1. The Slush connected-wallet path has proven manager creation, DUSDC deposit, mint dry-run, idle withdraw, binding, recording, and reconcile. It still needs signed mint, wait/settle, and redeem.
 2. Polymarket L2 API credentials are not configured, so authenticated open-order reads cannot be proven in the local live environment; unit tests cover the HMAC path.
 3. Polymarket order submission and cancel execution are intentionally not implemented as product actions. They require separate approval, credentials, risk review, and manual confirmation controls.
 4. BTC free price sources can hit public rate limits. The app degrades and alerts, but sustained production use should add a paid or higher-quota source.
@@ -68,4 +69,4 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 
 ## Completion Decision
 
-Do not mark the objective complete yet. The codebase is production-like for DeepBook Predict Sui Testnet generated-wallet and guarded connected-wallet paths, and Slush has proven the connected-wallet manager creation, deposit, and idle withdraw path. Mint and redeem remain unproven for the extension-wallet path.
+Do not mark the objective complete yet. The codebase is production-like for DeepBook Predict Sui Testnet generated-wallet and guarded connected-wallet paths, and Slush has proven the connected-wallet manager creation, deposit, mint dry-run, and idle withdraw path. Signed mint and redeem remain unproven for the extension-wallet path.
