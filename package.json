@@ -14,7 +14,7 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "secret:scan": "node scripts/secret-scan.mjs",
-    "test": "node scripts/env-check-boundary.test.mjs && turbo test",
+    "test": "node scripts/env-check-boundary.test.mjs && node scripts/polymarket-credentials-cli.test.mjs && turbo test",
     "typecheck": "turbo typecheck"
   },
   "devDependencies": {

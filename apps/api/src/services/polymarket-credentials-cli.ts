@@ -112,6 +112,7 @@ function redact(value: string) {
 }
 
 async function createOrDerive(outputFile: string) {
+  const envPath = assertSafeEnvOutput(outputFile);
   const privateKey = envValue("POLYMARKET_PRIVATE_KEY") || envValue("POLYGON_TEST_PRIVATE_KEY");
   if (!isPrivateKey(privateKey)) throw new Error("POLYMARKET_PRIVATE_KEY or POLYGON_TEST_PRIVATE_KEY must be a 0x-prefixed private key.");
 
@@ -133,7 +134,6 @@ async function createOrDerive(outputFile: string) {
   const creds = (await client.createOrDeriveApiKey()) as ApiKeyCreds;
   if (!creds.key || !creds.secret || !creds.passphrase) throw new Error("Polymarket returned incomplete L2 credentials.");
 
-  const envPath = assertSafeEnvOutput(outputFile);
   const existing = existsSync(envPath) ? readFileSync(envPath, "utf8") : "";
   writeFileSync(
     envPath,
