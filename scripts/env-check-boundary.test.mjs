@@ -23,6 +23,7 @@ const baseEnv = {
   POLYMARKET_API_BASE: "https://clob.polymarket.com",
   POLYMARKET_GAMMA_API_BASE: "https://gamma-api.polymarket.com",
   POLYMARKET_DATA_API_BASE: "https://data-api.polymarket.com",
+  POLYMARKET_CHAIN_ID: "137",
   POLYMARKET_ENABLE_LIVE_TRADING: "false",
 };
 
@@ -50,6 +51,10 @@ assert.match(mainnet.stderr, /SUI_NETWORK must remain testnet/);
 const liveTrading = runEnvCheck({ POLYMARKET_ENABLE_LIVE_TRADING: "true" });
 assert.notEqual(liveTrading.status, 0);
 assert.match(liveTrading.stderr, /POLYMARKET_ENABLE_LIVE_TRADING must stay false/);
+
+const invalidPolymarketChain = runEnvCheck({ POLYMARKET_CHAIN_ID: "1" });
+assert.notEqual(invalidPolymarketChain.status, 0);
+assert.match(invalidPolymarketChain.stderr, /POLYMARKET_CHAIN_ID must be 137/);
 
 const productionLikeMock = runEnvCheck(
   {
