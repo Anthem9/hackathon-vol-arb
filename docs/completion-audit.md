@@ -88,7 +88,8 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 - Chrome automation retry on 2026-05-11: opening `http://localhost:3001/#wallet` succeeded through macOS, but Computer Use still returns `Apple event error -10005: cgWindowNotFound`
 - Direct `BtcPriceAdapter.fetchSpot()` check after adding Kraken redundancy: sources `CoinGecko`, `Coinbase`, and `Kraken`, `status=healthy`, divergence `0.04%`
 - Production-like dashboard smoke after fixed timezone rendering: `npx playwright test dashboard-smoke.spec.js --config empty.config.js --reporter=line` passed 3/3 with no React hydration text mismatch
-- GitHub Actions `CI` on `main`: pass (`25639094852`)
+- `pnpm run db:backup`: pass, wrote an ignored Postgres dump under `backups/`
+- GitHub Actions `CI` on `main`: pass (`25639140074`)
 - `GET /api/maintenance/run`: 405, POST required
 - `POST /api/maintenance/run`: success
 
