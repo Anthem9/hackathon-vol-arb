@@ -156,8 +156,8 @@ export function getWithdrawBlockReasons(input: WalletWithdrawGuardInput) {
   if (!input.hasManager) reasons.push("PredictManager is not verified");
   if (!input.managerOwnerMatches) reasons.push("connected wallet is not PredictManager owner");
   if (!input.gasReady) reasons.push("SUI gas balance is below safety buffer");
-  if (!input.canWithdrawQuote) reasons.push("manager still has open position or open exposure");
   if (!input.managerHasDusdc) reasons.push("manager DUSDC balance is zero");
+  if (input.managerHasDusdc && !input.canWithdrawQuote) reasons.push("manager still has open position or open exposure");
   return reasons;
 }
 

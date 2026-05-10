@@ -374,7 +374,7 @@ function WalletTradeContent({
   ].slice(0, 5);
 
   useEffect(() => {
-    Promise.all([fetchDeepBookStatus(undefined, account?.address), fetchDeepBookPositions()])
+    Promise.all([fetchDeepBookStatus(undefined, account?.address), fetchDeepBookPositions(undefined, account?.address)])
       .then(([status, positions]) => {
         setDeepBookStatus(status);
         setPositionState(positions);
@@ -393,7 +393,7 @@ function WalletTradeContent({
 
   useEffect(() => {
     if (!managerId || !managerIdValid) return;
-    Promise.all([fetchDeepBookStatus(managerId, account?.address), fetchDeepBookPositions()])
+    Promise.all([fetchDeepBookStatus(managerId, account?.address), fetchDeepBookPositions(managerId, account?.address)])
       .then(([status, positions]) => {
         setDeepBookStatus(status);
         setPositionState(positions);
@@ -462,7 +462,7 @@ function WalletTradeContent({
   }, [account?.address]);
 
   async function refreshStatus() {
-    const [status, positions] = await Promise.all([fetchDeepBookStatus(managerId || undefined, account?.address), fetchDeepBookPositions()]);
+    const [status, positions] = await Promise.all([fetchDeepBookStatus(managerId || undefined, account?.address), fetchDeepBookPositions(managerId || undefined, account?.address)]);
     setDeepBookStatus(status);
     setPositionState(positions);
     if (account) {

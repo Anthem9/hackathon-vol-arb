@@ -218,7 +218,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
       return;
     }
     if (url.pathname === "/api/deepbook/positions") {
-      sendJson(req, res, 200, await getDeepBookPositionState());
+      sendJson(req, res, 200, await getDeepBookPositionState(url.searchParams.get("managerId") ?? undefined, url.searchParams.get("owner") ?? undefined));
       return;
     }
 

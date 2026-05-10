@@ -26,25 +26,28 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 | Monorepo and services | `apps/web`, `apps/api`, `packages/*`, `docker-compose.production-like.yml`, Postgres service | Complete |
 | Data modes | `DATA_MODE=mock\|hybrid\|real`; real adapter falls back with source status | Complete |
 | DeepBook real lifecycle | Verified chain records include create manager, deposit, mint, redeem, withdraw; `/api/deepbook/positions` shows reconciled transactions and `canWithdrawQuote=true` | Complete for generated-wallet testnet path |
-| Connected wallet UX | Wallet panel builds wallet-signed testnet transactions, enforces owner/gas/DUSDC/dry-run/risk guards, and has unit-tested deposit/mint/redeem/withdraw blockers | Implementation complete; full extension-wallet execution still needs manual confirmation |
+| Connected wallet UX | Wallet panel builds wallet-signed testnet transactions, enforces owner/gas/DUSDC/dry-run/risk guards, and has unit-tested deposit/mint/redeem/withdraw blockers | Manager creation proven with Slush on testnet; DUSDC-dependent deposit/mint/redeem/withdraw still pending |
 | Postgres persistence | `/api/health?deep=1` reports persistence healthy; schema includes snapshots, alerts, bindings, chain events | Complete |
 | Operations | `docs/runbook.md`, maintenance POST endpoint, scheduler, backup/restore scripts, production-like Docker stack | Complete |
 | Polymarket readiness | Public CLOB reachable; account/readiness/order-preview/cancel-preview implemented; live trading disabled and blocked without L2 credentials | Read-only complete; live trading intentionally deferred |
 | Secret safety | `.dockerignore`, `.gitignore`, `scripts/secret-scan.mjs`, CI workflow, `npm run secret:scan` passes | Complete |
 | Browser smoke | `/tmp/volarb-e2e/dashboard-smoke.spec.js` passes against `http://localhost:3001` | Complete for dashboard, maintenance, execution panels |
-| Chrome wallet environment | Chrome loaded `http://localhost:3001/#wallet`; MoneyPrinter connected on Sui Testnet; the wallet panel shows connected account `0xfdf4...44cc` | Connected; transaction execution blocked by wallet funding and manager ownership |
+| Chrome wallet environment | Chrome loaded `http://localhost:3001/#wallet`; Slush connected on Sui Testnet; wallet account `0xd123...1dcd` created owner-matched manager `0x3df8...411f` with digest `5qGM...zqEZ` | Connected wallet manager-creation checkpoint complete; blocked next by wallet DUSDC funding |
 | Connected wallet acceptance plan | `docs/wallet-acceptance.md` defines connect, create manager, deposit, mint, redeem, withdraw steps with stop conditions and evidence | Ready for manual execution |
 | Product readiness roadmap | `docs/roadmap.md` now defines connected-wallet acceptance, DeepBook testnet hardening, strategy executability, Polymarket real account integration, small-capital operation, mainnet readiness, and final UX/submission stages | Complete as planning artifact |
 
 ## Latest Verification
 
-- `npm run typecheck -- --force`: pass
-- `npm run test -- --force`: pass
-- `npm run lint -- --force`: pass
+- `npm run typecheck`: pass
+- `npm test`: pass
+- `npm run lint`: pass
 - `npm run build -- --force`: pass
 - `npm run secret:scan`: pass
 - `git diff --check`: pass
 - `docker compose -f docker-compose.production-like.yml ps`: web, api, postgres running
+- `docker compose -f docker-compose.production-like.yml up -d --build web api`: pass
+- `GET /api/deepbook/status?managerId=0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f&owner=0xd123dbbb133f8f43abca110200ef72d2a81d7cbc88e69e11624e9ad62b851dcd`: owner matches Slush, manager balance 0 DUSDC
+- `GET /api/deepbook/positions?managerId=0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f&owner=0xd123dbbb133f8f43abca110200ef72d2a81d7cbc88e69e11624e9ad62b851dcd`: 0 positions, 1 create_manager transaction
 - `npx playwright test dashboard-smoke.spec.js --config empty.config.js --reporter=line`: 3 passed
 - GitHub Actions `CI` on `main`: pass (`25631310515`)
 - `GET /api/maintenance/run`: 405, POST required
@@ -52,7 +55,7 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 
 ## Known Gaps
 
-1. A fresh browser extension wallet is connected, but still needs funded end-to-end execution: create manager, deposit, mint, wait/settle, redeem, withdraw.
+1. The Slush connected-wallet path has proven manager creation, binding, recording, and reconcile. It still needs DUSDC-funded deposit, mint, wait/settle, redeem, and withdraw.
 2. Polymarket L2 API credentials are not configured, so authenticated open-order reads cannot be proven in the local live environment; unit tests cover the HMAC path.
 3. Polymarket order submission and cancel execution are intentionally not implemented as product actions. They require separate approval, credentials, risk review, and manual confirmation controls.
 4. BTC free price sources can hit public rate limits. The app degrades and alerts, but sustained production use should add a paid or higher-quota source.
@@ -60,4 +63,4 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 
 ## Completion Decision
 
-Do not mark the objective complete yet. The codebase is production-like for DeepBook Predict Sui Testnet generated-wallet and guarded connected-wallet paths, and Chrome has connected a real wallet, but that wallet currently shows `0.000` SUI, `0` DUSDC, and no owner-matched PredictManager. The fresh extension-wallet execution path is therefore not proven end to end yet.
+Do not mark the objective complete yet. The codebase is production-like for DeepBook Predict Sui Testnet generated-wallet and guarded connected-wallet paths, and Slush has proven the connected-wallet manager creation path. The connected wallet still has `0` DUSDC, so deposit, mint, redeem, and withdraw remain unproven for the extension-wallet path.

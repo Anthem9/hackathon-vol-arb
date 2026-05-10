@@ -381,8 +381,12 @@ export async function fetchDeepBookReadiness(): Promise<DeepBookTestnetReadiness
   return getJson<DeepBookTestnetReadiness>("/api/deepbook/readiness");
 }
 
-export async function fetchDeepBookPositions(): Promise<DeepBookPositionState> {
-  return getJson<DeepBookPositionState>("/api/deepbook/positions");
+export async function fetchDeepBookPositions(managerId?: string, owner?: string): Promise<DeepBookPositionState> {
+  const params = new URLSearchParams();
+  if (managerId) params.set("managerId", managerId);
+  if (owner) params.set("owner", owner);
+  const query = params.size > 0 ? `?${params.toString()}` : "";
+  return getJson<DeepBookPositionState>(`/api/deepbook/positions${query}`);
 }
 
 export async function recordDeepBookTransaction(payload: Record<string, unknown>) {

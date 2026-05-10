@@ -849,10 +849,17 @@ export async function backfillDeepBookChainTransactions(owner?: string, limit = 
   return { owner: normalizedOwner, recovered, skipped };
 }
 
-export async function getDeepBookPositionState() {
-  const [status, transactions] = await Promise.all([getDeepBookStatus(), getDeepBookChainTransactions()]);
+export async function getDeepBookPositionState(managerId?: string, owner?: string) {
+  const [status, allTransactions] = await Promise.all([getDeepBookStatus(managerId, owner), getDeepBookChainTransactions()]);
   const now = Date.now();
   const managerSummary = status.managerSummary;
+  const normalizedManagerId = managerSummary?.manager_id.toLowerCase() ?? managerId?.toLowerCase() ?? status.configuredManagerId.toLowerCase();
+  const normalizedOwner = owner?.toLowerCase();
+  const transactions = allTransactions.filter((event) => {
+    const managerMatches = event.managerId ? event.managerId.toLowerCase() === normalizedManagerId : false;
+    const ownerMatches = normalizedOwner && event.owner ? event.owner.toLowerCase() === normalizedOwner : false;
+    return managerMatches || (ownerMatches && (!event.managerId || event.managerId.toLowerCase() === normalizedManagerId));
+  });
   const mintEvents = transactions.filter((event) => event.action === "mint_binary" && event.status !== "failed");
   const redeemedMintDigests = new Set(
     transactions
@@ -918,7 +925,7 @@ export async function getDeepBookPositionState() {
 
   return {
     network: "testnet",
-    managerId: status.configuredManagerId,
+    managerId: normalizedManagerId,
     managerSummary,
     managerError: status.managerError,
     positions,

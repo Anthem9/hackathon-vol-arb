@@ -48,13 +48,21 @@ Evidence to capture:
 - Whether a wallet-manager binding was found or created.
 - Any blocker text shown by the Wallet panel.
 
-Current run evidence, 2026-05-10:
+Previous run evidence, 2026-05-10:
 
 - MoneyPrinter connected successfully on Sui Testnet.
 - The wallet panel shows connected account `0xfdf4...44cc`.
 - The wallet panel shows `SUI balance: 0.000` and `DUSDC wallet: 0`.
 - The wallet panel still displays the generated-wallet manager `0xa084...87af`, so execution is blocked by owner mismatch until the connected wallet creates or loads its own PredictManager.
 - Stop before signing: the connected wallet needs at least `0.05 SUI` for gas before manager creation can be executed.
+
+Current run evidence, 2026-05-10:
+
+- Slush connected successfully on Sui Testnet in the normal Chrome profile.
+- The wallet panel shows connected account `0xd123...1dcd` and `SUI balance: 18.461`.
+- The wallet panel shows `DUSDC wallet: 0`, so deposit and mint remain blocked until this Slush account receives DUSDC.
+- The wallet panel loaded the owner-matched PredictManager `0x3df8...411f`.
+- The next safe action is to fund the connected wallet with DUSDC, then deposit into the manager.
 
 ## Step 2: Create Manager
 
@@ -77,6 +85,15 @@ Evidence to capture:
 - Transaction digest.
 - Manager object ID.
 - API status from `/api/deepbook/status?owner=<wallet>`.
+
+Current run evidence, 2026-05-10:
+
+- Slush signing prompt was confirmed on `network=testnet`.
+- Transaction target was `0xf5ea2b3749c65d6e56507cc35388719aadb28f9cab873696a2f8687f5c785138::predict::create_manager`.
+- Created manager: `0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f`.
+- Transaction digest: `5qGMbDwV7ro3fdGafQ3VtsSZmHYewHp6vhXCacN8zqEZ`.
+- `/api/deepbook/status?managerId=0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f&owner=0xd123dbbb133f8f43abca110200ef72d2a81d7cbc88e69e11624e9ad62b851dcd` reports the manager owner as `0xd123dbbb133f8f43abca110200ef72d2a81d7cbc88e69e11624e9ad62b851dcd`, `trading_balance=0`, and `nextAction=deposit_quote`.
+- `/api/deepbook/positions?managerId=0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f&owner=0xd123dbbb133f8f43abca110200ef72d2a81d7cbc88e69e11624e9ad62b851dcd` reports `positions=0` and only the Slush `create_manager` transaction for this manager.
 
 ## Step 3: Deposit DUSDC
 

@@ -158,7 +158,6 @@ assert.deepEqual(
     "PredictManager is not verified",
     "connected wallet is not PredictManager owner",
     "SUI gas balance is below safety buffer",
-    "manager still has open position or open exposure",
     "manager DUSDC balance is zero",
   ],
 );
