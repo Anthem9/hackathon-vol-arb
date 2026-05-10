@@ -8,8 +8,24 @@ import { overviewRoute } from "./routes/overview";
 import { paperTradesRoute } from "./routes/paper-trades";
 import { surfacesRoute } from "./routes/surfaces";
 import { sviHealthRoute } from "./routes/svi-health";
-import { buildDeepBookTradeIntent } from "./services/deepbook-transaction-service";
+import {
+  bindDeepBookManagerToWallet,
+  backfillDeepBookChainTransactions,
+  buildDeepBookTradeIntent,
+  getDeepBookChainTransactions,
+  getDeepBookManagerBinding,
+  getDeepBookPositionState,
+  getDeepBookStatus,
+  getDeepBookTestnetReadiness,
+  recordDeepBookChainTransaction,
+  reconcileRecentDeepBookChainTransactions,
+} from "./services/deepbook-transaction-service";
+import { createAlertOperatorAction } from "./services/alert-service";
 import { getDashboardAlerts, getPersistenceStatus, getRiskRules, getSourceStatuses } from "./services/dashboard-service";
+import { getApiHealth } from "./services/health-service";
+import { getMaintenanceStatus, runMaintenanceOnce, startMaintenanceScheduler } from "./services/maintenance-service";
+import { buildPolymarketCancelPreview, buildPolymarketOrderPreview, getPolymarketAccountState, getPolymarketTradingReadiness } from "./services/polymarket-trading-service";
+import { checkDatabaseConnection } from "./db/postgres";
 
 function loadLocalEnv() {
   const currentDir = dirname(fileURLToPath(import.meta.url));
@@ -76,7 +92,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
 
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? `localhost:${port}`}`);
     if (url.pathname === "/api/health") {
-      sendJson(req, res, 200, { status: "ok" });
+      sendJson(req, res, 200, await getApiHealth({ deep: url.searchParams.get("deep") === "1" }));
       return;
     }
     if (url.pathname === "/api/overview") {
@@ -112,13 +128,97 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
       sendJson(req, res, 200, await getDashboardAlerts());
       return;
     }
+    if (url.pathname === "/api/alerts/action") {
+      const body = req.method === "POST" ? await parseBody(req) : undefined;
+      sendJson(req, res, 200, await createAlertOperatorAction(body));
+      return;
+    }
     if (url.pathname === "/api/persistence") {
       sendJson(req, res, 200, await getPersistenceStatus());
+      return;
+    }
+    if (url.pathname === "/api/persistence/check") {
+      sendJson(req, res, 200, await checkDatabaseConnection());
+      return;
+    }
+    if (url.pathname === "/api/maintenance/status") {
+      sendJson(req, res, 200, getMaintenanceStatus());
+      return;
+    }
+    if (url.pathname === "/api/maintenance/run") {
+      if (req.method !== "POST") {
+        sendJson(req, res, 405, { error: "method_not_allowed", message: "Use POST to run maintenance." });
+        return;
+      }
+      sendJson(req, res, 200, await runMaintenanceOnce());
+      return;
+    }
+    if (url.pathname === "/api/polymarket/trading-readiness") {
+      sendJson(req, res, 200, await getPolymarketTradingReadiness());
+      return;
+    }
+    if (url.pathname === "/api/polymarket/order-preview") {
+      const body = req.method === "POST" ? await parseBody(req) : undefined;
+      sendJson(req, res, 200, await buildPolymarketOrderPreview(body));
+      return;
+    }
+    if (url.pathname === "/api/polymarket/cancel-preview") {
+      const body = req.method === "POST" ? await parseBody(req) : undefined;
+      sendJson(req, res, 200, await buildPolymarketCancelPreview(body));
+      return;
+    }
+    if (url.pathname === "/api/polymarket/account") {
+      sendJson(req, res, 200, await getPolymarketAccountState(url.searchParams.get("owner") ?? undefined));
       return;
     }
     if (url.pathname === "/api/deepbook/intent") {
       const body = req.method === "POST" ? await parseBody(req) : undefined;
       sendJson(req, res, 200, buildDeepBookTradeIntent(body));
+      return;
+    }
+    if (url.pathname === "/api/deepbook/status") {
+      sendJson(
+        req,
+        res,
+        200,
+        await getDeepBookStatus(url.searchParams.get("managerId") ?? undefined, url.searchParams.get("owner") ?? undefined),
+      );
+      return;
+    }
+    if (url.pathname === "/api/deepbook/manager-binding") {
+      if (req.method === "POST") {
+        sendJson(req, res, 200, await bindDeepBookManagerToWallet(await parseBody(req)));
+        return;
+      }
+      sendJson(req, res, 200, await getDeepBookManagerBinding(url.searchParams.get("owner") ?? ""));
+      return;
+    }
+    if (url.pathname === "/api/deepbook/readiness") {
+      sendJson(req, res, 200, await getDeepBookTestnetReadiness());
+      return;
+    }
+    if (url.pathname === "/api/deepbook/transactions") {
+      const body = req.method === "POST" ? await parseBody(req) : undefined;
+      sendJson(req, res, 200, req.method === "POST" ? await recordDeepBookChainTransaction(body) : await getDeepBookChainTransactions());
+      return;
+    }
+    if (url.pathname === "/api/deepbook/reconcile") {
+      const limit = Number(url.searchParams.get("limit") ?? 10);
+      sendJson(req, res, 200, await reconcileRecentDeepBookChainTransactions(Number.isFinite(limit) ? Math.max(1, Math.min(25, Math.trunc(limit))) : 10));
+      return;
+    }
+    if (url.pathname === "/api/deepbook/backfill") {
+      const limit = Number(url.searchParams.get("limit") ?? 25);
+      sendJson(
+        req,
+        res,
+        200,
+        await backfillDeepBookChainTransactions(url.searchParams.get("owner") ?? undefined, Number.isFinite(limit) ? Math.max(1, Math.min(50, Math.trunc(limit))) : 25),
+      );
+      return;
+    }
+    if (url.pathname === "/api/deepbook/positions") {
+      sendJson(req, res, 200, await getDeepBookPositionState());
       return;
     }
 
@@ -132,5 +232,6 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
 }
 
 createServer(handleRequest).listen(port, () => {
+  startMaintenanceScheduler();
   console.log(`Vol-Arb API listening on http://localhost:${port}`);
 });

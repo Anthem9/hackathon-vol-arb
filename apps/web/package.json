@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --port ${WEB_PORT:-3000}",
+    "start": "next start --port ${WEB_PORT:-3000}",
     "build": "next build",
-    "lint": "tsc --noEmit",
-    "typecheck": "tsc --noEmit"
+    "lint": "tsc --noEmit --incremental false -p tsconfig.check.json",
+    "test": "tsx lib/wallet-guards.test.ts",
+    "typecheck": "tsc --noEmit --incremental false -p tsconfig.check.json"
   },
   "dependencies": {
     "@mysten/dapp-kit-react": "^2.0.3",
@@ -26,6 +28,7 @@
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   }
 }

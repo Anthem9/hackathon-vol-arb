@@ -1,5 +1,12 @@
 import type { AlertEvent, DashboardData, DataSourceStatus, ExecutableEdge, RiskRule, SviHealthReport } from "@vol-arb/core";
-import { readRecentAlerts } from "../db/postgres";
+import {
+  type AlertOperatorAction,
+  readLatestAlertOperatorActions,
+  readRecentAlerts,
+  recordAlertOperatorAction,
+} from "../db/postgres";
+
+const fallbackAlertActions = new Map<string, AlertOperatorAction>();
 
 function now() {
   return Date.now();
@@ -48,6 +55,55 @@ export async function getAlerts(limit = 50) {
     return [];
   }
   return [];
+}
+
+export async function applyAlertOperatorActions(alerts: AlertEvent[]): Promise<AlertEvent[]> {
+  let actions: Map<string, AlertOperatorAction>;
+  try {
+    actions = await readLatestAlertOperatorActions(alerts.map((alertEvent) => alertEvent.alertId));
+  } catch {
+    actions = new Map();
+  }
+  for (const [alertId, action] of fallbackAlertActions) {
+    actions.set(alertId, action);
+  }
+  if (actions.size === 0) return alerts;
+  return alerts.map((alertEvent) => {
+    const action = actions.get(alertEvent.alertId);
+    if (!action) return alertEvent;
+    return {
+      ...alertEvent,
+      status: "resolved",
+      resolvedAt: action.createdAt,
+      metadata: {
+        ...(alertEvent.metadata ?? {}),
+        operatorAction: action.action,
+        operatorReason: action.reason,
+      },
+    };
+  });
+}
+
+export async function createAlertOperatorAction(body: unknown) {
+  const request = typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
+  const alertId = typeof request.alertId === "string" ? request.alertId.trim() : "";
+  const action = request.action;
+  const reason = typeof request.reason === "string" ? request.reason.trim().slice(0, 500) : undefined;
+  if (!alertId) {
+    throw new Error("alertId is required");
+  }
+  if (action !== "resolve" && action !== "silence") {
+    throw new Error("action must be resolve or silence");
+  }
+  try {
+    const persisted = await recordAlertOperatorAction({ alertId, action, reason });
+    fallbackAlertActions.set(alertId, persisted);
+    return persisted;
+  } catch {
+    const fallback: AlertOperatorAction = { alertId, action, reason, createdAt: Date.now() };
+    fallbackAlertActions.set(alertId, fallback);
+    return fallback;
+  }
 }
 
 function sourceAlerts(sources: DataSourceStatus[]) {

@@ -1,0 +1,60 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: volarb
+      POSTGRES_USER: volarb
+      POSTGRES_PASSWORD: volarb_dev_password
+    ports:
+      - "55434:5432"
+    volumes:
+      - volarb-production-like-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U volarb -d volarb"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      target: api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      API_PORT: 4000
+      DATA_MODE: hybrid
+      DATABASE_URL: postgres://volarb:volarb_dev_password@postgres:5432/volarb
+      SUI_NETWORK: testnet
+      POLYMARKET_ENABLE_LIVE_TRADING: "false"
+      ENABLE_MAINTENANCE_SCHEDULER: "true"
+      MAINTENANCE_TASK_TIMEOUT_MS: 20000
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["sh", "-c", "pnpm --filter @vol-arb/api db:migrate && pnpm --filter @vol-arb/api start"]
+
+  web:
+    build:
+      context: .
+      target: web
+      args:
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:4000
+    restart: unless-stopped
+    environment:
+      WEB_PORT: 3000
+      NEXT_PUBLIC_APP_ENV: production-like
+      API_INTERNAL_BASE_URL: http://api:4000
+      API_REQUEST_TIMEOUT_MS: 10000
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:4000
+    ports:
+      - "3001:3000"
+    depends_on:
+      - api
+
+volumes:
+  volarb-production-like-postgres:

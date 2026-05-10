@@ -5,12 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
     "db:migrate": "tsx src/db/migrate.ts",
+    "deepbook:testnet": "tsx src/services/deepbook-testnet-executor-cli.ts",
     "build": "tsc --noEmit",
     "lint": "tsc --noEmit",
+    "test": "tsx src/services/deepbook-transaction-service.test.ts && tsx src/services/runtime-services.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@mysten/sui": "^2.16.2",
     "@vol-arb/adapters": "workspace:*",
     "@vol-arb/config": "workspace:*",
     "@vol-arb/core": "workspace:*",

@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "DeepBook Predict Vol-Arb Terminal",
-  description: "Mock DeepBook Predict volatility arbitrage intelligence terminal",
+  description: "DeepBook Predict testnet volatility arbitrage intelligence terminal",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

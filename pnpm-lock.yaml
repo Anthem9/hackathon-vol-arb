@@ -17,6 +17,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@mysten/sui':
+        specifier: ^2.16.2
+        version: 2.16.2(typescript@5.9.3)
       '@vol-arb/adapters':
         specifier: workspace:*
         version: link:../../packages/adapters
@@ -91,6 +94,9 @@ importers:
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.19(tsx@4.21.0)
+      tsx:
+        specifier: ^4.19.2
+        version: 4.21.0
       typescript:
         specifier: ^5.7.2
         version: 5.9.3

@@ -3,12 +3,14 @@ node_modules
 dist
 coverage
 .turbo
+.local
 target
 *.tsbuildinfo
 .env
 .env.local
 .env.*.local
 auth.json
+backups/
 *.key
 *.pem
 *.keystore

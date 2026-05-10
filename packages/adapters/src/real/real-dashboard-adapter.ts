@@ -5,6 +5,7 @@ import {
   type DashboardData,
   type DataMode,
   type DataSourceStatus,
+  type ExecutableEdge,
   type RiskRule,
 } from "@vol-arb/core";
 import { DeepBookPredictAdapter } from "../deepbook/deepbook-adapter";
@@ -65,6 +66,28 @@ function degradedStatus(sourceId: string, label: string, detail: string): DataSo
   };
 }
 
+function applyExecutionGates(
+  opportunities: ExecutableEdge[],
+  context: { hasRealDeepBook: boolean; hasRealPolymarket: boolean },
+): ExecutableEdge[] {
+  return opportunities.map((opportunity) => {
+    const blockers = [
+      ...(opportunity.rejectReasons ?? []),
+      ...(context.hasRealDeepBook ? [] : ["DeepBook Predict OracleSVI is unavailable"]),
+      ...(context.hasRealPolymarket ? [] : ["Polymarket public market data is unavailable"]),
+      "Connected-wallet DeepBook Predict mint dry-run has not passed for this opportunity",
+    ];
+    const missingRequiredSource = !context.hasRealDeepBook || !context.hasRealPolymarket;
+    return {
+      ...opportunity,
+      decision: missingRequiredSource ? "reject" : "watch",
+      recommendedSizeUsd: 0,
+      maxSizeUsd: 0,
+      rejectReasons: Array.from(new Set(blockers)),
+    };
+  });
+}
+
 export class RealDashboardAdapter {
   private readonly mode: DataMode;
   private readonly deepbook: DeepBookPredictAdapter;
@@ -100,9 +123,10 @@ export class RealDashboardAdapter {
       ? this.deepbook.buildHealthReports(realOracles)
       : mockDashboardData.sviHealth;
     const btcSpot = hasRealPrice ? priceState.spot : hasRealDeepBook ? realOracles[0].spot : mockDashboardData.overview.btcSpot;
-    const opportunities = hasRealPolymarket
+    const rawOpportunities = hasRealPolymarket
       ? this.polymarket.buildOpportunities(polymarketState.markets, realOracles[0], btcSpot)
       : mockDashboardData.opportunities;
+    const opportunities = applyExecutionGates(rawOpportunities, { hasRealDeepBook, hasRealPolymarket });
     const riskRules = dryRunRiskRules.map((rule) => {
       if (rule.name === "BTC source divergence") return { ...rule, active: priceState.status.status !== "healthy" };
       if (rule.name === "DeepBook feeder lag") return { ...rule, active: aggregateSviStatus(sviHealth) !== "healthy" };
@@ -131,7 +155,10 @@ export class RealDashboardAdapter {
         deepbookSviStatus: aggregateSviStatus(sviHealth),
         activeVenues: [hasRealDeepBook, hasRealPolymarket].filter(Boolean).length,
         validExpiries: surfaces.length,
-        maxExecutableEdge: opportunities.length > 0 ? Math.max(...opportunities.map((opportunity) => opportunity.finalExecutableEdge)) : 0,
+        maxExecutableEdge:
+          opportunities.filter((opportunity) => opportunity.decision === "trade").length > 0
+            ? Math.max(...opportunities.filter((opportunity) => opportunity.decision === "trade").map((opportunity) => opportunity.finalExecutableEdge))
+            : 0,
         killSwitchActive: hasKillSwitch(riskRules) || activeRiskControls,
         openPaperPnl: totalOpenPnl(paperTrades),
         opportunities: tradeCounts,

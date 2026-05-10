@@ -12,18 +12,77 @@ Never commit:
 
 Use `.env.example` for placeholders only.
 
-## Version 2 Runtime
+Run the local secret scanner before pushing changes:
 
-- Real service integration is read-only.
+```bash
+npm run secret:scan
+```
+
+The scanner checks tracked and untracked source files for high-risk key, mnemonic, token, and tokenized RPC URL assignments while ignoring local `.env*` files. It is a guardrail, not a replacement for review.
+
+GitHub Actions runs the same scanner before typecheck, tests, lint, and build.
+
+## Runtime Boundary
+
+- DeepBook Predict execution is Sui Testnet only while the protocol is testnet-only.
 - Polymarket CLOB calls use public market data endpoints only.
 - DeepBook Predict calls read public testnet objects only.
-- Wallet private keys may exist in local `.env` for later signing tests, but Version 2 does not import or use them for order execution.
-- Real order submission remains disabled by dry-run risk controls until a later explicit implementation stage.
+- The generated Sui wallet private key may exist in local `.env` for testnet smoke execution.
+- The generated-wallet executor is developer tooling and must not be exposed as a normal public product action.
+- Product wallet execution must be wallet-confirmed by the connected wallet.
+- Polymarket authenticated trading and all mainnet execution remain disabled.
+- Docker builds exclude `.env` and `.env.*`; container secrets are injected at runtime through compose `env_file` or deployment secret storage.
 
 ## Version 3 Foundation
 
 - Postgres stores snapshots and alerts, not wallet private keys.
 - `DATABASE_URL` belongs in local `.env` or deployment secret storage.
+- Postgres backups are written under ignored `backups/` by default and must not be committed.
 - The Sui wallet UI uses wallet confirmation for testnet transactions.
-- DeepBook Predict transaction scaffolding is limited to testnet package/object IDs.
+- The Sui wallet UI enforces configurable public risk limits: `NEXT_PUBLIC_MAX_DEPOSIT_DUSDC`, `NEXT_PUBLIC_MAX_MINT_DUSDC`, and `NEXT_PUBLIC_MAX_OPEN_EXPOSURE_DUSDC`.
+- DeepBook Predict transaction execution is limited to testnet package/object IDs.
 - Polymarket and mainnet execution remain disabled.
+
+## Database Backup And Restore
+
+Use local backups before schema changes or long-running testnet sessions:
+
+```bash
+npm run db:backup
+CONFIRM_RESTORE=volarb npm run db:restore -- backups/<file>.dump
+```
+
+- Requires `pg_dump` and `pg_restore` from the PostgreSQL client tools.
+- Reads `DATABASE_URL` from the environment or local `.env`.
+- Restore uses `--clean --if-exists` and is destructive by design.
+- Restore refuses to run unless `CONFIRM_RESTORE=volarb` is set.
+
+## Testnet Smoke Executor
+
+The API package includes a CLI-only executor:
+
+```bash
+pnpm --filter @vol-arb/api deepbook:testnet dry-run:mint 0.01 81000 up
+```
+
+Rules:
+
+- Dry-run commands are safe for scheduled smoke checks.
+- `execute:*` commands spend testnet funds and must only be run intentionally.
+- Do not surface `execute:*` through an unauthenticated public API.
+- Do not log private keys, mnemonics, or provider tokens.
+
+## Maintenance Scheduler
+
+The API can run dry-run/status-only maintenance checks when `ENABLE_MAINTENANCE_SCHEDULER=true`.
+
+- Maintenance may call source health checks, Postgres checks, DeepBook transaction reconcile, and configured-wallet backfill.
+- Maintenance does not sign transactions and does not spend Sui Testnet funds.
+- The generated-wallet executor remains separate from the scheduler.
+
+## Polymarket Trading Gate
+
+- Public Polymarket market data remains enabled.
+- Authenticated trading requires L2 API credentials plus a local signing private key.
+- `/api/polymarket/trading-readiness` reports whether credentials are present without returning secret values.
+- Live order submission must stay disabled unless `POLYMARKET_ENABLE_LIVE_TRADING=true` and manual confirmation controls are in place.

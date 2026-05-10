@@ -1,7 +1,7 @@
 import { MockVenueAdapter, RealDashboardAdapter } from "@vol-arb/adapters";
 import type { DashboardData, DataMode } from "@vol-arb/core";
 import { persistDashboardSnapshot } from "../db/postgres";
-import { buildAlerts } from "./alert-service";
+import { applyAlertOperatorActions, buildAlerts } from "./alert-service";
 
 const REAL_SNAPSHOT_TTL_MS = 5000;
 
@@ -19,7 +19,7 @@ function dataMode(): DataMode {
 export async function getDashboardData() {
   const mode = dataMode();
   if (mode === "mock") {
-    return new MockVenueAdapter().getDashboardData();
+    return withRuntimeServices(new MockVenueAdapter().getDashboardData());
   }
   const now = Date.now();
   if (
@@ -39,7 +39,7 @@ export async function getDashboardData() {
 
 async function withRuntimeServices(input: Promise<DashboardData>): Promise<DashboardData> {
   const data = await input;
-  const alerts = buildAlerts(data);
+  const alerts = await applyAlertOperatorActions(buildAlerts(data));
   const withAlerts = { ...data, alerts };
   const persistence = await persistDashboardSnapshot(withAlerts);
   return { ...withAlerts, persistence };

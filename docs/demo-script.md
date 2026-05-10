@@ -5,5 +5,5 @@
 3. Move to opportunities and explain why midpoint spread is not enough.
 4. Highlight one rejected opportunity with bid/ask or stale-oracle reasons.
 5. Highlight one trade opportunity after fees, slippage, hedge cost, and latency.
-6. Show paper-trade PnL attribution.
-7. Close on SVI health monitoring as infrastructure value for DeepBook Predict.
+6. Show Testnet Readiness, Wallet, and Execution History as the real DeepBook Predict flow.
+7. Close on SVI health monitoring, transaction lifecycle tracking, and risk gates as infrastructure value for DeepBook Predict.

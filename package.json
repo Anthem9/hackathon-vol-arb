@@ -6,9 +6,14 @@
   "scripts": {
     "dev": "turbo dev --parallel",
     "dev:hybrid": "DATA_MODE=hybrid WEB_PORT=${WEB_PORT:-3001} turbo dev --parallel",
+    "db:backup": "node scripts/db-backup.mjs",
     "db:migrate": "pnpm --filter @vol-arb/api db:migrate",
+    "db:restore": "node scripts/db-restore.mjs",
+    "env:check": "node scripts/env-check.mjs",
     "build": "turbo build",
     "lint": "turbo lint",
+    "secret:scan": "node scripts/secret-scan.mjs",
+    "test": "turbo test",
     "typecheck": "turbo typecheck"
   },
   "devDependencies": {
