@@ -13,9 +13,13 @@ DeepBook Predict is currently deployed on Sui Testnet only. This roadmap intenti
 - A local server-side Sui Testnet executor can dry-run or execute deposit, mint, redeem, and withdraw using the generated `.env` wallet.
 - A full DeepBook Predict Sui Testnet lifecycle has been verified: deposit, mint, redeem, withdraw.
 
-## Stage 1: Real User Wallet Flow
+## From Current State To Fully Usable Product
 
-Goal: make the application usable by any connected Sui Testnet wallet without relying on the generated `.env` manager in the product UI.
+The target product is not a hackathon-only demo. The target is a real operator terminal that can safely run with real accounts, real data, explicit risk gates, and auditable transaction records. Hackathon submission assets are a packaging layer on top of that product, not a separate fake mode.
+
+## Stage 1: Connected Wallet Acceptance
+
+Goal: prove the real browser wallet path on Sui Testnet without relying on the generated `.env` manager in the product UI.
 
 Deliverables:
 
@@ -24,13 +28,38 @@ Deliverables:
 - Read wallet DUSDC, manager DUSDC, positions, exposure, redeemable value, and transaction history for the connected wallet.
 - Gate every wallet transaction by owner match, gas, DUSDC, dry-run success, and current position state.
 - Keep the generated-wallet executor as CLI-only developer tooling, not as a normal product path.
+- Record every wallet-signed transaction and reconcile it back from Sui Testnet.
 
 Exit criteria:
 
 - A fresh Sui Testnet wallet can create a manager, deposit DUSDC, mint, redeem after expiry, and withdraw.
 - A non-owner wallet can view state but cannot execute manager operations.
+- Browser refresh does not lose manager binding, transaction state, or blockers.
 
-## Stage 2: Strategy Executability
+Current blocker:
+
+- The wallet test is ready but requires manual authorization in Chrome before `Connect Wallet` can be clicked.
+
+## Stage 2: DeepBook Predict Testnet Product Hardening
+
+Goal: make repeated DeepBook Predict Sui Testnet usage reliable enough for real operators.
+
+Deliverables:
+
+- Decode common Move aborts into user-readable reasons.
+- Add retry-safe transaction recording and digest reconciliation.
+- Add position lifecycle states for open, expired, redeemable, redeemed, failed, and unattributed positions.
+- Add explicit operator alerts for stale oracle data, price feed divergence, RPC failures, DUSDC insufficiency, gas insufficiency, and database degradation.
+- Add per-wallet limits for max deposit, max mint size, max open exposure, and max loss.
+- Keep backup, restore, maintenance, health, reconcile, and backfill procedures documented and testable.
+
+Exit criteria:
+
+- Failed transactions are explainable.
+- Repeated full-cycle testnet runs do not leave stale UI state or orphaned local records.
+- Service restart can recover source, wallet, manager, alert, and position state from Postgres.
+
+## Stage 3: Strategy Executability
 
 Goal: only show executable opportunities when both strategy and protocol constraints agree.
 
@@ -47,62 +76,81 @@ Exit criteria:
 - Any `execute` opportunity can pass a DeepBook Predict mint dry-run before the UI enables wallet confirmation.
 - The table never presents a non-dry-runnable mint as executable.
 
-## Stage 3: Testnet Production Hardening
+## Stage 4: Polymarket Real Account Integration
 
-Goal: make repeated Sui Testnet usage reliable enough for external users and ongoing development.
+Goal: move Polymarket from public-data/readiness mode toward controlled real-account operation.
 
 Deliverables:
 
-- Decode common Move aborts into user-readable reasons.
-- Add retry-safe transaction recording and digest reconciliation.
-- Add position lifecycle states for open, expired, redeemable, redeemed, failed, and unattributed positions.
-- Add explicit operator alerts for stale oracle data, price feed divergence, RPC failures, and database degradation.
-- Add per-wallet limits for max deposit, max mint size, max open exposure, and max loss.
+- Configure Polymarket wallet, funder, L2 key, secret, passphrase, and API access through secrets only.
+- Verify account state, balances, positions, allowances, and open orders.
+- Keep order preview and cancel preview as the first verified authenticated workflow.
+- Add manual confirmation controls before any real order submission or cancellation.
+- Add a live-trading feature gate that defaults to off in every environment.
+- Add minimum-size real-account smoke tests only after credentials and legal/risk review are complete.
 
 Exit criteria:
 
-- Failed transactions are explainable.
-- Repeated full-cycle testnet runs do not leave stale UI state or orphaned local records.
+- Authenticated account and open-order reads are proven against the configured account.
+- Order preview matches the eventual signed order payload before any live submission is enabled.
+- The app cannot place or cancel Polymarket orders unless live trading, credentials, funding, and manual confirmation are all present.
 
-## Stage 4: Operational Deployment
+## Stage 5: Small-Capital Real Operation
 
-Goal: deploy a long-running service that is safe to operate while DeepBook Predict remains testnet-only.
+Goal: prove the full decision loop with tightly limited funds and manual approval.
 
 Deliverables:
 
-- Separate local, staging, and production-like testnet environments.
-- Move secrets from local `.env` to deployment secret storage.
-- Add CI gates for secret scanning, typecheck, test, lint, and build.
-- Provide a local secret scanner that can be reused by CI before pushing or deploying.
-- Add scheduled maintenance checks that reconcile transaction records, backfill configured wallet history, refresh source status, and avoid spending funds by default.
-- Add authenticated Polymarket readiness checks while keeping live order submission behind explicit feature flags and manual confirmation.
-- Add database migration, backup, and restore procedures.
+- Run fixed observation windows with real data and no automatic execution at first.
+- Record every opportunity, blocker, manual decision, transaction, and realized result.
+- Track PnL, slippage, gas, fees, stale-data rejects, and missed opportunities.
+- Tune risk thresholds from real observations instead of mock assumptions.
+- Keep manual confirmation for all fund-spending actions until repeated runs are stable.
 
 Exit criteria:
 
-- A clean deployment can recover after restart and show correct source, wallet, manager, alert, and position state.
-- Scheduled maintenance checks validate integrations without spending funds unless explicit testnet execution is invoked separately.
+- At least one complete small-capital loop is recorded and reconciled.
+- The system can explain each `reject`, `watch`, and `execute` decision.
+- No duplicate submissions or unsafe retries occur during failure recovery.
 
-## Stage 5: UX and Operator Workflow
+## Stage 6: Mainnet Readiness
 
-Goal: make the product understandable without engineering explanation.
+Goal: be ready to migrate only after official DeepBook Predict mainnet package IDs, object IDs, asset types, and operational guidance exist.
 
 Deliverables:
 
-- Replace the engineering-heavy wallet panel with a lifecycle flow: connect wallet, create manager, fund, mint, wait, redeem, withdraw.
+- Keep all package IDs, object IDs, asset types, RPC endpoints, and profile selection environment-driven.
+- Add a mainnet profile that is read-only by default.
+- Require an explicit migration checklist before enabling mainnet signing.
+- Re-run the connected-wallet lifecycle against official mainnet targets with minimum funds only after protocol support exists.
+
+Exit criteria:
+
+- Testnet and mainnet configuration cannot be mixed accidentally.
+- Mainnet signing remains disabled until official protocol support and explicit operator approval exist.
+
+## Stage 7: Final UX, Demo, And Submission
+
+Goal: make the product feel polished while preserving operator clarity.
+
+Deliverables:
+
+- Replace engineering-heavy panels with a clear lifecycle flow: connect wallet, create manager, fund, mint, wait, redeem, withdraw.
 - Keep advanced diagnostics available but secondary.
 - Surface the next safe action and the exact reason an action is blocked.
 - Add digest links, status timelines, and PnL attribution per position.
+- Add opportunity radar, market comparison views, exposure controls, and risk-state indicators.
+- Prepare hackathon submission material: demo script, short video path, deployment notes, architecture summary, and security notes.
 
 Exit criteria:
 
 - A user can tell what can be done next, why, and what risk gate is active.
+- The demo path is stable, but no fake/test-only product mode is required for normal operation.
 
 ## Deferred Until Protocol Support
 
 - DeepBook Predict mainnet migration.
 - Mainnet DeepBook Predict execution.
-- Polymarket authenticated CLOB trading.
-- Automated cross-venue execution.
+- Automated cross-venue execution without manual confirmation.
 
 These are intentionally deferred because they require either protocol availability, separate credentials, additional legal/risk review, or a dedicated production trading design.
