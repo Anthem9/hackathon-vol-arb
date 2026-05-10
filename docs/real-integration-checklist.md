@@ -53,9 +53,9 @@ This checklist is the handoff from the mock demo to real-service integration. De
 ## Price Sources
 
 - Start with free public BTC spot feeds:
-  - Binance public market data
-  - Coinbase public exchange products
   - CoinGecko public simple price API
+  - Coinbase public exchange products
+  - Kraken public market data
 - Use at least two sources in Version 2 and mark the price feed stale if they diverge beyond a configured threshold.
 - Keep paid API keys optional until rate limits block real testing.
 
@@ -78,7 +78,7 @@ This checklist is the handoff from the mock demo to real-service integration. De
 - `DATA_MODE=mock|hybrid|real` is wired through the API.
 - `DeepBookPredictAdapter` reads `/oracles` and Sui testnet `sui_getObject` for real BTC OracleSVI objects.
 - `PolymarketAdapter` reads Gamma market discovery plus public CLOB book and midpoint endpoints.
-- `BtcPriceAdapter` reads CoinGecko and Coinbase, then reports source divergence.
+- `BtcPriceAdapter` reads CoinGecko, Coinbase, and Kraken, then reports source divergence.
 - `RealDashboardAdapter` assembles a read-only research terminal payload with mock fallback.
 - Server-side opportunities stay `watch` or `reject` until a connected wallet-specific DeepBook Predict dry-run succeeds.
 - `/api/source-statuses` exposes source health and fallback state to the dashboard.
@@ -96,6 +96,7 @@ This checklist is the handoff from the mock demo to real-service integration. De
 - The dashboard exposes a Polymarket order preview panel for risk calculation only; it does not sign or submit orders.
 - The dashboard exposes a Polymarket cancel preview panel; it does not submit cancel requests.
 - A full Sui Testnet lifecycle has been verified with real testnet transactions.
+- Slush connected-wallet manager creation, deposit, mint dry-run, idle withdraw, and read-only monitoring have been verified; signed mint/redeem are pending Chrome recovery or manual wallet signing.
 - Polymarket authenticated trading is still disabled.
 - DeepBook Predict mainnet migration is deferred until official protocol support exists.
 - `docs/runbook.md` provides clean-start, smoke-test, dry-run, execute, maintenance, backup, and recovery procedures.

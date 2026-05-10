@@ -190,6 +190,38 @@ pnpm --filter @vol-arb/api deepbook:wallet-monitor \
 
 This is a read-only monitor. It prints JSON snapshots for manager readiness, OracleSVI candidate count, balances, open exposure, open positions, redeemable value, and withdraw readiness. It does not sign or submit transactions.
 
+## Slush / Chrome Recovery
+
+Use this when the connected-wallet path is ready on-chain but browser automation cannot attach to Chrome.
+
+Current known-good Slush testnet state:
+
+- Owner: `0xd123dbbb133f8f43abca110200ef72d2a81d7cbc88e69e11624e9ad62b851dcd`
+- PredictManager: `0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f`
+- Manager DUSDC balance: `0.9 DUSDC`
+- Open positions: `0`
+- Open exposure: `0`
+- Next safe action: mint dry-run, then signed mint if the wallet prompt is Sui Testnet and targets the DeepBook Predict package.
+
+Non-destructive checks:
+
+```bash
+pnpm --filter @vol-arb/api deepbook:wallet-monitor \
+  --owner 0xd123dbbb133f8f43abca110200ef72d2a81d7cbc88e69e11624e9ad62b851dcd \
+  --manager 0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f
+open -na 'Google Chrome' --args --new-window 'http://localhost:3001/#wallet'
+```
+
+If Chrome has no visible window or automation reports `cgWindowNotFound`, stop and ask the operator before quitting or restarting Chrome. Restarting Chrome can disrupt the operator's normal browser session.
+
+After Chrome is recovered:
+
+1. Open `http://localhost:3001/#wallet`.
+2. Confirm Slush is unlocked, on Sui Testnet, and connected as `0xd123...1dcd`.
+3. Run wallet mint dry-run.
+4. Sign mint only if dry-run passes and the prompt targets the DeepBook Predict Testnet package.
+5. Wait for expiry, redeem, then withdraw only after `openPositions=0`, `openExposure=0`, and `canWithdrawQuote=true`.
+
 ## Maintenance
 
 Manual maintenance:
