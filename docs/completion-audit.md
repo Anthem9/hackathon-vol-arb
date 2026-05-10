@@ -44,6 +44,7 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 - `git diff --check`: pass
 - `docker compose -f docker-compose.production-like.yml ps`: web, api, postgres running
 - `npx playwright test dashboard-smoke.spec.js --config empty.config.js --reporter=line`: 3 passed
+- GitHub Actions `CI` on `main`: pass (`25631071162`)
 - `GET /api/maintenance/run`: 405, POST required
 - `POST /api/maintenance/run`: success
 
