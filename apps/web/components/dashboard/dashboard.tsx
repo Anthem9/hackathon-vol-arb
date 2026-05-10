@@ -54,13 +54,15 @@ const percent = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 1,
 });
 
+const DISPLAY_TIME_ZONE = "Asia/Shanghai";
+
 function formatExpiry(value: number) {
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(value));
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: DISPLAY_TIME_ZONE }).format(new Date(value));
 }
 
 function formatTime(value: number | null) {
   if (!value) return "never";
-  return new Intl.DateTimeFormat("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(value));
+  return new Intl.DateTimeFormat("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: DISPLAY_TIME_ZONE }).format(new Date(value));
 }
 
 function shortObjectId(value: string | null | undefined) {
