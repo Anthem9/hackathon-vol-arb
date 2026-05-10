@@ -38,7 +38,10 @@ Exit criteria:
 
 Current blocker:
 
-- The wallet test is ready but requires manual authorization in Chrome before `Connect Wallet` can be clicked.
+- Slush connected-wallet manager creation is proven on Sui Testnet.
+- Current Slush test wallet `0xd123...1dcd` owns PredictManager `0x3df8...411f`.
+- Deposit, mint, redeem, and withdraw acceptance are blocked until the Slush wallet receives DUSDC test tokens.
+- After DUSDC arrives, resume from `docs/wallet-acceptance.md` Step 3.
 
 ## Stage 2: DeepBook Predict Testnet Product Hardening
 
