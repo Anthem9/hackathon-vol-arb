@@ -28,6 +28,7 @@ services:
       DATA_MODE: hybrid
       DATABASE_URL: postgres://volarb:volarb_dev_password@postgres:5432/volarb
       SUI_NETWORK: testnet
+      POLYMARKET_CHAIN_ID: "137"
       POLYMARKET_ENABLE_LIVE_TRADING: "false"
       ENABLE_MAINTENANCE_SCHEDULER: "true"
       MAINTENANCE_TASK_TIMEOUT_MS: 20000
