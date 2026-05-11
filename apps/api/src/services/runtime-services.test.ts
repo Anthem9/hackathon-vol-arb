@@ -236,6 +236,21 @@ globalThis.fetch = async (input, init) => {
       ],
     });
   }
+  if (url.startsWith("https://clob.polymarket.test/balance-allowance?")) {
+    assert.equal(new URL(url).searchParams.get("asset_type"), "COLLATERAL");
+    const headers = new Headers(init?.headers);
+    assert.equal(headers.get("POLY_ADDRESS"), process.env.POLYMARKET_WALLET_ADDRESS);
+    assert.equal(headers.get("POLY_API_KEY"), process.env.POLYMARKET_API_KEY);
+    assert.equal(headers.get("POLY_PASSPHRASE"), process.env.POLYMARKET_API_PASSPHRASE);
+    assert.ok(headers.get("POLY_TIMESTAMP"));
+    assert.ok(headers.get("POLY_SIGNATURE"));
+    return Response.json({
+      balance: "12345000",
+      allowances: {
+        "0xexchange": "999000000",
+      },
+    });
+  }
   if (url.startsWith("https://data.polymarket.test/positions?")) {
     return Response.json([
       {
@@ -287,6 +302,10 @@ assert.equal(polymarketAccount.totals.currentValue, 1.2);
 assert.equal(polymarketAccount.totals.cashPnl, 0.4);
 assert.equal(polymarketAccount.openOrders.ready, true);
 assert.equal(polymarketAccount.openOrders.enabled, true);
+assert.equal(polymarketAccount.balanceAllowance.ready, true);
+assert.equal(polymarketAccount.balanceAllowance.enabled, true);
+assert.equal(polymarketAccount.balanceAllowance.collateral?.balance, 12.345);
+assert.equal(polymarketAccount.balanceAllowance.collateral?.allowances["0xexchange"], "999000000");
 assert.equal(polymarketAccount.orders.length, 1);
 assert.equal(polymarketAccount.orders[0].price, 0.42);
 const cancelPreview = await buildPolymarketCancelPreview({ orderId: `0x${"a".repeat(64)}` });

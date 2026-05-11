@@ -722,13 +722,20 @@ function PolymarketReadiness() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="font-semibold">Account Positions</p>
-            <p className="mt-1 text-xs text-terminal-muted">Public Data API positions for the configured Polymarket wallet. Open orders and cancel remain backend-only L2-gated.</p>
+            <p className="mt-1 text-xs text-terminal-muted">Public Data API positions plus authenticated CLOB balance, allowance, and open-order reads for the configured wallet.</p>
           </div>
           <p className="text-xs text-terminal-muted">{accountState?.walletAddress ? `${accountState.walletAddress.slice(0, 6)}...${accountState.walletAddress.slice(-4)}` : "wallet not configured"}</p>
         </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-4">
+        <div className="mt-4 grid gap-3 md:grid-cols-5">
           <MetricCard label="Position Value" value={`$${(accountState?.totals.currentValue ?? 0).toFixed(2)}`} detail={`${accountState?.positions.length ?? 0} active position(s).`} icon={<CircleDollarSign className="h-5 w-5" />} tone="cyan" />
           <MetricCard label="Cash PnL" value={`$${(accountState?.totals.cashPnl ?? 0).toFixed(2)}`} detail={`Realized $${(accountState?.totals.realizedPnl ?? 0).toFixed(2)}`} icon={<TrendingUp className="h-5 w-5" />} tone={(accountState?.totals.cashPnl ?? 0) >= 0 ? "green" : "red"} />
+          <MetricCard
+            label="Collateral"
+            value={accountState?.balanceAllowance.enabled ? `$${(accountState.balanceAllowance.collateral?.balance ?? 0).toFixed(2)}` : accountState?.balanceAllowance.ready ? "L2 READY" : "BLOCKED"}
+            detail={accountState?.balanceAllowance.detail ?? "Loading collateral balance gate."}
+            icon={<CircleDollarSign className="h-5 w-5" />}
+            tone={accountState?.balanceAllowance.enabled ? "green" : accountState?.balanceAllowance.ready ? "cyan" : "amber"}
+          />
           <MetricCard label="Open Orders" value={accountState?.openOrders.enabled ? `${accountState.orders.length}` : accountState?.openOrders.ready ? "L2 READY" : "BLOCKED"} detail={accountState?.openOrders.detail ?? "Loading open-order gate."} icon={<Radar className="h-5 w-5" />} tone={accountState?.openOrders.enabled ? "green" : accountState?.openOrders.ready ? "cyan" : "amber"} />
           <MetricCard label="Cancel Orders" value={accountState?.cancelOrders.ready ? "READY" : "DISABLED"} detail={accountState?.cancelOrders.detail ?? "Loading cancel gate."} icon={<ShieldCheck className="h-5 w-5" />} tone={accountState?.cancelOrders.ready ? "green" : "amber"} />
         </div>

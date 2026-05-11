@@ -156,6 +156,26 @@ function normalizeOpenOrdersPayload(payload: unknown) {
   return [];
 }
 
+function decimalFromAtomic(rawValue: string, decimals = 6) {
+  const raw = rawValue.trim();
+  if (!/^\d+$/.test(raw)) return Number(raw);
+  const padded = raw.padStart(decimals + 1, "0");
+  const whole = padded.slice(0, -decimals);
+  const fraction = padded.slice(-decimals).replace(/0+$/, "");
+  return Number(`${whole}${fraction ? `.${fraction}` : ""}`);
+}
+
+function normalizeBalanceAllowancePayload(payload: unknown) {
+  const record = asRecord(payload);
+  const rawBalance = asString(record.balance);
+  const allowances = asRecord(record.allowances);
+  return {
+    balance: rawBalance ? decimalFromAtomic(rawBalance) : 0,
+    rawBalance,
+    allowances: Object.fromEntries(Object.entries(allowances).map(([key, value]) => [key, String(value)])),
+  };
+}
+
 async function getAuthenticatedOpenOrders() {
   const walletAddress = envValue("POLYMARKET_WALLET_ADDRESS") || envValue("POLYGON_TEST_ADDRESS");
   const apiKey = envValue("POLYMARKET_API_KEY");
@@ -184,6 +204,39 @@ async function getAuthenticatedOpenOrders() {
     return { ready: true, payload: await response.json(), error: null };
   } catch (error) {
     return { ready: true, payload: null, error: error instanceof Error ? error.message : "CLOB authenticated endpoint is unavailable." };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function getAuthenticatedBalanceAllowance() {
+  const walletAddress = envValue("POLYMARKET_WALLET_ADDRESS") || envValue("POLYGON_TEST_ADDRESS");
+  const apiKey = envValue("POLYMARKET_API_KEY");
+  const apiSecret = envValue("POLYMARKET_API_SECRET");
+  const apiPassphrase = envValue("POLYMARKET_API_PASSPHRASE");
+
+  if (!isPolygonAddress(walletAddress) || !apiKey || !apiSecret || !apiPassphrase) {
+    return { ready: false, payload: null, error: "L2 credentials are not configured." };
+  }
+
+  const endpoint = "/balance-allowance";
+  const url = queryUrl(clobUrl(), endpoint, { asset_type: "COLLATERAL" });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 7000);
+  try {
+    const headers = await createL2Headers(
+      buildPolymarketWalletClient(walletAddress),
+      { key: apiKey, secret: apiSecret, passphrase: apiPassphrase } satisfies ApiKeyCreds,
+      { method: "GET", requestPath: endpoint },
+    );
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: asStringHeaders(headers),
+    });
+    if (!response.ok) return { ready: true, payload: null, error: `CLOB balance/allowance endpoint returned ${response.status}.` };
+    return { ready: true, payload: await response.json(), error: null };
+  } catch (error) {
+    return { ready: true, payload: null, error: error instanceof Error ? error.message : "CLOB balance/allowance endpoint is unavailable." };
   } finally {
     clearTimeout(timeout);
   }
@@ -425,6 +478,14 @@ export async function getPolymarketAccountState(owner?: string) {
       positions: [],
       orders: [],
       totals: { currentValue: 0, initialValue: 0, cashPnl: 0, realizedPnl: 0 },
+      balanceAllowance: {
+        ready: readiness.capabilities.authenticatedRequests,
+        enabled: false,
+        detail: readiness.capabilities.authenticatedRequests
+          ? "Balance and allowance reads require backend L2 request signing."
+          : "Balance and allowance reads require POLYMARKET_API_KEY, POLYMARKET_API_SECRET, and POLYMARKET_API_PASSPHRASE.",
+        collateral: null,
+      },
       openOrders: {
         ready: readiness.capabilities.authenticatedRequests,
         enabled: false,
@@ -452,7 +513,11 @@ export async function getPolymarketAccountState(owner?: string) {
   const ordersResult = readiness.capabilities.authenticatedRequests
     ? await getAuthenticatedOpenOrders()
     : { ready: false, payload: null, error: "Open-order reads require POLYMARKET_API_KEY, POLYMARKET_API_SECRET, and POLYMARKET_API_PASSPHRASE." };
+  const balanceAllowanceResult = readiness.capabilities.authenticatedRequests
+    ? await getAuthenticatedBalanceAllowance()
+    : { ready: false, payload: null, error: "Balance and allowance reads require POLYMARKET_API_KEY, POLYMARKET_API_SECRET, and POLYMARKET_API_PASSPHRASE." };
   const orders = normalizeOpenOrdersPayload(ordersResult.payload);
+  const collateral = balanceAllowanceResult.payload ? normalizeBalanceAllowancePayload(balanceAllowanceResult.payload) : null;
   const totals = positions.reduce<{ currentValue: number; initialValue: number; cashPnl: number; realizedPnl: number }>(
     (sum, position) => {
       sum.currentValue += asNumber(position.currentValue) || 0;
@@ -493,10 +558,16 @@ export async function getPolymarketAccountState(owner?: string) {
       enabled: readiness.capabilities.authenticatedRequests && ordersResult.error === null,
       detail: ordersResult.error ?? `Fetched ${orders.length} authenticated open order(s) with official CLOB L2 signing.`,
     },
+    balanceAllowance: {
+      ready: readiness.capabilities.authenticatedRequests,
+      enabled: readiness.capabilities.authenticatedRequests && balanceAllowanceResult.error === null,
+      detail: balanceAllowanceResult.error ?? `Fetched collateral balance and ${Object.keys(collateral?.allowances ?? {}).length} allowance entries with official CLOB L2 signing.`,
+      collateral,
+    },
     cancelOrders: {
       ready: readiness.capabilities.authenticatedRequests && readiness.liveTradingEnabled,
       enabled: false,
-      detail: "Cancel endpoints remain disabled until explicit backend SDK signing and manual confirmation controls are implemented.",
+      detail: "Cancel execution is implemented but disabled unless live trading, manual confirmation, and open-order matching all pass.",
     },
     blockers,
   };

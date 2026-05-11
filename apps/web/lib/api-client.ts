@@ -322,6 +322,16 @@ export type PolymarketAccountState = {
     cashPnl: number;
     realizedPnl: number;
   };
+  balanceAllowance: {
+    ready: boolean;
+    enabled: boolean;
+    detail: string;
+    collateral: {
+      balance: number;
+      rawBalance: string;
+      allowances: Record<string, string>;
+    } | null;
+  };
   openOrders: {
     ready: boolean;
     enabled: boolean;
