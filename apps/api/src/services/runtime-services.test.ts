@@ -190,7 +190,7 @@ globalThis.fetch = originalFetch;
 
 process.env.POLYMARKET_API_BASE = "https://clob.polymarket.test";
 process.env.POLYMARKET_DATA_API_BASE = "https://data.polymarket.test";
-process.env.POLYMARKET_WALLET_ADDRESS = `0x${"7".repeat(40)}`;
+process.env.POLYMARKET_WALLET_ADDRESS = "0x62f94E9AC9349BCCC61Bfe66ddAdE6292702EcB6";
 process.env.POLYMARKET_PRIVATE_KEY = `0x${"8".repeat(64)}`;
 process.env.POLYMARKET_API_KEY = "key";
 process.env.POLYMARKET_API_SECRET = Buffer.from("secret").toString("base64");
@@ -200,7 +200,8 @@ process.env.POLYMARKET_ENABLE_LIVE_TRADING = "false";
 globalThis.fetch = async (input, init) => {
   const url = String(input);
   if (url === "https://clob.polymarket.test/") return new Response("OK", { status: 200 });
-  if (url === "https://clob.polymarket.test/data/orders?limit=100") {
+  if (url.startsWith("https://clob.polymarket.test/data/orders?")) {
+    assert.equal(new URL(url).searchParams.get("next_cursor"), "MA==");
     const headers = new Headers(init?.headers);
     assert.equal(headers.get("POLY_ADDRESS"), process.env.POLYMARKET_WALLET_ADDRESS);
     assert.equal(headers.get("POLY_API_KEY"), process.env.POLYMARKET_API_KEY);

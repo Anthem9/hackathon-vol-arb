@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { Chain, ClobClient, SignatureTypeV2, type ApiKeyCreds } from "@polymarket/clob-client-v2";
-import { createWalletClient, http, isAddress } from "viem";
+import { createWalletClient, custom, isAddress } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
 function findUp(file: string) {
@@ -15,9 +15,14 @@ function findUp(file: string) {
   }
 }
 
+function repoRoot() {
+  return dirname(findUp("pnpm-workspace.yaml") || resolve(process.cwd(), "pnpm-workspace.yaml"));
+}
+
 function loadEnvFile(file = ".env") {
-  const envFile = findUp(file);
+  const envFile = join(repoRoot(), file);
   if (!envFile) return;
+  if (!existsSync(envFile)) return;
   for (const line of readFileSync(envFile, "utf8").split(/\r?\n/)) {
     const match = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
     if (!match) continue;
@@ -85,7 +90,7 @@ function assertSafeEnvOutput(file: string) {
   if (!/^\.env($|\.local$|\..*\.local$)/.test(normalized)) {
     throw new Error("--write-env must be .env, .env.local, or .env.*.local so repository ignore rules protect it.");
   }
-  return resolve(normalized);
+  return resolve(repoRoot(), normalized);
 }
 
 function updateEnvText(existing: string, values: Record<string, string>) {
@@ -122,7 +127,14 @@ async function createOrDerive(outputFile: string) {
     throw new Error(`Configured Polymarket wallet ${configuredWallet} does not match private key address ${account.address}.`);
   }
 
-  const walletClient = createWalletClient({ account, transport: http(envValue("POLYGON_RPC_HTTP") || undefined) });
+  const walletClient = createWalletClient({
+    account,
+    transport: custom({
+      request: async () => {
+        throw new Error("Polygon RPC is not configured; this credential helper only supports local wallet signing.");
+      },
+    }),
+  });
   const client = new ClobClient({
     host: clobUrl(),
     chain: chainId(),
@@ -131,7 +143,18 @@ async function createOrDerive(outputFile: string) {
     funderAddress: envValue("POLYMARKET_FUNDER_ADDRESS") || undefined,
     throwOnError: true,
   });
-  const creds = (await client.createOrDeriveApiKey()) as ApiKeyCreds;
+  let creds: ApiKeyCreds;
+  try {
+    creds = (await client.createOrDeriveApiKey()) as ApiKeyCreds;
+  } catch (createError) {
+    try {
+      creds = (await client.deriveApiKey()) as ApiKeyCreds;
+    } catch (deriveError) {
+      const createMessage = createError instanceof Error ? createError.message : String(createError);
+      const deriveMessage = deriveError instanceof Error ? deriveError.message : String(deriveError);
+      throw new Error(`Polymarket L2 credential creation failed: ${createMessage}; derive failed: ${deriveMessage}`);
+    }
+  }
   if (!creds.key || !creds.secret || !creds.passphrase) throw new Error("Polymarket returned incomplete L2 credentials.");
 
   const existing = existsSync(envPath) ? readFileSync(envPath, "utf8") : "";

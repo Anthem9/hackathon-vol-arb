@@ -114,7 +114,7 @@ Expected result:
 - `/api/health?deep=1` includes source status.
 - `/api/deepbook/readiness` reports Sui Testnet blockers and next action.
 - `/api/polymarket/trading-readiness` never returns secret values.
-- `/api/polymarket/account` reads public Data API positions and, when L2 credentials are configured, reads CLOB open orders with backend HMAC signing. Cancel remains disabled.
+- `/api/polymarket/account` reads public Data API positions and, when L2 credentials are configured, reads CLOB open orders with official CLOB L2 signing. Cancel remains disabled.
 - `/api/polymarket/order-preview` calculates notional, max loss, max profit, and blockers without signing or submitting an order.
 - `/api/polymarket/cancel-preview` validates an order id against authenticated open orders when credentials are configured, but does not cancel.
 

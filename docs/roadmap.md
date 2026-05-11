@@ -7,6 +7,7 @@ DeepBook Predict is currently deployed on Sui Testnet only. This roadmap intenti
 - Mock, hybrid, and real data modes exist.
 - Real DeepBook Predict OracleSVI data is read from Sui Testnet.
 - Polymarket public Gamma and CLOB data is read-only.
+- Polymarket authenticated account/open-order reads are proven with configured L2 credentials, while order submission and cancel execution remain disabled.
 - BTC spot data uses free public sources with divergence checks.
 - Postgres persistence stores snapshots, alerts, development simulation events, wallet-manager bindings, and chain transaction events.
 - Wallet UI can build guarded Sui Testnet transactions.
@@ -93,7 +94,7 @@ Goal: move Polymarket from public-data/readiness mode toward controlled real-acc
 Deliverables:
 
 - Configure Polymarket wallet, funder, L2 key, secret, passphrase, and API access through secrets only.
-- Verify account state, balances, positions, allowances, and open orders.
+- Verify account state, balances, positions, allowances, and open orders. Account positions and authenticated open-order reads are currently proven; balances and allowances remain next.
 - Keep order preview and cancel preview as the first verified authenticated workflow.
 - Add manual confirmation controls before any real order submission or cancellation.
 - Add a live-trading feature gate that defaults to off in every environment.

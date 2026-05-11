@@ -1,4 +1,6 @@
-import { createHmac } from "node:crypto";
+import { createL2Headers, type ApiKeyCreds } from "@polymarket/clob-client-v2";
+import { createWalletClient, custom } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 
 type Check = {
   label: string;
@@ -57,17 +59,6 @@ function asNumber(value: unknown) {
   return Number.NaN;
 }
 
-function decodeBase64Secret(secret: string) {
-  const normalized = secret.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
-  return Buffer.from(padded, "base64");
-}
-
-function buildPolyHmacSignature(secret: string, timestamp: number, method: string, requestPath: string, body?: string) {
-  const message = `${timestamp}${method}${requestPath}${body ?? ""}`;
-  return createHmac("sha256", decodeBase64Secret(secret)).update(message).digest("base64").replace(/\+/g, "-").replace(/\//g, "_");
-}
-
 function queryUrl(base: string, path: string, params: Record<string, string | number | boolean | undefined>) {
   const url = new URL(path, base.endsWith("/") ? base : `${base}/`);
   for (const [key, value] of Object.entries(params)) {
@@ -88,7 +79,38 @@ async function getJson(url: URL) {
   }
 }
 
-async function getAuthenticatedClobJson(path: string, params: Record<string, string | number | boolean | undefined>) {
+function buildPolymarketWalletClient(walletAddress: string) {
+  const privateKey = envValue("POLYMARKET_PRIVATE_KEY") || envValue("POLYGON_TEST_PRIVATE_KEY");
+  if (!isPrivateKey(privateKey)) {
+    throw new Error("POLYMARKET_PRIVATE_KEY or POLYGON_TEST_PRIVATE_KEY must be configured for authenticated CLOB reads.");
+  }
+  const account = privateKeyToAccount(privateKey as `0x${string}`);
+  if (walletAddress.toLowerCase() !== account.address.toLowerCase()) {
+    throw new Error(`Configured Polymarket wallet ${walletAddress} does not match local signing key address ${account.address}.`);
+  }
+
+  return createWalletClient({
+    account,
+    transport: custom({
+      request: async () => {
+        throw new Error("Polygon RPC is not configured; authenticated CLOB reads only need local signer identity.");
+      },
+    }),
+  });
+}
+
+function asStringHeaders(headers: Record<string, string | number | boolean>) {
+  return Object.fromEntries(Object.entries(headers).map(([key, value]) => [key, String(value)]));
+}
+
+function normalizeOpenOrdersPayload(payload: unknown) {
+  if (Array.isArray(payload)) return payload.map(asRecord);
+  const record = asRecord(payload);
+  if (Array.isArray(record.data)) return record.data.map(asRecord);
+  return [];
+}
+
+async function getAuthenticatedOpenOrders() {
   const walletAddress = envValue("POLYMARKET_WALLET_ADDRESS") || envValue("POLYGON_TEST_ADDRESS");
   const apiKey = envValue("POLYMARKET_API_KEY");
   const apiSecret = envValue("POLYMARKET_API_SECRET");
@@ -98,22 +120,19 @@ async function getAuthenticatedClobJson(path: string, params: Record<string, str
     return { ready: false, payload: null, error: "L2 credentials are not configured." };
   }
 
-  const url = queryUrl(clobUrl(), path, params);
-  const requestPath = `${url.pathname}${url.search}`;
-  const timestamp = Math.floor(Date.now() / 1000);
-  const signature = buildPolyHmacSignature(apiSecret, timestamp, "GET", requestPath);
+  const endpoint = "/data/orders";
+  const url = queryUrl(clobUrl(), endpoint, { next_cursor: "MA==" });
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 7000);
   try {
+    const headers = await createL2Headers(
+      buildPolymarketWalletClient(walletAddress),
+      { key: apiKey, secret: apiSecret, passphrase: apiPassphrase } satisfies ApiKeyCreds,
+      { method: "GET", requestPath: endpoint },
+    );
     const response = await fetch(url, {
       signal: controller.signal,
-      headers: {
-        POLY_ADDRESS: walletAddress,
-        POLY_SIGNATURE: signature,
-        POLY_TIMESTAMP: String(timestamp),
-        POLY_API_KEY: apiKey,
-        POLY_PASSPHRASE: apiPassphrase,
-      },
+      headers: asStringHeaders(headers),
     });
     if (!response.ok) return { ready: true, payload: null, error: `CLOB authenticated endpoint returned ${response.status}.` };
     return { ready: true, payload: await response.json(), error: null };
@@ -318,7 +337,7 @@ export async function getPolymarketAccountState(owner?: string) {
       cancelOrders: {
         ready: readiness.capabilities.authenticatedRequests && readiness.liveTradingEnabled,
         enabled: false,
-        detail: "Cancel endpoints remain disabled until explicit backend HMAC signing and manual confirmation controls are implemented.",
+        detail: "Cancel endpoints remain disabled until explicit backend SDK signing and manual confirmation controls are implemented.",
       },
       blockers,
     };
@@ -333,10 +352,9 @@ export async function getPolymarketAccountState(owner?: string) {
   );
   const positions = Array.isArray(positionsPayload) ? positionsPayload.map(asRecord) : [];
   const ordersResult = readiness.capabilities.authenticatedRequests
-    ? await getAuthenticatedClobJson("data/orders", { limit: 100 })
+    ? await getAuthenticatedOpenOrders()
     : { ready: false, payload: null, error: "Open-order reads require POLYMARKET_API_KEY, POLYMARKET_API_SECRET, and POLYMARKET_API_PASSPHRASE." };
-  const ordersPayload = asRecord(ordersResult.payload);
-  const orders = Array.isArray(ordersPayload.data) ? ordersPayload.data.map(asRecord) : [];
+  const orders = normalizeOpenOrdersPayload(ordersResult.payload);
   const totals = positions.reduce<{ currentValue: number; initialValue: number; cashPnl: number; realizedPnl: number }>(
     (sum, position) => {
       sum.currentValue += asNumber(position.currentValue) || 0;
@@ -375,12 +393,12 @@ export async function getPolymarketAccountState(owner?: string) {
     openOrders: {
       ready: readiness.capabilities.authenticatedRequests,
       enabled: readiness.capabilities.authenticatedRequests && ordersResult.error === null,
-      detail: ordersResult.error ?? `Fetched ${orders.length} authenticated open order(s) with backend L2 HMAC signing.`,
+      detail: ordersResult.error ?? `Fetched ${orders.length} authenticated open order(s) with official CLOB L2 signing.`,
     },
     cancelOrders: {
       ready: readiness.capabilities.authenticatedRequests && readiness.liveTradingEnabled,
       enabled: false,
-      detail: "Cancel endpoints remain disabled until explicit backend HMAC signing and manual confirmation controls are implemented.",
+      detail: "Cancel endpoints remain disabled until explicit backend SDK signing and manual confirmation controls are implemented.",
     },
     blockers,
   };

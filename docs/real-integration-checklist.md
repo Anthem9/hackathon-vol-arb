@@ -47,7 +47,7 @@ This checklist is the handoff from the mock demo to real-service integration. De
   - `pnpm --filter @vol-arb/api polymarket:credentials` checks local wallet/private-key/L2 credential readiness without calling authenticated Polymarket endpoints.
   - `pnpm --filter @vol-arb/api polymarket:credentials --create-or-derive --write-env .env` uses the official CLOB v2 SDK to create or derive L2 credentials and writes them to an ignored local env file without printing secrets.
   - `/api/polymarket/trading-readiness` verifies CLOB reachability, L2 credentials, wallet signing material, optional funder address, and the live-trading feature flag without returning secrets.
-  - `/api/polymarket/account` reads public Data API positions for the configured wallet and reads authenticated CLOB open orders with backend L2 HMAC signing when credentials are configured.
+  - `/api/polymarket/account` reads public Data API positions for the configured wallet and reads authenticated CLOB open orders with official CLOB L2 signing when credentials are configured.
   - `/api/polymarket/order-preview` calculates notional, max loss, max profit, and blockers without signing or submitting an order.
   - `/api/polymarket/cancel-preview` validates an order id against authenticated open orders when credentials are configured, but does not cancel.
 - Production caveat: Polymarket trading is on Polygon mainnet. Treat Amoy as wallet/RPC/signing rehearsal, not a real Polymarket trading sandbox, unless Polymarket publishes a separate test trading environment.
@@ -100,7 +100,7 @@ This checklist is the handoff from the mock demo to real-service integration. De
 - The dashboard exposes a Polymarket cancel preview panel; it does not submit cancel requests.
 - A full Sui Testnet lifecycle has been verified with real testnet transactions.
 - Slush connected-wallet manager creation, deposit, mint dry-run, idle withdraw, and read-only monitoring have been verified; signed mint/redeem are pending Chrome recovery or manual wallet signing.
-- Polymarket authenticated trading is still disabled.
+- Polymarket authenticated account/open-order reads are verified against the configured wallet; authenticated trading is still disabled.
 - DeepBook Predict mainnet migration is deferred until official protocol support exists.
 - `docs/runbook.md` provides clean-start, smoke-test, dry-run, execute, maintenance, backup, and recovery procedures.
 
