@@ -120,8 +120,8 @@ Expected result:
 - `/api/health?deep=1` includes source status.
 - `/api/deepbook/readiness` reports Sui Testnet blockers and next action.
 - `/api/polymarket/trading-readiness` never returns secret values.
-- `/api/polymarket/account` reads public Data API positions and, when L2 credentials are configured, reads CLOB open orders with official CLOB L2 signing.
-- `/api/polymarket/order-preview` calculates notional, max loss, max profit, and blockers without signing or submitting an order.
+- `/api/polymarket/account` reads public Data API positions and, when L2 credentials are configured, reads CLOB collateral balance, allowances, and open orders with official CLOB L2 signing.
+- `/api/polymarket/order-preview` calculates notional, max loss, max profit, collateral balance/allowance preflight, and blockers without signing or submitting an order.
 - `/api/polymarket/cancel-preview` validates an order id against authenticated open orders when credentials are configured, but does not cancel.
 - `/api/polymarket/order-execute` and `/api/polymarket/cancel-execute` should return `submitted=false` unless the live flag, explicit approval flag, credentials, Polygon chain id, notional cap, and exact manual confirmation text are all present.
 
@@ -149,6 +149,58 @@ pnpm --filter @vol-arb/api polymarket:credentials \
 ```
 
 The command writes `POLYMARKET_API_KEY`, `POLYMARKET_API_SECRET`, and `POLYMARKET_API_PASSPHRASE` to an ignored local env file and does not print secret values. Use `--write-env .env.polymarket.local` instead if you want a staging file before updating the runtime `.env`. Keep `POLYMARKET_ENABLE_LIVE_TRADING=false` until authenticated account reads, order preview, risk review, and manual confirmation controls have been completed.
+
+## Polymarket Small-Capital Gate
+
+Use this section only after legal/risk approval and after the operator has intentionally funded the configured Polymarket wallet on Polygon mainnet. There is no Polymarket test trading sandbox in this repo.
+
+Preconditions:
+
+- `POLYMARKET_CHAIN_ID=137`.
+- `POLYMARKET_WALLET_ADDRESS` matches the local signing key.
+- `POLYMARKET_API_KEY`, `POLYMARKET_API_SECRET`, and `POLYMARKET_API_PASSPHRASE` are configured in an ignored env file.
+- `/api/polymarket/account` returns `balanceAllowance.enabled=true`.
+- Collateral balance and max allowance are greater than the intended order max loss.
+- `POLYMARKET_MAX_LIVE_ORDER_USD` is set to the smallest useful smoke size.
+- `POLYMARKET_ENABLE_LIVE_TRADING=true` and `POLYMARKET_LIVE_TRADING_APPROVED=true` are set only for the approved live run window.
+
+Dry-run the exact order payload first:
+
+```bash
+curl -X POST http://localhost:4000/api/polymarket/order-preview \
+  -H 'content-type: application/json' \
+  --data '{"market":"<condition-or-slug>","tokenId":"<outcome-token-id>","side":"buy","price":"0.01","size":"1"}'
+```
+
+Continue only when:
+
+- `orderSubmissionReady=true`.
+- `blockers=[]`.
+- `accountPreflight.balance` and `accountPreflight.maxAllowance` both cover `preview.maxLoss`.
+- The market, outcome token, side, price, size, and max loss match the operator's intended manual trade.
+
+Submit only with the exact confirmation text configured in `POLYMARKET_ORDER_CONFIRM_TEXT`:
+
+```bash
+curl -X POST http://localhost:4000/api/polymarket/order-execute \
+  -H 'content-type: application/json' \
+  --data '{"market":"<condition-or-slug>","tokenId":"<outcome-token-id>","side":"buy","price":"0.01","size":"1","confirmation":"I understand this submits a real Polymarket order"}'
+```
+
+After submission:
+
+- Refresh `/api/polymarket/account`.
+- Confirm the order appears in authenticated open orders or record the fill response.
+- Cancel unintended open orders through `/api/polymarket/cancel-preview` and `/api/polymarket/cancel-execute` only after exact order-id verification and manual confirmation.
+- Reset `POLYMARKET_ENABLE_LIVE_TRADING=false` after the approved run window.
+
+Stop conditions:
+
+- Chain id is not `137`.
+- Any account, balance, allowance, or open-order read fails.
+- The preview payload differs from the intended order.
+- The notional exceeds `POLYMARKET_MAX_LIVE_ORDER_USD`.
+- The operator cannot explain why the opportunity is `execute` instead of `watch` or `reject`.
 
 ## Browser Smoke
 

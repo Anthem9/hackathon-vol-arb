@@ -124,6 +124,11 @@ Exit criteria:
 - The system can explain each `reject`, `watch`, and `execute` decision.
 - No duplicate submissions or unsafe retries occur during failure recovery.
 
+Current status:
+
+- `docs/runbook.md` defines the manual small-capital Polymarket gate, including live-run preconditions, order preview requirements, confirmation text, post-submit checks, and stop conditions.
+- Actual live submission remains deferred until the operator funds the configured account and completes legal/risk approval.
+
 ## Stage 6: Mainnet Readiness
 
 Goal: be ready to migrate only after official DeepBook Predict mainnet package IDs, object IDs, asset types, and operational guidance exist.

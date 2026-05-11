@@ -104,10 +104,10 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 
 ## Known Gaps
 
-1. Polymarket real order submission and cancel execution are implemented but intentionally disabled by default. Before any live use, the operator still needs funding/allowance review, legal/risk approval, and a small-capital runbook.
+1. Polymarket real order submission and cancel execution are implemented but intentionally disabled by default. Before any live use, the operator still needs funding/allowance setup plus legal/risk approval; the small-capital runbook is documented in `docs/runbook.md`.
 2. BTC free price sources can hit public rate limits. The app now uses CoinGecko, Coinbase, and Kraken redundancy and degrades with alerts, but sustained production use should still add a paid or higher-quota source.
 3. DeepBook Predict mainnet migration is not possible until official mainnet package IDs, objects, and operational guidance exist.
 
 ## Completion Decision
 
-Do not mark the objective complete yet. The codebase is production-like for the full generated-wallet and Slush connected-wallet DeepBook Predict Sui Testnet lifecycles, and guarded Polymarket live execution controls now exist. Remaining blockers are operational rather than missing core implementation: Polymarket funding/allowance/risk approval for live use, sustained production-grade price data quotas, and future DeepBook Predict mainnet migration once official support exists.
+Do not mark the objective complete yet. The codebase is production-like for the full generated-wallet and Slush connected-wallet DeepBook Predict Sui Testnet lifecycles, and guarded Polymarket live execution controls now exist. Remaining blockers are operational rather than missing core implementation: Polymarket funding/allowance setup and risk approval for live use, sustained production-grade price data quotas, and future DeepBook Predict mainnet migration once official support exists.
