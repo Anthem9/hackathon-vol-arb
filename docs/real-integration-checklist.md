@@ -99,7 +99,7 @@ This checklist is the handoff from the mock demo to real-service integration. De
 - The dashboard exposes a Polymarket order preview panel for risk calculation only; it does not sign or submit orders.
 - The dashboard exposes a Polymarket cancel preview panel; it does not submit cancel requests.
 - A full Sui Testnet lifecycle has been verified with real testnet transactions.
-- Slush connected-wallet manager creation, deposit, mint dry-run, idle withdraw, and read-only monitoring have been verified; signed mint/redeem are pending Chrome recovery or manual wallet signing.
+- Slush connected-wallet manager creation, deposit, mint dry-run, signed mint, redeem, and final withdraw have been verified on real Sui Testnet.
 - Polymarket authenticated account/open-order reads are verified against the configured wallet; authenticated trading is still disabled.
 - DeepBook Predict mainnet migration is deferred until official protocol support exists.
 - `docs/runbook.md` provides clean-start, smoke-test, dry-run, execute, maintenance, backup, and recovery procedures.

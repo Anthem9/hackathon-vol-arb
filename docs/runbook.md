@@ -215,18 +215,20 @@ pnpm --filter @vol-arb/api deepbook:wallet-monitor \
 
 This is a read-only monitor. It prints JSON snapshots for manager readiness, OracleSVI candidate count, balances, open exposure, open positions, redeemable value, and withdraw readiness. It does not sign or submit transactions.
 
-## Slush / Chrome Recovery
+## Slush / Chrome State
 
-Use this when the connected-wallet path is ready on-chain but browser automation cannot attach to Chrome.
+Use this to verify or resume the connected-wallet path in Chrome.
 
 Current known-good Slush testnet state:
 
 - Owner: `0xd123dbbb133f8f43abca110200ef72d2a81d7cbc88e69e11624e9ad62b851dcd`
 - PredictManager: `0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f`
-- Manager DUSDC balance: `0.9 DUSDC`
+- Manager DUSDC balance: `0 DUSDC`
+- Wallet DUSDC balance after final withdraw: `19.997556 DUSDC`
 - Open positions: `0`
 - Open exposure: `0`
-- Next safe action: mint dry-run, then signed mint if the wallet prompt is Sui Testnet and targets the DeepBook Predict package.
+- Latest completed lifecycle: mint `9cvdVgSJc5m1eShyhvv6ijx4hbdPbDc11e1SKsG3THZW`, redeem `CA5PoCejdGGeAwwydZfARDC5BXdzAr4At86QK5xAouVc`, final withdraw `FkuuHYmaXxxp9qtZeQJya7MCxqseP8os7CweLKNPcVbz`.
+- Next safe action: deposit DUSDC if another mint cycle is needed.
 
 Non-destructive checks:
 
@@ -239,13 +241,14 @@ open -na 'Google Chrome' --args --new-window 'http://localhost:3001/#wallet'
 
 If Chrome has no visible window or automation reports `cgWindowNotFound`, stop and ask the operator before quitting or restarting Chrome. Restarting Chrome can disrupt the operator's normal browser session.
 
-After Chrome is recovered:
+For a new Slush lifecycle:
 
 1. Open `http://localhost:3001/#wallet`.
 2. Confirm Slush is unlocked, on Sui Testnet, and connected as `0xd123...1dcd`.
-3. Run wallet mint dry-run.
-4. Sign mint only if dry-run passes and the prompt targets the DeepBook Predict Testnet package.
-5. Wait for expiry, redeem, then withdraw only after `openPositions=0`, `openExposure=0`, and `canWithdrawQuote=true`.
+3. Deposit DUSDC into the manager.
+4. Run wallet mint dry-run.
+5. Sign mint only if dry-run passes and the prompt targets the DeepBook Predict Testnet package.
+6. Wait for expiry, redeem, then withdraw only after `openPositions=0`, `openExposure=0`, and `canWithdrawQuote=true`.
 
 ## Maintenance
 

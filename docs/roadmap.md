@@ -37,7 +37,7 @@ Exit criteria:
 - A non-owner wallet can view state but cannot execute manager operations.
 - Browser refresh does not lose manager binding, transaction state, or blockers.
 
-Current blocker:
+Current status:
 
 - Slush connected-wallet manager creation is proven on Sui Testnet.
 - Current Slush test wallet `0xd123...1dcd` owns PredictManager `0x3df8...411f`.
@@ -48,8 +48,8 @@ Current blocker:
 - Generated-wallet smoke execution has proven repeated full DeepBook Predict Testnet lifecycles. Latest cycle: deposit digest `gzGQ5J1nrTWQfYbUUVzbVEhr9BfFEfiPjH24HVVaR6b`, mint digest `B7WTzjDN83r85LSJ2YQztpTgy9khjTWtmiGFx9jw2v3M`, redeem digest `7RDdWGzYWsmQpNQKKGzDzicnWnaxrpGyrchJL3RUqE3x`, and withdraw digest `8PQTQ3ThSdkJxtTmVUkiAAudHrezAkQ1arf6WzgEtQkz`.
 - The generated-wallet manager ended with `trading_balance=0`, `open_exposure=0`, `open_positions=0`, and all generated-wallet positions marked `redeemed`.
 - Slush withdrew 0.1 DUSDC from the manager with digest `9Fz2pt...Jm1R`.
-- Signed mint and redeem acceptance remain pending for the Slush wallet path; local macOS UI automation is currently unable to attach to Chrome (`cgWindowNotFound`), so resume manually or after browser automation recovers.
-- Resume from `docs/wallet-acceptance.md` Step 4.
+- Slush connected-wallet mint, redeem, and final withdraw are now proven on real Sui Testnet. Latest Slush cycle: mint digest `9cvdVgSJc5m1eShyhvv6ijx4hbdPbDc11e1SKsG3THZW`, redeem digest `CA5PoCejdGGeAwwydZfARDC5BXdzAr4At86QK5xAouVc`, final withdraw `0.897556 DUSDC` digest `FkuuHYmaXxxp9qtZeQJya7MCxqseP8os7CweLKNPcVbz`.
+- The Slush manager ended with `trading_balance=0`, `open_exposure=0`, `open_positions=0`, wallet DUSDC `19.997556`, and the wallet position marked `redeemed`.
 
 ## Stage 2: DeepBook Predict Testnet Product Hardening
 

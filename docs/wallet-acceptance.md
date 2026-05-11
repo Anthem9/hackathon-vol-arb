@@ -173,7 +173,9 @@ Current run evidence, 2026-05-11:
 - The API now returns 8 active OracleSVI candidates from `/api/deepbook/status`; local dry-run evidence showed early candidates can fail with `pricing_config::quote_spread_from_fair_price` abort `1` or `predict::assert_mintable_ask` abort `7`, while later candidates pass.
 - Generated-wallet smoke execution proved the same candidate-search logic with a real Sui Testnet mint: digest `Yi6WhLkHqMEN8A2ohN9qRt8DgtZu2rXUdTGsqaFdCZh`, owner `0x2e7742...bb2305`, manager `0xa0845d...9387af`, oracle `0xfe57fb...dc24b`, expiry `2026-05-11 01:30:00 Asia/Shanghai`, strike `81000000000000`, quantity `100000`.
 - `/api/deepbook/positions?owner=0x2e7742f3f4edd234307f545ce772c666d2ebdfc24e64083d2375888e02bb2305&managerId=0xa0845da0646708f196fdb68ded467b8b345daaa0dc7d006bbc393a16769387af` reports `openPositions=1`, `open_exposure=98492`, `trading_balance=899664`, `redeemable_value=0`, and `canWithdrawQuote=false`.
-- Slush signed mint is still pending only because local macOS UI automation cannot currently attach to Chrome (`cgWindowNotFound`). Resume by opening `http://localhost:3001/#wallet`, confirming Slush account `0xd123...1dcd`, clicking `Dry-run mint`, then `Execute mint` if the wallet prompt is Sui Testnet and targets the DeepBook Predict package.
+- Slush connected-wallet mint dry-run passed for owner `0xd123...1dcd`, manager `0x3df8...411f`, oracle `0x3f3978...a531`, expiry `2026-05-11 10:00:00 Asia/Shanghai`, strike `82000000000000`, direction `up`, quantity `100000`, dry-run digest `Gd84jpht6LLEBedMpjgkurHUBSTrGHFpCyBiZ5qEpaNA`.
+- Slush wallet prompt was confirmed on `network=testnet`; target was `predict_manager::mint`; signed mint digest `9cvdVgSJc5m1eShyhvv6ijx4hbdPbDc11e1SKsG3THZW`.
+- After mint, `/api/deepbook/positions` reported `openPositions=1`, `openExposure=2444`, manager balance `0.897556 DUSDC`, and withdraw remained blocked while the position was open.
 
 Latest generated-wallet execution, 2026-05-11:
 
@@ -215,6 +217,9 @@ Current run evidence, 2026-05-11:
 - Real Sui Testnet redeem executed successfully with digest `5YUsHuYMUjua4r5wV6NEhSVe6PL5EmRvVEEHr8JL3NXs`.
 - After refresh, manager summary reported `open_positions=0`, `open_exposure=0`, `redeemable_value=0`, and `trading_balance=999664`.
 - Lifecycle reconciliation now marks chain-backfilled redeem events as `redeemed` by matching `oracleId + expiry + strike + direction + quantity`, not only by local `mintDigest` payload.
+- Slush position `9cvdVgSJc5m1eShyhvv6ijx4hbdPbDc11e1SKsG3THZW` became expired with `redeemableValue=0`; a zero-payout losing position was still redeemable by the protocol and must clear the open-position gate.
+- Slush wallet prompt was confirmed on `network=testnet`; target was `predict_manager::redeem`; signed redeem digest `CA5PoCejdGGeAwwydZfARDC5BXdzAr4At86QK5xAouVc`.
+- After refresh, `/api/deepbook/positions` reported the Slush position lifecycle as `redeemed`, `openPositions=0`, `openExposure=0`, and `canWithdrawQuote=true`.
 
 ## Step 6: Withdraw
 
@@ -260,6 +265,9 @@ Current run evidence, 2026-05-11:
 - Real Sui Testnet withdraw executed successfully with digest `GdfYVCj2quGYUyLdRBsNuSGzQGRJ7rSpSAYB6cTLxcfN`.
 - Transaction balance changes include `+999664` base units DUSDC to `0x2e7742...bb2305`.
 - Final `/api/deepbook/positions` state reports `trading_balance=0`, `open_exposure=0`, `open_positions=0`, `redeemable_value=0`, `canWithdrawQuote=false`, and the generated-wallet positions as `redeemed`.
+- Slush final withdraw was executed after `openPositions=0`, `openExposure=0`, and `canWithdrawQuote=true`.
+- Slush wallet prompt was confirmed on `network=testnet`; target was `predict_manager::withdraw`; expected coin inflow was `+0.8975 DUSDC`; signed withdraw digest `FkuuHYmaXxxp9qtZeQJya7MCxqseP8os7CweLKNPcVbz`.
+- Final Slush API state reports `trading_balance=0`, `open_exposure=0`, `open_positions=0`, `redeemable_value=0`, `canWithdrawQuote=false`, wallet DUSDC `19.997556`, and position `9cvdVgSJc5m1eShyhvv6ijx4hbdPbDc11e1SKsG3THZW` marked `redeemed`.
 
 ## Final Acceptance
 

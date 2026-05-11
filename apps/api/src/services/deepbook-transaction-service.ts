@@ -950,8 +950,8 @@ export async function getDeepBookPositionState(managerId?: string, owner?: strin
     const key = positionMatchKey(event);
     const redeemed = redeemedMintDigests.has(event.digest) || Boolean(key && redeemedPositionKeys.has(key));
     const expired = typeof event.expiry === "number" && event.expiry <= now;
-    const redeemable = Boolean(managerSummary && managerSummary.redeemable_value > 0);
     const awaitingSettlement = Boolean(managerSummary && managerSummary.awaiting_settlement_positions > 0);
+    const redeemable = Boolean(managerSummary && (managerSummary.redeemable_value > 0 || (expired && !awaitingSettlement)));
     const lifecycle: DeepBookPosition["lifecycle"] = redeemed
       ? "redeemed"
       : redeemable
@@ -981,7 +981,9 @@ export async function getDeepBookPositionState(managerId?: string, owner?: strin
             ? "Position has already been redeemed."
             : lifecycle === "open"
             ? "Position has not reached expiry."
-            : "PredictManager summary does not expose redeemable value yet.",
+            : lifecycle === "pending_settlement"
+              ? "PredictManager summary does not expose redeemable value yet."
+              : "Position is expired; dry-run redeem to confirm protocol settlement.",
     };
   });
 
