@@ -176,6 +176,10 @@ function normalizeBalanceAllowancePayload(payload: unknown) {
   };
 }
 
+function maxAllowanceValue(allowances: Record<string, string>) {
+  return Math.max(0, ...Object.values(allowances).map((value) => decimalFromAtomic(value)));
+}
+
 async function getAuthenticatedOpenOrders() {
   const walletAddress = envValue("POLYMARKET_WALLET_ADDRESS") || envValue("POLYGON_TEST_ADDRESS");
   const apiKey = envValue("POLYMARKET_API_KEY");
@@ -370,12 +374,51 @@ export async function buildPolymarketOrderPreview(body: unknown) {
   const maxLoss = side === "buy" ? notional : Number.isFinite(price) && Number.isFinite(size) ? (1 - price) * size : 0;
   const maxProfit = side === "buy" ? Number.isFinite(price) && Number.isFinite(size) ? (1 - price) * size : 0 : notional;
   const blockers = [...validationBlockers, ...readiness.blockers];
+  let accountPreflight = {
+    ready: readiness.capabilities.authenticatedRequests,
+    balance: null as number | null,
+    maxAllowance: null as number | null,
+    detail: readiness.capabilities.authenticatedRequests
+      ? "Account balance and allowance preflight has not run yet."
+      : "Account balance and allowance preflight requires configured L2 credentials.",
+  };
+
+  if (readiness.capabilities.authenticatedRequests && validationBlockers.length === 0) {
+    const balanceAllowanceResult = await getAuthenticatedBalanceAllowance();
+    if (balanceAllowanceResult.error || !balanceAllowanceResult.payload) {
+      accountPreflight = {
+        ready: false,
+        balance: null,
+        maxAllowance: null,
+        detail: balanceAllowanceResult.error ?? "Balance and allowance payload is empty.",
+      };
+      blockers.push(accountPreflight.detail);
+    } else {
+      const collateral = normalizeBalanceAllowancePayload(balanceAllowanceResult.payload);
+      const maxAllowance = maxAllowanceValue(collateral.allowances);
+      accountPreflight = {
+        ready: true,
+        balance: collateral.balance,
+        maxAllowance,
+        detail: `Collateral balance $${collateral.balance.toFixed(2)}; max allowance $${maxAllowance.toFixed(2)}.`,
+      };
+      if (side === "buy" && maxLoss > collateral.balance + 0.000001) {
+        blockers.push(`Collateral balance $${collateral.balance.toFixed(2)} is below max loss $${maxLoss.toFixed(2)}.`);
+      }
+      if (side === "buy" && maxLoss > maxAllowance + 0.000001) {
+        blockers.push(`Collateral allowance $${maxAllowance.toFixed(2)} is below max loss $${maxLoss.toFixed(2)}.`);
+      }
+      if (side === "sell") {
+        blockers.push("Sell orders require conditional token balance and allowance preflight before live submission.");
+      }
+    }
+  }
 
   return {
     network: polymarketNetwork(),
     chainId: polymarketChainId(),
     safeMode: readiness.safeMode,
-    orderSubmissionReady: readiness.orderSubmissionReady && validationBlockers.length === 0,
+    orderSubmissionReady: readiness.orderSubmissionReady && blockers.length === 0,
     liveTradingEnabled: readiness.liveTradingEnabled,
     preview: {
       market,
@@ -387,6 +430,7 @@ export async function buildPolymarketOrderPreview(body: unknown) {
       maxLoss,
       maxProfit,
     },
+    accountPreflight,
     blockers,
     nextAction:
       blockers.length > 0

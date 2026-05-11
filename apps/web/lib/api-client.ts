@@ -361,6 +361,12 @@ export type PolymarketOrderPreview = {
     maxLoss: number;
     maxProfit: number;
   };
+  accountPreflight: {
+    ready: boolean;
+    balance: number | null;
+    maxAllowance: number | null;
+    detail: string;
+  };
   blockers: string[];
   nextAction: string;
 };

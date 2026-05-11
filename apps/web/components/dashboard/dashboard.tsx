@@ -856,10 +856,11 @@ function PolymarketReadiness() {
           </label>
         </div>
         {preview ? (
-          <div className="mt-4 grid gap-3 md:grid-cols-4">
+          <div className="mt-4 grid gap-3 md:grid-cols-5">
             <MetricCard label="Notional" value={`$${preview.preview.notional.toFixed(2)}`} detail={`${preview.preview.side.toUpperCase()} @ ${preview.preview.price ?? "--"}`} icon={<CircleDollarSign className="h-5 w-5" />} tone="cyan" />
             <MetricCard label="Max Loss" value={`$${preview.preview.maxLoss.toFixed(2)}`} detail="Worst-case binary outcome." icon={<ShieldCheck className="h-5 w-5" />} tone="amber" />
             <MetricCard label="Max Profit" value={`$${preview.preview.maxProfit.toFixed(2)}`} detail="Before fees and slippage." icon={<TrendingUp className="h-5 w-5" />} tone="green" />
+            <MetricCard label="Funding" value={preview.accountPreflight.ready ? `$${(preview.accountPreflight.balance ?? 0).toFixed(2)}` : "BLOCKED"} detail={preview.accountPreflight.detail} icon={<CircleDollarSign className="h-5 w-5" />} tone={preview.accountPreflight.ready ? "cyan" : "amber"} />
             <MetricCard label="Preview Gate" value={preview.orderSubmissionReady ? "READY" : "BLOCKED"} detail={preview.nextAction} icon={<Radar className="h-5 w-5" />} tone={preview.orderSubmissionReady ? "green" : "amber"} />
           </div>
         ) : null}

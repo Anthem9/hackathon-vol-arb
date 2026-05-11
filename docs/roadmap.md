@@ -95,7 +95,7 @@ Deliverables:
 
 - Configure Polymarket wallet, funder, L2 key, secret, passphrase, and API access through secrets only.
 - Verify account state, balances, positions, allowances, and open orders. Account positions, collateral balance, allowance, and authenticated open-order reads are currently proven.
-- Keep order preview and cancel preview as the first verified authenticated workflow.
+- Keep order preview and cancel preview as the first verified authenticated workflow. Order preview now includes collateral balance and allowance preflight before live submission can be considered ready.
 - Add manual confirmation controls before any real order submission or cancellation. Current implementation exposes `/api/polymarket/order-execute` and `/api/polymarket/cancel-execute` only behind live flags, confirmation text, and notional gates.
 - Add a live-trading feature gate that defaults to off in every environment.
 - Add minimum-size real-account smoke tests only after credentials and legal/risk review are complete.
@@ -103,7 +103,7 @@ Deliverables:
 Exit criteria:
 
 - Authenticated account, collateral balance, allowance, and open-order reads are proven against the configured account.
-- Order preview matches the eventual signed order payload before any live submission is enabled.
+- Order preview matches the eventual signed order payload and passes funding/allowance preflight before any live submission is enabled.
 - The app cannot place or cancel Polymarket orders unless live trading, explicit approval, credentials, funding, notional limits, and manual confirmation are all present.
 
 ## Stage 5: Small-Capital Real Operation

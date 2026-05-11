@@ -294,8 +294,19 @@ const polymarketPreview = await buildPolymarketOrderPreview({
 assert.equal(polymarketPreview.preview.notional, 4.2);
 assert.equal(polymarketPreview.preview.maxLoss, 4.2);
 assert.equal(polymarketPreview.preview.maxProfit, 5.800000000000001);
+assert.equal(polymarketPreview.accountPreflight.ready, true);
+assert.equal(polymarketPreview.accountPreflight.balance, 12.345);
+assert.equal(polymarketPreview.accountPreflight.maxAllowance, 999);
 assert.equal(polymarketPreview.orderSubmissionReady, false);
 assert.ok(polymarketPreview.blockers.includes("POLYMARKET_ENABLE_LIVE_TRADING is not true; order submission remains disabled."));
+const insufficientPolymarketPreview = await buildPolymarketOrderPreview({
+  market: "btc-test-market",
+  tokenId: "123",
+  side: "buy",
+  price: "0.42",
+  size: "100",
+});
+assert.ok(insufficientPolymarketPreview.blockers.includes("Collateral balance $12.35 is below max loss $42.00."));
 const polymarketAccount = await getPolymarketAccountState();
 assert.equal(polymarketAccount.positions.length, 1);
 assert.equal(polymarketAccount.totals.currentValue, 1.2);
