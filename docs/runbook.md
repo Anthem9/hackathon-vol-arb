@@ -152,11 +152,10 @@ The command writes `POLYMARKET_API_KEY`, `POLYMARKET_API_SECRET`, and `POLYMARKE
 
 ## Browser Smoke
 
-Use the temporary Playwright harness if it exists:
+Run the committed Playwright smoke against the production-like web service:
 
 ```bash
-cd /tmp/volarb-e2e
-npx playwright test dashboard-smoke.spec.js --config empty.config.js --reporter=line
+E2E_BASE_URL=http://localhost:3001 pnpm run test:e2e --reporter=line
 ```
 
 Expected result:
@@ -164,8 +163,8 @@ Expected result:
 - Dashboard loads.
 - Navigation anchors work.
 - Opportunity table does not show `TRADE` before wallet dry-run gates.
-- Execution reconcile/backfill buttons complete.
-- Maintenance run completes and still shows `NO SIGNING`.
+- Polymarket account panel shows the collateral balance/allowance card.
+- Maintenance panel still shows `NO SIGNING`.
 
 ## Sui Testnet Dry-Run
 
