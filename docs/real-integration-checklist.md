@@ -7,7 +7,7 @@ This checklist is the handoff from the mock demo to real-service integration. De
 - Keep all generated private keys and provider tokens in local `.env`.
 - Commit only `.env.example`, with variable names and safe public defaults.
 - Never paste wallet private keys, mnemonics, CLOB API secrets, or Ankr tokens into issues, PRs, README files, screenshots, or demo recordings.
-- Run `npm run env:check -- local`, `npm run env:check -- staging`, or `npm run env:check -- production-like` before handoff. The checker enforces the Sui Testnet boundary and keeps Polymarket live trading disabled.
+- Run `npm run env:check -- local`, `npm run env:check -- staging`, or `npm run env:check -- production-like` before handoff. The checker enforces the Sui Testnet boundary and requires explicit Polymarket live-trading approval before any live order path can be enabled.
 
 ## Sui Testnet
 
@@ -50,6 +50,7 @@ This checklist is the handoff from the mock demo to real-service integration. De
   - `/api/polymarket/account` reads public Data API positions for the configured wallet and reads authenticated CLOB open orders with official CLOB L2 signing when credentials are configured.
   - `/api/polymarket/order-preview` calculates notional, max loss, max profit, and blockers without signing or submitting an order.
   - `/api/polymarket/cancel-preview` validates an order id against authenticated open orders when credentials are configured, but does not cancel.
+  - `/api/polymarket/order-execute` and `/api/polymarket/cancel-execute` are implemented but blocked unless live trading, explicit approval, Polygon mainnet, L2 credentials, notional limits, and exact manual confirmation text all pass.
 - Production caveat: Polymarket trading is on Polygon mainnet. Treat Amoy as wallet/RPC/signing rehearsal, not a real Polymarket trading sandbox, unless Polymarket publishes a separate test trading environment.
 
 ## Price Sources
@@ -73,7 +74,7 @@ This checklist is the handoff from the mock demo to real-service integration. De
 - Sui Testnet DeepBook Predict deposit, mint, redeem, and withdraw can be dry-run.
 - Sui Testnet DeepBook Predict deposit, mint, redeem, and withdraw can be executed intentionally with the generated test wallet.
 - Wallet UI blocks non-owner wallets from manager operations.
-- Polymarket authenticated trading and mainnet execution remain disabled.
+- Polymarket authenticated execution remains disabled unless `POLYMARKET_ENABLE_LIVE_TRADING=true`, `POLYMARKET_LIVE_TRADING_APPROVED=true`, and manual confirmation gates pass. DeepBook Predict mainnet execution remains disabled.
 
 ## Implementation Status
 
@@ -93,14 +94,14 @@ This checklist is the handoff from the mock demo to real-service integration. De
 - The API package includes a CLI-only Sui Testnet executor for smoke tests.
 - The API package includes a read-only connected-wallet monitor for Slush/manual signing acceptance evidence.
 - The API exposes dry-run/status-only maintenance endpoints for source refresh, Postgres check, transaction reconcile, and configured-wallet backfill.
-- The dashboard exposes Polymarket authenticated trading readiness while keeping order submission read-only unless explicitly enabled.
+- The dashboard exposes Polymarket authenticated trading readiness while keeping order submission blocked unless explicitly enabled and manually confirmed.
 - The API package includes a CLI-only Polymarket L2 credential readiness and derivation helper.
 - The dashboard exposes public Polymarket wallet positions, authenticated open orders when L2 credentials are configured, and cancel-order gates.
-- The dashboard exposes a Polymarket order preview panel for risk calculation only; it does not sign or submit orders.
-- The dashboard exposes a Polymarket cancel preview panel; it does not submit cancel requests.
+- The dashboard exposes a Polymarket order preview panel plus a disabled-by-default execute control that requires live flags and exact manual confirmation text before submitting through the CLOB SDK.
+- The dashboard exposes a Polymarket cancel preview panel plus a disabled-by-default execute control that requires live flags and exact manual confirmation text before canceling through the CLOB SDK.
 - A full Sui Testnet lifecycle has been verified with real testnet transactions.
 - Slush connected-wallet manager creation, deposit, mint dry-run, signed mint, redeem, and final withdraw have been verified on real Sui Testnet.
-- Polymarket authenticated account/open-order reads are verified against the configured wallet; authenticated trading is still disabled.
+- Polymarket authenticated account/open-order reads are verified against the configured wallet; authenticated execution controls are implemented and remain disabled by default.
 - DeepBook Predict mainnet migration is deferred until official protocol support exists.
 - `docs/runbook.md` provides clean-start, smoke-test, dry-run, execute, maintenance, backup, and recovery procedures.
 

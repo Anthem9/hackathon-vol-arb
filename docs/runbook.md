@@ -8,7 +8,7 @@ This runbook covers the current supported target: DeepBook Predict on Sui Testne
 - `deepbook:testnet dry-run:*` commands do not spend funds.
 - `deepbook:testnet execute:*` commands spend Sui Testnet funds from the generated `.env` wallet.
 - Connected-wallet UI execution requires wallet confirmation and should be treated as real Sui Testnet execution.
-- Polymarket authenticated order submission remains disabled unless `POLYMARKET_ENABLE_LIVE_TRADING=true` and manual confirmation controls are ready.
+- Polymarket authenticated order submission remains disabled unless `POLYMARKET_ENABLE_LIVE_TRADING=true`, `POLYMARKET_LIVE_TRADING_APPROVED=true`, and manual confirmation controls are ready.
 
 ## Clean Start
 
@@ -87,7 +87,7 @@ Production-like testnet:
 VOLARB_ENV_PROFILE=production-like npm run env:check
 ```
 
-All profiles keep `SUI_NETWORK=testnet`. `production-like` requires hybrid or real data mode, checks persistent database configuration, warns when maintenance is not scheduled, and refuses Polymarket live trading until explicit order controls exist.
+All profiles keep `SUI_NETWORK=testnet`. `production-like` requires hybrid or real data mode, checks persistent database configuration, warns when maintenance is not scheduled, and refuses Polymarket live trading unless explicit operator approval is set.
 
 ## API Smoke
 
@@ -106,6 +106,12 @@ curl -X POST http://localhost:4000/api/polymarket/order-preview \
 curl -X POST http://localhost:4000/api/polymarket/cancel-preview \
   -H 'content-type: application/json' \
   --data '{"orderId":"0x0000000000000000000000000000000000000000000000000000000000000000"}'
+curl -X POST http://localhost:4000/api/polymarket/order-execute \
+  -H 'content-type: application/json' \
+  --data '{"market":"btc-test","tokenId":"123","side":"buy","price":"0.42","size":"10","confirmation":"I understand this submits a real Polymarket order"}'
+curl -X POST http://localhost:4000/api/polymarket/cancel-execute \
+  -H 'content-type: application/json' \
+  --data '{"orderId":"0x0000000000000000000000000000000000000000000000000000000000000000","confirmation":"I understand this cancels a real Polymarket order"}'
 ```
 
 Expected result:
@@ -114,9 +120,10 @@ Expected result:
 - `/api/health?deep=1` includes source status.
 - `/api/deepbook/readiness` reports Sui Testnet blockers and next action.
 - `/api/polymarket/trading-readiness` never returns secret values.
-- `/api/polymarket/account` reads public Data API positions and, when L2 credentials are configured, reads CLOB open orders with official CLOB L2 signing. Cancel remains disabled.
+- `/api/polymarket/account` reads public Data API positions and, when L2 credentials are configured, reads CLOB open orders with official CLOB L2 signing.
 - `/api/polymarket/order-preview` calculates notional, max loss, max profit, and blockers without signing or submitting an order.
 - `/api/polymarket/cancel-preview` validates an order id against authenticated open orders when credentials are configured, but does not cancel.
+- `/api/polymarket/order-execute` and `/api/polymarket/cancel-execute` should return `submitted=false` unless the live flag, explicit approval flag, credentials, Polygon chain id, notional cap, and exact manual confirmation text are all present.
 
 ## Polymarket L2 Credentials
 

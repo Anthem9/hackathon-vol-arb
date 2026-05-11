@@ -6,8 +6,8 @@ DeepBook Predict is currently deployed on Sui Testnet only. This roadmap intenti
 
 - Mock, hybrid, and real data modes exist.
 - Real DeepBook Predict OracleSVI data is read from Sui Testnet.
-- Polymarket public Gamma and CLOB data is read-only.
-- Polymarket authenticated account/open-order reads are proven with configured L2 credentials, while order submission and cancel execution remain disabled.
+- Polymarket public Gamma and CLOB data is available.
+- Polymarket authenticated account/open-order reads are proven with configured L2 credentials; order submission and cancel execution endpoints exist but are blocked by default behind live flags, manual confirmation, credentials, and notional limits.
 - BTC spot data uses free public sources with divergence checks.
 - Postgres persistence stores snapshots, alerts, development simulation events, wallet-manager bindings, and chain transaction events.
 - Wallet UI can build guarded Sui Testnet transactions.
@@ -79,7 +79,7 @@ Deliverables:
 - Filter DeepBook Predict opportunities by active OracleSVI object, expiry, strike tick, direction, and dry-run success.
 - Explain `reject`, `watch`, and `execute` decisions with exact blockers.
 - Keep server-assembled opportunities in `watch` or `reject` until a connected wallet has passed an action-specific DeepBook Predict mint dry-run.
-- Keep Polymarket data read-only while using it for comparison, pricing context, and hedge feasibility analysis.
+- Keep Polymarket execution disabled by default while using data for comparison, pricing context, and hedge feasibility analysis.
 - Size trades from edge, confidence, fees, slippage, gas, wallet balance, and manager exposure.
 
 Exit criteria:
@@ -96,7 +96,7 @@ Deliverables:
 - Configure Polymarket wallet, funder, L2 key, secret, passphrase, and API access through secrets only.
 - Verify account state, balances, positions, allowances, and open orders. Account positions and authenticated open-order reads are currently proven; balances and allowances remain next.
 - Keep order preview and cancel preview as the first verified authenticated workflow.
-- Add manual confirmation controls before any real order submission or cancellation.
+- Add manual confirmation controls before any real order submission or cancellation. Current implementation exposes `/api/polymarket/order-execute` and `/api/polymarket/cancel-execute` only behind live flags, confirmation text, and notional gates.
 - Add a live-trading feature gate that defaults to off in every environment.
 - Add minimum-size real-account smoke tests only after credentials and legal/risk review are complete.
 
@@ -104,7 +104,7 @@ Exit criteria:
 
 - Authenticated account and open-order reads are proven against the configured account.
 - Order preview matches the eventual signed order payload before any live submission is enabled.
-- The app cannot place or cancel Polymarket orders unless live trading, credentials, funding, and manual confirmation are all present.
+- The app cannot place or cancel Polymarket orders unless live trading, explicit approval, credentials, funding, notional limits, and manual confirmation are all present.
 
 ## Stage 5: Small-Capital Real Operation
 

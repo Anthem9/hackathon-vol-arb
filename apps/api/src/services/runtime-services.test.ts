@@ -4,7 +4,14 @@ import { createPaperTrade, getPaperTrades } from "./paper-trade-service";
 import { getDashboardData } from "./dashboard-service";
 import { getApiHealth } from "./health-service";
 import { getMaintenanceStatus, runMaintenanceOnce } from "./maintenance-service";
-import { buildPolymarketCancelPreview, buildPolymarketOrderPreview, getPolymarketAccountState, getPolymarketTradingReadiness } from "./polymarket-trading-service";
+import {
+  buildPolymarketCancelPreview,
+  buildPolymarketOrderPreview,
+  executePolymarketCancel,
+  executePolymarketOrder,
+  getPolymarketAccountState,
+  getPolymarketTradingReadiness,
+} from "./polymarket-trading-service";
 import { checkDatabaseConnection } from "../db/postgres";
 
 process.env.DATA_MODE = "mock";
@@ -287,6 +294,24 @@ assert.equal(cancelPreview.cancelReady, false);
 assert.equal(cancelPreview.cancelExecutionEnabled, false);
 assert.equal(cancelPreview.order?.price, 0.42);
 assert.ok(cancelPreview.blockers.includes("POLYMARKET_ENABLE_LIVE_TRADING is not true; cancel execution remains disabled."));
+const blockedOrderExecution = await executePolymarketOrder({
+  market: "btc-test-market",
+  tokenId: "123",
+  side: "buy",
+  price: "0.42",
+  size: "10",
+  confirmation: "I understand this submits a real Polymarket order",
+});
+assert.equal(blockedOrderExecution.submitted, false);
+assert.equal(blockedOrderExecution.executionEnabled, false);
+assert.ok(blockedOrderExecution.blockers.some((blocker: string) => blocker === "POLYMARKET_ENABLE_LIVE_TRADING is not true; order submission remains disabled."));
+const blockedCancelExecution = await executePolymarketCancel({
+  orderId: `0x${"a".repeat(64)}`,
+  confirmation: "I understand this cancels a real Polymarket order",
+});
+assert.equal(blockedCancelExecution.submitted, false);
+assert.equal(blockedCancelExecution.executionEnabled, false);
+assert.ok(blockedCancelExecution.blockers.some((blocker: string) => blocker === "POLYMARKET_ENABLE_LIVE_TRADING is not true; cancel execution remains disabled."));
 globalThis.fetch = originalFetch;
 
 console.log("runtime-services tests passed");

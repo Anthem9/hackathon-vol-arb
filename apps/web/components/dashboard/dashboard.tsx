@@ -26,9 +26,9 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { DashboardApiData, DeepBookTestnetReadiness, MaintenanceStatus, PolymarketAccountState, PolymarketCancelPreview, PolymarketOrderPreview, PolymarketTradingReadiness } from "../../lib/api-client";
+import type { DashboardApiData, DeepBookTestnetReadiness, MaintenanceStatus, PolymarketAccountState, PolymarketCancelExecution, PolymarketCancelPreview, PolymarketOrderExecution, PolymarketOrderPreview, PolymarketTradingReadiness } from "../../lib/api-client";
 import type { HealthStatus } from "@vol-arb/core";
-import { backfillDeepBookTransactions, fetchDashboardData, fetchDeepBookPositions, fetchDeepBookReadiness, fetchMaintenanceStatus, fetchPolymarketAccount, fetchPolymarketTradingReadiness, postAlertAction, previewPolymarketCancel, previewPolymarketOrder, reconcileDeepBookTransactions, runMaintenance, type DeepBookPositionState } from "../../lib/api-client";
+import { backfillDeepBookTransactions, executePolymarketCancel, executePolymarketOrder, fetchDashboardData, fetchDeepBookPositions, fetchDeepBookReadiness, fetchMaintenanceStatus, fetchPolymarketAccount, fetchPolymarketTradingReadiness, postAlertAction, previewPolymarketCancel, previewPolymarketOrder, reconcileDeepBookTransactions, runMaintenance, type DeepBookPositionState } from "../../lib/api-client";
 import { StatusPill } from "../ui/status-pill";
 
 const WalletTradePanel = dynamic(
@@ -616,6 +616,10 @@ function PolymarketReadiness() {
   const [size, setSize] = useState("1");
   const [cancelOrderId, setCancelOrderId] = useState("");
   const [cancelPreview, setCancelPreview] = useState<PolymarketCancelPreview | null>(null);
+  const [orderConfirmation, setOrderConfirmation] = useState("");
+  const [cancelConfirmation, setCancelConfirmation] = useState("");
+  const [orderExecution, setOrderExecution] = useState<PolymarketOrderExecution | null>(null);
+  const [cancelExecution, setCancelExecution] = useState<PolymarketCancelExecution | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -635,6 +639,7 @@ function PolymarketReadiness() {
   async function buildPreview() {
     try {
       setPreview(await previewPolymarketOrder({ market, tokenId, side, price, size }));
+      setOrderExecution(null);
       setError(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to preview Polymarket order.");
@@ -644,9 +649,30 @@ function PolymarketReadiness() {
   async function buildCancelPreview() {
     try {
       setCancelPreview(await previewPolymarketCancel({ orderId: cancelOrderId }));
+      setCancelExecution(null);
       setError(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to preview Polymarket cancel.");
+    }
+  }
+
+  async function submitOrder() {
+    try {
+      setOrderExecution(await executePolymarketOrder({ market, tokenId, side, price, size, confirmation: orderConfirmation }));
+      await refresh();
+      setError(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to submit Polymarket order.");
+    }
+  }
+
+  async function submitCancel() {
+    try {
+      setCancelExecution(await executePolymarketCancel({ orderId: cancelOrderId, confirmation: cancelConfirmation }));
+      await refresh();
+      setError(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to submit Polymarket cancel.");
     }
   }
 
@@ -772,9 +798,19 @@ function PolymarketReadiness() {
           </div>
           {cancelPreview ? (
             <p className="mt-3 text-xs text-terminal-muted">
-              {cancelPreview.cancelReady ? "Cancel preview passed, but execution remains disabled." : cancelPreview.blockers.join("; ")}
+              {cancelPreview.cancelReady ? "Cancel preview passed; execution still requires live flag and exact manual confirmation." : cancelPreview.blockers.join("; ")}
             </p>
           ) : null}
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            <label className="min-w-64 flex-1 text-xs uppercase tracking-[0.16em] text-terminal-muted" htmlFor="polymarket-cancel-confirmation">
+              Cancel Confirmation
+              <input id="polymarket-cancel-confirmation" className="mt-2 w-full rounded border border-white/10 bg-black/30 px-3 py-2 text-sm normal-case tracking-normal text-slate-100 outline-none focus:border-cyan-300/50" value={cancelConfirmation} onChange={(event) => setCancelConfirmation(event.target.value)} placeholder="I understand this cancels a real Polymarket order" />
+            </label>
+            <button className="rounded border border-red-300/40 px-3 py-2 text-sm text-terminal-red disabled:cursor-not-allowed disabled:opacity-50" onClick={submitCancel} disabled={!cancelPreview?.cancelReady || !readiness?.orderSubmissionReady}>
+              Execute cancel
+            </button>
+          </div>
+          {cancelExecution ? <p className="mt-3 text-xs text-terminal-muted">{cancelExecution.submitted ? "Cancel submitted; refresh open orders." : cancelExecution.blockers.join("; ")}</p> : null}
         </div>
       </div>
       <div className="mt-4 rounded-md border border-white/10 bg-black/20 p-4">
@@ -821,6 +857,16 @@ function PolymarketReadiness() {
           </div>
         ) : null}
         {preview?.blockers.length ? <p className="mt-3 text-xs text-terminal-muted">{preview.blockers.join("; ")}</p> : null}
+        <div className="mt-4 flex flex-wrap items-end gap-3">
+          <label className="min-w-80 flex-1 text-xs uppercase tracking-[0.16em] text-terminal-muted" htmlFor="polymarket-order-confirmation">
+            Order Confirmation
+            <input id="polymarket-order-confirmation" className="mt-2 w-full rounded border border-white/10 bg-black/30 px-3 py-2 text-sm normal-case tracking-normal text-slate-100 outline-none focus:border-cyan-300/50" value={orderConfirmation} onChange={(event) => setOrderConfirmation(event.target.value)} placeholder="I understand this submits a real Polymarket order" />
+          </label>
+          <button className="rounded border border-red-300/40 px-3 py-2 text-sm text-terminal-red disabled:cursor-not-allowed disabled:opacity-50" onClick={submitOrder} disabled={!preview?.orderSubmissionReady || !readiness?.orderSubmissionReady}>
+            Execute order
+          </button>
+        </div>
+        {orderExecution ? <p className="mt-3 text-xs text-terminal-muted">{orderExecution.submitted ? "Order submitted; refresh account and open orders." : orderExecution.blockers.join("; ")}</p> : null}
       </div>
     </section>
   );

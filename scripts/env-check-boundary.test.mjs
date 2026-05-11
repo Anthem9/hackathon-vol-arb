@@ -50,7 +50,10 @@ assert.match(mainnet.stderr, /SUI_NETWORK must remain testnet/);
 
 const liveTrading = runEnvCheck({ POLYMARKET_ENABLE_LIVE_TRADING: "true" });
 assert.notEqual(liveTrading.status, 0);
-assert.match(liveTrading.stderr, /POLYMARKET_ENABLE_LIVE_TRADING must stay false/);
+assert.match(liveTrading.stderr, /POLYMARKET_ENABLE_LIVE_TRADING requires POLYMARKET_LIVE_TRADING_APPROVED=true/);
+
+const approvedLiveTrading = runEnvCheck({ POLYMARKET_ENABLE_LIVE_TRADING: "true", POLYMARKET_LIVE_TRADING_APPROVED: "true" });
+assert.equal(approvedLiveTrading.status, 0);
 
 const invalidPolymarketChain = runEnvCheck({ POLYMARKET_CHAIN_ID: "1" });
 assert.notEqual(invalidPolymarketChain.status, 0);

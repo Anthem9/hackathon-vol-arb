@@ -56,7 +56,7 @@ Server Testnet Executor
   -> chain transaction event persistence
 ```
 
-Polymarket remains public-data only. It contributes comparison markets, external prices, and risk context, but it does not submit authenticated orders.
+Polymarket contributes comparison markets, external prices, account/open-order reads, and guarded execution controls. Authenticated order and cancel submission are blocked by default unless live flags, explicit approval, L2 credentials, Polygon mainnet, notional limits, and exact manual confirmation text all pass.
 
 ## Product Direction
 

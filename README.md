@@ -25,7 +25,7 @@ Version 3 focuses on real testnet usability rather than mainnet migration:
 - Current-wallet PredictManager lifecycle instead of a single configured manager
 - Strategy outputs constrained by DeepBook Predict testnet dry-run success
 - Position lifecycle, risk gates, alerts, and operator controls hardened for repeated use
-- Polymarket remains public-data only until separate authenticated trading work is approved
+- Polymarket has authenticated account, preview, and live execution controls, with execution disabled unless explicit live flags and manual confirmation are present
 
 ## Workspace
 
@@ -133,7 +133,7 @@ curl -X POST http://localhost:4000/api/polymarket/cancel-preview \
   --data '{"orderId":"0x0000000000000000000000000000000000000000000000000000000000000000"}'
 ```
 
-Set `POLYMARKET_ENABLE_LIVE_TRADING=true` only after API credentials, signing wallet, funding, and manual confirmation controls are ready.
+Live Polymarket submission endpoints exist at `/api/polymarket/order-execute` and `/api/polymarket/cancel-execute`, but default to blocked. Set `POLYMARKET_ENABLE_LIVE_TRADING=true` and `POLYMARKET_LIVE_TRADING_APPROVED=true` only after API credentials, signing wallet, funding, per-order notional limits, and manual confirmation controls are ready.
 
 Environment profiles:
 
@@ -143,7 +143,7 @@ npm run env:check -- staging
 npm run env:check -- production-like
 ```
 
-`production-like` still means DeepBook Predict Sui Testnet execution. The environment checker refuses Sui mainnet execution and refuses Polymarket live trading until those paths are implemented and explicitly approved.
+`production-like` still means DeepBook Predict Sui Testnet execution. The environment checker refuses Sui mainnet execution and refuses Polymarket live trading unless explicit operator approval is set.
 
 Use `execute:*` only on Sui Testnet with disposable test funds:
 

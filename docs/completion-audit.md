@@ -13,7 +13,7 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 5. Support connected-wallet Sui Testnet UX with manager discovery/binding, guarded deposit, mint, redeem, and withdraw controls.
 6. Persist snapshots, alerts, wallet-manager bindings, and chain transaction lifecycle records in Postgres.
 7. Provide alerts, health, maintenance, backup, restore, and production-like Docker operations.
-8. Integrate Polymarket public data and authenticated readiness/account reads while keeping live trading disabled until separately approved.
+8. Integrate Polymarket public data, authenticated readiness/account reads, and guarded live execution controls while keeping live trading disabled until separately approved.
 9. Keep secrets out of Git and validate the repo with automated checks.
 10. Provide browser-level smoke coverage for the production-like dashboard.
 11. Maintain an explicit product roadmap from current testnet state to full real-world usability without treating hackathon-only demo behavior as the product target.
@@ -29,7 +29,7 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 | Use Postgres persistence | `docker compose ... ps`, `/api/health?deep=1`, schema and transaction tables | Postgres is healthy and stores chain transactions, wallet-manager bindings, alerts, snapshots, and dry-run evidence |
 | Provide operations and recovery procedures | `docs/runbook.md`, maintenance endpoint, backup/restore scripts | Runbook, maintenance, backup, and restore are present and locally verified |
 | Keep secrets out of Git | `.gitignore`, `.dockerignore`, `scripts/secret-scan.mjs`, CI | Local secret scan and GitHub CI secret scan pass |
-| Integrate Polymarket without unsafe live trading | `/api/polymarket/trading-readiness`, `/account`, `/order-preview`, `/cancel-preview` | Public/read-only, authenticated account/open-order reads, and preview paths work; live trading remains blocked |
+| Integrate Polymarket without unsafe live trading | `/api/polymarket/trading-readiness`, `/account`, `/order-preview`, `/cancel-preview`, `/order-execute`, `/cancel-execute`, env checker | Public data, authenticated account/open-order reads, preview paths, and live execution endpoints exist; live execution remains blocked unless explicit approval and manual confirmation gates pass |
 | Produce final roadmap and acceptance docs | `docs/roadmap.md`, `docs/wallet-acceptance.md`, `docs/real-integration-checklist.md` | Roadmap and acceptance docs are current through the full generated-wallet lifecycle |
 | Verify browser/dashboard usability | Playwright dashboard smoke, Chrome/Slush wallet run, and local production-like stack | Dashboard smoke is green; Chrome/Slush connected-wallet signing was completed for mint, redeem, and withdraw |
 
@@ -45,7 +45,7 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 | DeepBook failure handling | API and wallet UI decode balance/gas, ownership, settlement, market/oracle, network, and unknown Move abort failures into operator-readable messages with retry advice | Complete for known categories; unknown abort codes remain conservative |
 | Postgres persistence | `/api/health?deep=1` reports persistence healthy; schema includes snapshots, alerts, bindings, chain events, and wallet mint dry-run evidence | Complete |
 | Operations | `docs/runbook.md`, maintenance POST endpoint, scheduler, backup/restore scripts, production-like Docker stack | Complete |
-| Polymarket readiness | Public CLOB reachable; account/readiness/order-preview/cancel-preview implemented; CLI helper checks wallet/private-key/L2 credential readiness and can explicitly create or derive L2 credentials without printing secrets; authenticated open-order reads are proven with official CLOB L2 signing; live trading remains disabled | Read-only and authenticated reads complete; credential helper complete; live trading intentionally deferred |
+| Polymarket readiness | Public CLOB reachable; account/readiness/order-preview/cancel-preview/order-execute/cancel-execute implemented; CLI helper checks wallet/private-key/L2 credential readiness and can explicitly create or derive L2 credentials without printing secrets; authenticated open-order reads are proven with official CLOB L2 signing; live execution is blocked by default | Authenticated reads complete; guarded live execution controls complete; live trading intentionally disabled until operator approval |
 | Secret safety | `.dockerignore`, `.gitignore`, `scripts/secret-scan.mjs`, CI workflow, `npm run secret:scan` passes | Complete |
 | Browser smoke | `/tmp/volarb-e2e/dashboard-smoke.spec.js` passes against `http://localhost:3001` | Complete for dashboard, maintenance, execution panels |
 | Chrome wallet environment | Chrome loaded `http://localhost:3001/#wallet`; Slush connected on Sui Testnet; wallet account `0xd123...1dcd` created owner-matched manager `0x3df8...411f`, deposited `1 DUSDC`, minted, redeemed, and withdrew the remaining manager DUSDC | Connected wallet lifecycle complete on Sui Testnet |
@@ -89,6 +89,8 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 - `GET /api/polymarket/account`: Data API account read returns configured wallet `0xea5C...DD18`, zero positions, zero orders; authenticated open-order read succeeds with `openOrders.enabled=true` and `Fetched 0 authenticated open order(s) with official CLOB L2 signing.`
 - `POST /api/polymarket/order-preview`: returns notional/max loss/max profit and blocks submission on disabled live trading
 - `POST /api/polymarket/cancel-preview`: validates order-id shape but blocks cancel because live trading is disabled and the order is not in authenticated open orders
+- `POST /api/polymarket/order-execute`: implemented through official CLOB SDK and returns `submitted=false` while `POLYMARKET_ENABLE_LIVE_TRADING=false`; also enforces manual confirmation text and `POLYMARKET_MAX_LIVE_ORDER_USD`
+- `POST /api/polymarket/cancel-execute`: implemented through official CLOB SDK and returns `submitted=false` while `POLYMARKET_ENABLE_LIVE_TRADING=false`; also enforces manual confirmation text and authenticated open-order matching
 - `pnpm --filter @vol-arb/api polymarket:credentials`: pass; configured Polymarket wallet and local private key match, L2 credentials are configured, live trading remains disabled
 - Production-like rebuild after Polymarket authenticated-read work: `docker compose -f docker-compose.production-like.yml up -d --build api` succeeded; web/API/Postgres are running; `/api/health?deep=1` is healthy; `/api/polymarket/trading-readiness` returns `network=polygon`, `chainId=137`, L2 credentials configured, live trading disabled; `/api/polymarket/account` returns `openOrders.enabled=true`
 - Production-like dashboard smoke after rebuild: `npx playwright test dashboard-smoke.spec.js --config empty.config.js --reporter=line` passed 3/3
@@ -104,10 +106,10 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 
 ## Known Gaps
 
-1. Polymarket order submission and cancel execution are intentionally not implemented as product actions. They require separate approval, funding/allowance checks, risk review, and manual confirmation controls.
+1. Polymarket real order submission and cancel execution are implemented but intentionally disabled by default. Before any live use, the operator still needs funding/allowance review, legal/risk approval, and a small-capital runbook.
 2. BTC free price sources can hit public rate limits. The app now uses CoinGecko, Coinbase, and Kraken redundancy and degrades with alerts, but sustained production use should still add a paid or higher-quota source.
 3. DeepBook Predict mainnet migration is not possible until official mainnet package IDs, objects, and operational guidance exist.
 
 ## Completion Decision
 
-Do not mark the objective complete yet. The codebase is production-like for the full generated-wallet and Slush connected-wallet DeepBook Predict Sui Testnet lifecycles. Remaining blockers are outside the DeepBook Predict testnet lifecycle: Polymarket live order submission/cancel controls, sustained production-grade price data quotas, and future DeepBook Predict mainnet migration once official support exists.
+Do not mark the objective complete yet. The codebase is production-like for the full generated-wallet and Slush connected-wallet DeepBook Predict Sui Testnet lifecycles, and guarded Polymarket live execution controls now exist. Remaining blockers are operational rather than missing core implementation: Polymarket funding/allowance/risk approval for live use, sustained production-grade price data quotas, and future DeepBook Predict mainnet migration once official support exists.

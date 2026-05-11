@@ -367,6 +367,31 @@ export type PolymarketCancelPreview = {
   nextAction: string;
 };
 
+export type PolymarketOrderExecution = {
+  network: "polygon" | "polygon-amoy";
+  chainId: 137 | 80002;
+  submitted: boolean;
+  executionEnabled: boolean;
+  preview: PolymarketOrderPreview["preview"];
+  orderType?: "GTC" | "GTD";
+  postOnly?: boolean;
+  response?: unknown;
+  blockers: string[];
+  nextAction: string;
+};
+
+export type PolymarketCancelExecution = {
+  network: "polygon" | "polygon-amoy";
+  chainId: 137 | 80002;
+  submitted: boolean;
+  executionEnabled: boolean;
+  orderId: string;
+  order: PolymarketAccountState["orders"][number] | null;
+  response?: unknown;
+  blockers: string[];
+  nextAction: string;
+};
+
 export type MaintenanceRun = {
   id: string;
   startedAt: number;
@@ -453,6 +478,14 @@ export async function previewPolymarketOrder(payload: { market: string; tokenId:
 
 export async function previewPolymarketCancel(payload: { orderId: string }) {
   return postJson<PolymarketCancelPreview>("/api/polymarket/cancel-preview", payload);
+}
+
+export async function executePolymarketOrder(payload: { market: string; tokenId: string; side: "buy" | "sell"; price: string; size: string; confirmation: string }) {
+  return postJson<PolymarketOrderExecution>("/api/polymarket/order-execute", payload);
+}
+
+export async function executePolymarketCancel(payload: { orderId: string; confirmation: string }) {
+  return postJson<PolymarketCancelExecution>("/api/polymarket/cancel-execute", payload);
 }
 
 export async function fetchPolymarketAccount(owner?: string): Promise<PolymarketAccountState> {

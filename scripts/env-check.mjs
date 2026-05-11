@@ -57,8 +57,8 @@ function checkSuiTestnetBoundary(findings) {
 }
 
 function checkTradingBoundary(findings) {
-  if (process.env.POLYMARKET_ENABLE_LIVE_TRADING === "true") {
-    findings.errors.push("POLYMARKET_ENABLE_LIVE_TRADING must stay false until live order controls are implemented and explicitly approved.");
+  if (process.env.POLYMARKET_ENABLE_LIVE_TRADING === "true" && process.env.POLYMARKET_LIVE_TRADING_APPROVED !== "true") {
+    findings.errors.push("POLYMARKET_ENABLE_LIVE_TRADING requires POLYMARKET_LIVE_TRADING_APPROVED=true after operator risk approval.");
   }
   if (hasValue("POLYMARKET_CHAIN_ID") && !["137", "80002"].includes(process.env.POLYMARKET_CHAIN_ID.trim())) {
     findings.errors.push("POLYMARKET_CHAIN_ID must be 137 for Polygon or 80002 for Polygon Amoy.");

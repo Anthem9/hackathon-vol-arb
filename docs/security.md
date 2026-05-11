@@ -25,12 +25,12 @@ GitHub Actions runs the same scanner before typecheck, tests, lint, and build.
 ## Runtime Boundary
 
 - DeepBook Predict execution is Sui Testnet only while the protocol is testnet-only.
-- Polymarket CLOB calls use public market data endpoints only.
+- Polymarket CLOB calls are read-only by default; live order and cancel endpoints require explicit live flags, manual confirmation text, credentials, and notional limits.
 - DeepBook Predict calls read public testnet objects only.
 - The generated Sui wallet private key may exist in local `.env` for testnet smoke execution.
 - The generated-wallet executor is developer tooling and must not be exposed as a normal public product action.
 - Product wallet execution must be wallet-confirmed by the connected wallet.
-- Polymarket authenticated trading and all mainnet execution remain disabled.
+- Polymarket authenticated trading and all mainnet execution remain disabled by default.
 - Docker builds exclude `.env` and `.env.*`; container secrets are injected at runtime through compose `env_file` or deployment secret storage.
 
 ## Version 3 Foundation
@@ -41,7 +41,7 @@ GitHub Actions runs the same scanner before typecheck, tests, lint, and build.
 - The Sui wallet UI uses wallet confirmation for testnet transactions.
 - The Sui wallet UI enforces configurable public risk limits: `NEXT_PUBLIC_MAX_DEPOSIT_DUSDC`, `NEXT_PUBLIC_MAX_MINT_DUSDC`, and `NEXT_PUBLIC_MAX_OPEN_EXPOSURE_DUSDC`.
 - DeepBook Predict transaction execution is limited to testnet package/object IDs.
-- Polymarket and mainnet execution remain disabled.
+- Polymarket execution is gated off by default; mainnet DeepBook Predict execution remains disabled.
 
 ## Database Backup And Restore
 
@@ -85,4 +85,4 @@ The API can run dry-run/status-only maintenance checks when `ENABLE_MAINTENANCE_
 - Public Polymarket market data remains enabled.
 - Authenticated trading requires L2 API credentials plus a local signing private key.
 - `/api/polymarket/trading-readiness` reports whether credentials are present without returning secret values.
-- Live order submission must stay disabled unless `POLYMARKET_ENABLE_LIVE_TRADING=true` and manual confirmation controls are in place.
+- Live order submission and cancellation require `POLYMARKET_ENABLE_LIVE_TRADING=true`, `POLYMARKET_LIVE_TRADING_APPROVED=true`, exact manual confirmation text, Polygon mainnet chain id `137`, L2 credentials, and `POLYMARKET_MAX_LIVE_ORDER_USD` risk limits.

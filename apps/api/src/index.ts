@@ -26,7 +26,14 @@ import { createAlertOperatorAction } from "./services/alert-service";
 import { getDashboardAlerts, getPersistenceStatus, getRiskRules, getSourceStatuses } from "./services/dashboard-service";
 import { getApiHealth } from "./services/health-service";
 import { getMaintenanceStatus, runMaintenanceOnce, startMaintenanceScheduler } from "./services/maintenance-service";
-import { buildPolymarketCancelPreview, buildPolymarketOrderPreview, getPolymarketAccountState, getPolymarketTradingReadiness } from "./services/polymarket-trading-service";
+import {
+  buildPolymarketCancelPreview,
+  buildPolymarketOrderPreview,
+  executePolymarketCancel,
+  executePolymarketOrder,
+  getPolymarketAccountState,
+  getPolymarketTradingReadiness,
+} from "./services/polymarket-trading-service";
 import { checkDatabaseConnection } from "./db/postgres";
 
 function loadLocalEnv() {
@@ -164,9 +171,25 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
       sendJson(req, res, 200, await buildPolymarketOrderPreview(body));
       return;
     }
+    if (url.pathname === "/api/polymarket/order-execute") {
+      if (req.method !== "POST") {
+        sendJson(req, res, 405, { error: "method_not_allowed", message: "Use POST to submit a Polymarket order." });
+        return;
+      }
+      sendJson(req, res, 200, await executePolymarketOrder(await parseBody(req)));
+      return;
+    }
     if (url.pathname === "/api/polymarket/cancel-preview") {
       const body = req.method === "POST" ? await parseBody(req) : undefined;
       sendJson(req, res, 200, await buildPolymarketCancelPreview(body));
+      return;
+    }
+    if (url.pathname === "/api/polymarket/cancel-execute") {
+      if (req.method !== "POST") {
+        sendJson(req, res, 405, { error: "method_not_allowed", message: "Use POST to cancel a Polymarket order." });
+        return;
+      }
+      sendJson(req, res, 200, await executePolymarketCancel(await parseBody(req)));
       return;
     }
     if (url.pathname === "/api/polymarket/account") {

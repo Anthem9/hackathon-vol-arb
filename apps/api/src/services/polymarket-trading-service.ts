@@ -1,4 +1,4 @@
-import { createL2Headers, type ApiKeyCreds } from "@polymarket/clob-client-v2";
+import { Chain, ClobClient, createL2Headers, OrderType, Side, type ApiKeyCreds, type TickSize } from "@polymarket/clob-client-v2";
 import { createWalletClient, custom } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
@@ -31,6 +31,10 @@ function polymarketChainId() {
 
 function polymarketNetwork() {
   return polymarketChainId() === 80002 ? "polygon-amoy" : "polygon";
+}
+
+function polymarketClientChain() {
+  return polymarketChainId() === 80002 ? Chain.AMOY : Chain.POLYGON;
 }
 
 function isPolygonAddress(value: string) {
@@ -101,6 +105,48 @@ function buildPolymarketWalletClient(walletAddress: string) {
 
 function asStringHeaders(headers: Record<string, string | number | boolean>) {
   return Object.fromEntries(Object.entries(headers).map(([key, value]) => [key, String(value)]));
+}
+
+function getPolymarketCreds() {
+  return {
+    key: envValue("POLYMARKET_API_KEY"),
+    secret: envValue("POLYMARKET_API_SECRET"),
+    passphrase: envValue("POLYMARKET_API_PASSPHRASE"),
+  } satisfies ApiKeyCreds;
+}
+
+function buildAuthenticatedPolymarketClient() {
+  const walletAddress = envValue("POLYMARKET_WALLET_ADDRESS") || envValue("POLYGON_TEST_ADDRESS");
+  return new ClobClient({
+    host: clobUrl(),
+    chain: polymarketClientChain(),
+    signer: buildPolymarketWalletClient(walletAddress),
+    creds: getPolymarketCreds(),
+    funderAddress: envValue("POLYMARKET_FUNDER_ADDRESS") || undefined,
+    throwOnError: true,
+  });
+}
+
+function manualOrderConfirmationText() {
+  return envValue("POLYMARKET_ORDER_CONFIRM_TEXT") || "I understand this submits a real Polymarket order";
+}
+
+function manualCancelConfirmationText() {
+  return envValue("POLYMARKET_CANCEL_CONFIRM_TEXT") || "I understand this cancels a real Polymarket order";
+}
+
+function maxLiveOrderNotionalUsd() {
+  const value = Number(envValue("POLYMARKET_MAX_LIVE_ORDER_USD") || "5");
+  return Number.isFinite(value) && value > 0 ? value : 5;
+}
+
+function asTickSize(value: unknown): TickSize {
+  const candidate = asString(value);
+  return candidate === "0.1" || candidate === "0.01" || candidate === "0.001" || candidate === "0.0001" ? candidate : "0.01";
+}
+
+function asOrderType(value: unknown): OrderType.GTC | OrderType.GTD {
+  return asString(value).toUpperCase() === OrderType.GTD ? OrderType.GTD : OrderType.GTC;
 }
 
 function normalizeOpenOrdersPayload(payload: unknown) {
@@ -296,6 +342,58 @@ export async function buildPolymarketOrderPreview(body: unknown) {
   };
 }
 
+export async function executePolymarketOrder(body: unknown) {
+  const input = asRecord(body);
+  const confirmation = asString(input.confirmation);
+  const tickSize = asTickSize(input.tickSize);
+  const orderType = asOrderType(input.orderType);
+  const postOnly = input.postOnly === undefined ? true : Boolean(input.postOnly);
+  const preview = await buildPolymarketOrderPreview(body);
+  const blockers = [...preview.blockers];
+  const maxNotional = maxLiveOrderNotionalUsd();
+
+  if (confirmation !== manualOrderConfirmationText()) blockers.push("Manual order confirmation text does not match.");
+  if (preview.preview.notional > maxNotional) blockers.push(`Order notional ${preview.preview.notional.toFixed(2)} exceeds POLYMARKET_MAX_LIVE_ORDER_USD=${maxNotional}.`);
+
+  if (blockers.length > 0 || !preview.orderSubmissionReady) {
+    return {
+      network: polymarketNetwork(),
+      chainId: polymarketChainId(),
+      submitted: false,
+      executionEnabled: false,
+      preview: preview.preview,
+      blockers,
+      nextAction: "Resolve blockers and repeat preview before submitting a live Polymarket order.",
+    };
+  }
+
+  const client = buildAuthenticatedPolymarketClient();
+  const response = await client.createAndPostOrder(
+    {
+      tokenID: preview.preview.tokenId,
+      price: preview.preview.price ?? 0,
+      side: preview.preview.side === "sell" ? Side.SELL : Side.BUY,
+      size: preview.preview.size ?? 0,
+    },
+    { tickSize },
+    orderType,
+    postOnly,
+  );
+
+  return {
+    network: polymarketNetwork(),
+    chainId: polymarketChainId(),
+    submitted: true,
+    executionEnabled: true,
+    preview: preview.preview,
+    orderType,
+    postOnly,
+    response,
+    blockers: [],
+    nextAction: "Refresh authenticated open orders and account positions.",
+  };
+}
+
 function normalizePolymarketOrder(order: Record<string, unknown>) {
   return {
     id: asString(order.id),
@@ -429,5 +527,42 @@ export async function buildPolymarketCancelPreview(body: unknown) {
       blockers.length > 0
         ? "Resolve blockers before enabling backend cancel execution."
         : "Backend cancel execution still requires an explicit implementation and manual confirmation gate.",
+  };
+}
+
+export async function executePolymarketCancel(body: unknown) {
+  const input = asRecord(body);
+  const confirmation = asString(input.confirmation);
+  const preview = await buildPolymarketCancelPreview(body);
+  const blockers = [...preview.blockers];
+
+  if (confirmation !== manualCancelConfirmationText()) blockers.push("Manual cancel confirmation text does not match.");
+
+  if (blockers.length > 0 || !preview.cancelReady) {
+    return {
+      network: polymarketNetwork(),
+      chainId: polymarketChainId(),
+      submitted: false,
+      executionEnabled: false,
+      orderId: preview.orderId,
+      order: preview.order,
+      blockers,
+      nextAction: "Resolve blockers and repeat cancel preview before submitting a live cancel.",
+    };
+  }
+
+  const client = buildAuthenticatedPolymarketClient();
+  const response = await client.cancelOrder({ orderID: preview.orderId });
+
+  return {
+    network: polymarketNetwork(),
+    chainId: polymarketChainId(),
+    submitted: true,
+    executionEnabled: true,
+    orderId: preview.orderId,
+    order: preview.order,
+    response,
+    blockers: [],
+    nextAction: "Refresh authenticated open orders.",
   };
 }
