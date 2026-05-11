@@ -540,7 +540,7 @@ export async function getPolymarketAccountState(owner?: string) {
       cancelOrders: {
         ready: readiness.capabilities.authenticatedRequests && readiness.liveTradingEnabled,
         enabled: false,
-        detail: "Cancel endpoints remain disabled until explicit backend SDK signing and manual confirmation controls are implemented.",
+        detail: "Cancel execution is implemented but disabled unless live trading, manual confirmation, and open-order matching all pass.",
       },
       blockers,
     };
