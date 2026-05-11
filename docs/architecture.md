@@ -33,7 +33,7 @@ Polymarket Gamma crypto market discovery
   -> CLOB book and midpoint reads
   -> opportunity scoring
 
-CoinGecko + Coinbase BTC spot
+Configured BTC price endpoint + CoinGecko + Coinbase + Kraken BTC spot
   -> source divergence check
   -> overview and status panels
 
