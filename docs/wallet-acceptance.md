@@ -248,6 +248,11 @@ Current run evidence, 2026-05-10:
 - `/api/deepbook/status?managerId=0x3df873e6d9330932513d83d3b44fca5fc2d1c3d5a496f93b4adaab89af51411f&owner=0xd123dbbb133f8f43abca110200ef72d2a81d7cbc88e69e11624e9ad62b851dcd` reports `trading_balance=900000` and `nextAction=ready_to_mint`.
 - `/api/deepbook/transactions` records `9Fz2ptgxk4Ne2To6Jn2UgjLLp462De2BLrN9LMoWJm1R` as `withdraw_quote`, `status=success`, `lifecycleStatus=confirmed`, `source=wallet_ui`.
 
+Post-restart snapshot, 2026-05-11:
+
+- After recreating the production-like API container, `deepbook:wallet-monitor` still reports Slush owner `0xd123...1dcd` bound to manager `0x3df873...411f`.
+- Manager state remains ready for mint: `managerBalance=900000`, `openPositions=0`, `open_exposure=0`, `redeemable_value=0`, `canWithdrawQuote=true`, `oracleCandidates=8`, and `nextAction=ready_to_mint`.
+
 Current run evidence, 2026-05-11:
 
 - Preconditions held after generated-wallet redeem: `openPositions=0`, `openExposure=0`, and `canWithdrawQuote=true`.
