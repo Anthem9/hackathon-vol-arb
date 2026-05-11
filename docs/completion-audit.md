@@ -51,6 +51,7 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 | Chrome wallet environment | Chrome loaded `http://localhost:3001/#wallet`; Slush connected on Sui Testnet; wallet account `0xd123...1dcd` created owner-matched manager `0x3df8...411f`, deposited `1 DUSDC`, minted, redeemed, and withdrew the remaining manager DUSDC | Connected wallet lifecycle complete on Sui Testnet |
 | Connected wallet acceptance plan | `docs/wallet-acceptance.md` defines connect, create manager, deposit, mint, redeem, withdraw steps with stop conditions and evidence | Accepted for the current Slush Sui Testnet path |
 | Product readiness roadmap | `docs/roadmap.md` now defines connected-wallet acceptance, DeepBook testnet hardening, strategy executability, Polymarket real account integration, small-capital operation, mainnet readiness, and final UX/submission stages | Complete as planning artifact |
+| Demo script | `docs/demo-script.md` | Recording path emphasizes real Sui Testnet execution, guarded Polymarket preview, no secret exposure, no fake mainnet claim, and operations evidence |
 | Mainnet migration gate | `docs/mainnet-migration-checklist.md` defines official-input, configuration, implementation, acceptance, first-run, and stop-condition gates before any future mainnet signing path | Complete as safety artifact; execution remains disabled |
 
 ## Latest Verification

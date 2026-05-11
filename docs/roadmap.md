@@ -163,6 +163,10 @@ Exit criteria:
 - A user can tell what can be done next, why, and what risk gate is active.
 - The demo path is stable, but no fake/test-only product mode is required for normal operation.
 
+Current status:
+
+- `docs/demo-script.md` defines the recording path around real source health, Sui Testnet wallet flow, transaction lifecycle evidence, Polymarket guarded account controls, maintenance `NO SIGNING`, and the explicit DeepBook Predict mainnet deferral.
+
 ## Deferred Until Protocol Support
 
 - DeepBook Predict mainnet migration.
