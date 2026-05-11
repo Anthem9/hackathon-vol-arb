@@ -105,7 +105,7 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 ## Known Gaps
 
 1. Polymarket real order submission and cancel execution are implemented but intentionally disabled by default. Before any live use, the operator still needs funding/allowance setup plus legal/risk approval; the small-capital runbook is documented in `docs/runbook.md`.
-2. BTC free price sources can hit public rate limits. The app now uses CoinGecko, Coinbase, and Kraken redundancy and degrades with alerts, but sustained production use should still add a paid or higher-quota source.
+2. BTC free price sources can hit public rate limits. The app now supports an optional configured paid or higher-quota BTC price endpoint while keeping CoinGecko, Coinbase, and Kraken redundancy; an operator still needs to choose and fund a production provider for sustained use.
 3. DeepBook Predict mainnet migration is not possible until official mainnet package IDs, objects, and operational guidance exist.
 
 ## Completion Decision

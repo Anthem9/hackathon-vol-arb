@@ -202,6 +202,18 @@ Stop conditions:
 - The notional exceeds `POLYMARKET_MAX_LIVE_ORDER_USD`.
 - The operator cannot explain why the opportunity is `execute` instead of `watch` or `reject`.
 
+## Optional BTC Price Provider
+
+The default BTC spot adapter reads CoinGecko, Coinbase, and Kraken. For sustained usage or paid quota, configure an additional endpoint in the ignored runtime env file:
+
+```bash
+BTC_PRICE_API_BASE=https://provider.example/btc-usd
+BTC_PRICE_API_HEADER_NAME=x-api-key
+BTC_PRICE_API_HEADER_VALUE=<secret>
+```
+
+The provider response must include one of these fields: `price`, `usd`, `BTCUSD`, `last`, `rate`, `data.amount`, `data.price`, or `bitcoin.usd`. The adapter adds this configured source to the divergence check rather than replacing the free public sources.
+
 ## Browser Smoke
 
 Run the committed Playwright smoke against the production-like web service:

@@ -59,6 +59,10 @@ This checklist is the handoff from the mock demo to real-service integration. De
   - CoinGecko public simple price API
   - Coinbase public exchange products
   - Kraken public market data
+- Optional sustained-use feed:
+  - Set `BTC_PRICE_API_BASE` to a paid or higher-quota BTC/USD JSON endpoint.
+  - If the provider requires one static header, set `BTC_PRICE_API_HEADER_NAME` and `BTC_PRICE_API_HEADER_VALUE` in the ignored runtime env file.
+  - The adapter accepts common fields such as `price`, `usd`, `BTCUSD`, `last`, `rate`, `data.amount`, `data.price`, or `bitcoin.usd`.
 - Use at least two sources in Version 2 and mark the price feed stale if they diverge beyond a configured threshold.
 - Keep paid API keys optional until rate limits block real testing.
 
@@ -81,7 +85,7 @@ This checklist is the handoff from the mock demo to real-service integration. De
 - `DATA_MODE=mock|hybrid|real` is wired through the API.
 - `DeepBookPredictAdapter` reads `/oracles` and Sui testnet `sui_getObject` for real BTC OracleSVI objects.
 - `PolymarketAdapter` reads Gamma market discovery plus public CLOB book and midpoint endpoints.
-- `BtcPriceAdapter` reads CoinGecko, Coinbase, and Kraken, then reports source divergence.
+- `BtcPriceAdapter` reads an optional configured BTC price endpoint plus CoinGecko, Coinbase, and Kraken, then reports source divergence.
 - `RealDashboardAdapter` assembles a read-only research terminal payload with mock fallback.
 - Server-side opportunities stay `watch` or `reject` until a connected wallet-specific DeepBook Predict dry-run succeeds.
 - `/api/source-statuses` exposes source health and fallback state to the dashboard.

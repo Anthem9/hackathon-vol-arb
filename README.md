@@ -12,7 +12,7 @@ Version 2 adds real read-only service integration:
 
 - DeepBook Predict testnet indexed server and Sui testnet OracleSVI object reads
 - Polymarket public Gamma market discovery and CLOB orderbook/midpoint reads
-- BTC spot from two free sources, currently CoinGecko and Coinbase
+- BTC spot from free public sources plus an optional configured paid or higher-quota endpoint
 - `DATA_MODE=mock|hybrid|real` switching with mock fallback
 - Dry-run risk controls before wallet confirmation
 - Postgres persistence for dashboard snapshots, source status snapshots, alert events, and DeepBook chain transaction events

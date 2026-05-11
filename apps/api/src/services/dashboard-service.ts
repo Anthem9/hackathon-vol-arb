@@ -16,6 +16,14 @@ function dataMode(): DataMode {
   return mode === "real" || mode === "hybrid" || mode === "mock" ? mode : "mock";
 }
 
+function btcPriceOptions() {
+  return {
+    configuredSourceUrl: process.env.BTC_PRICE_API_BASE,
+    configuredHeaderName: process.env.BTC_PRICE_API_HEADER_NAME,
+    configuredHeaderValue: process.env.BTC_PRICE_API_HEADER_VALUE,
+  };
+}
+
 export async function getDashboardData() {
   const mode = dataMode();
   if (mode === "mock") {
@@ -32,7 +40,7 @@ export async function getDashboardData() {
   cachedRealSnapshot = {
     mode,
     createdAt: now,
-    promise: withRuntimeServices(new RealDashboardAdapter({ mode }).getDashboardData()),
+    promise: withRuntimeServices(new RealDashboardAdapter({ mode, price: btcPriceOptions() }).getDashboardData()),
   };
   return cachedRealSnapshot.promise;
 }

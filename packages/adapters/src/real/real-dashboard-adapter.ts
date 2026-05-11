@@ -15,6 +15,11 @@ import { BtcPriceAdapter } from "../price/price-adapter";
 
 type RealDashboardAdapterOptions = {
   mode?: DataMode;
+  price?: {
+    configuredSourceUrl?: string;
+    configuredHeaderName?: string;
+    configuredHeaderValue?: string;
+  };
 };
 
 const dryRunRiskRules: RiskRule[] = [
@@ -98,7 +103,7 @@ export class RealDashboardAdapter {
     this.mode = options.mode ?? "hybrid";
     this.deepbook = new DeepBookPredictAdapter();
     this.polymarket = new PolymarketAdapter();
-    this.price = new BtcPriceAdapter();
+    this.price = new BtcPriceAdapter(options.price);
   }
 
   async getDashboardData(): Promise<DashboardData> {

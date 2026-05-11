@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { BtcPriceAdapter } from "@vol-arb/adapters";
 import { applyAlertOperatorActions, buildAlerts, createAlertOperatorAction } from "./alert-service";
 import { createPaperTrade, getPaperTrades } from "./paper-trade-service";
 import { getDashboardData } from "./dashboard-service";
@@ -73,6 +74,7 @@ assert.equal(typeof health.uptimeSeconds, "number");
 const originalFetch = globalThis.fetch;
 const futureExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000;
 process.env.DATA_MODE = "hybrid";
+process.env.BTC_PRICE_API_BASE = "https://price.polymarket.test/btc";
 globalThis.fetch = async (input, init) => {
   const url = String(input);
   if (url.endsWith("/oracles")) {
@@ -152,6 +154,12 @@ globalThis.fetch = async (input, init) => {
   if (url.includes("coinbase")) {
     return new Response(JSON.stringify({ data: { amount: "100000" } }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
+  if (url === "https://price.polymarket.test/btc") {
+    return new Response(JSON.stringify({ price: 100050, timestamp: Math.floor(Date.now() / 1000) }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
   if (url.includes("kraken")) {
     return new Response(JSON.stringify({ result: { XXBTZUSD: { c: ["100000.0", "1"] } } }), {
       status: 200,
@@ -176,7 +184,11 @@ assert.ok(
 const deepHealth = await getApiHealth({ deep: true });
 assert.equal(deepHealth.sources?.mode, "hybrid");
 assert.ok(deepHealth.sources.sourceStatuses.length > 0);
+const configuredPrice = await new BtcPriceAdapter({ configuredSourceUrl: "https://price.polymarket.test/btc" }).fetchSpot();
+assert.ok(configuredPrice.sources.some((source) => source.source === "Configured"));
+assert.ok(configuredPrice.status.detail.includes("source(s)"));
 globalThis.fetch = originalFetch;
+delete process.env.BTC_PRICE_API_BASE;
 process.env.DATA_MODE = "mock";
 
 delete process.env.SUI_TESTNET_ADDRESS;

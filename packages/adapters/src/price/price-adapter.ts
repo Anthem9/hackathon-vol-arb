@@ -14,6 +14,9 @@ export type BtcPriceState = {
 
 type PriceAdapterOptions = {
   now?: () => number;
+  configuredSourceUrl?: string;
+  configuredHeaderName?: string;
+  configuredHeaderValue?: string;
 };
 
 function isRecord(value: unknown): value is JsonRecord {
@@ -29,11 +32,28 @@ function asNumber(value: unknown, fallback = Number.NaN): number {
   return fallback;
 }
 
-async function fetchJson<T>(url: string): Promise<T> {
+function normalizeTimestamp(value: unknown) {
+  const parsed = asNumber(value, 0);
+  if (!parsed) return null;
+  return parsed < 10_000_000_000 ? parsed * 1000 : parsed;
+}
+
+function extractPrice(payload: unknown) {
+  const record = isRecord(payload) ? payload : {};
+  const data = isRecord(record.data) ? record.data : {};
+  const bitcoin = isRecord(record.bitcoin) ? record.bitcoin : {};
+  for (const value of [record.price, record.usd, record.BTCUSD, record.last, record.rate, data.amount, data.price, bitcoin.usd]) {
+    const parsed = asNumber(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return Number.NaN;
+}
+
+async function fetchJson<T>(url: string, headers?: HeadersInit): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
   try {
-    const response = await fetch(url, { signal: controller.signal });
+    const response = await fetch(url, { signal: controller.signal, headers });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     return (await response.json()) as T;
   } finally {
@@ -43,14 +63,26 @@ async function fetchJson<T>(url: string): Promise<T> {
 
 export class BtcPriceAdapter {
   private readonly now: () => number;
+  private readonly configuredSourceUrl: string;
+  private readonly configuredHeaderName: string;
+  private readonly configuredHeaderValue: string;
 
   constructor(options: PriceAdapterOptions = {}) {
     this.now = options.now ?? Date.now;
+    this.configuredSourceUrl = options.configuredSourceUrl?.trim() ?? "";
+    this.configuredHeaderName = options.configuredHeaderName?.trim() ?? "";
+    this.configuredHeaderValue = options.configuredHeaderValue?.trim() ?? "";
   }
 
   async fetchSpot(): Promise<BtcPriceState> {
     const startedAt = this.now();
-    const settled = await Promise.allSettled([this.fetchCoinGecko(), this.fetchCoinbase(), this.fetchKraken()]);
+    const configuredSource = this.fetchConfigured();
+    const settled = await Promise.allSettled([
+      ...(configuredSource ? [configuredSource] : []),
+      this.fetchCoinGecko(),
+      this.fetchCoinbase(),
+      this.fetchKraken(),
+    ]);
     const sources = settled
       .flatMap((result) => (result.status === "fulfilled" ? [result.value] : []))
       .filter((source) => Number.isFinite(source.price) && source.price > 0);
@@ -73,11 +105,27 @@ export class BtcPriceAdapter {
         latencyMs: this.now() - startedAt,
         detail:
           sources.length > 0
-            ? `${sources.length} free source(s), divergence ${(divergence * 100).toFixed(2)}%.`
+            ? `${sources.length} source(s), divergence ${(divergence * 100).toFixed(2)}%.`
             : "No BTC price source returned data.",
         error: errors.length > 0 ? errors.join("; ") : undefined,
       },
     };
+  }
+
+  private fetchConfigured() {
+    const url = this.configuredSourceUrl;
+    if (!url) return null;
+    const headers = this.configuredHeaderName && this.configuredHeaderValue ? { [this.configuredHeaderName]: this.configuredHeaderValue } : undefined;
+
+    return fetchJson<unknown>(url, headers).then((payload) => {
+      const record = isRecord(payload) ? payload : {};
+      const data = isRecord(record.data) ? record.data : {};
+      return {
+        source: "Configured",
+        price: extractPrice(payload),
+        lastUpdatedAt: normalizeTimestamp(record.last_updated_at ?? record.timestamp ?? record.time ?? data.last_updated_at ?? data.timestamp),
+      };
+    });
   }
 
   private async fetchCoinGecko() {
