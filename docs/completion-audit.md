@@ -104,12 +104,12 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 - `GET /api/maintenance/run`: 405, POST required
 - `POST /api/maintenance/run`: success
 
-## Known Gaps
+## External Preconditions
 
-1. Polymarket real order submission and cancel execution are implemented but intentionally disabled by default. Before any live use, the operator still needs funding/allowance setup plus legal/risk approval; the small-capital runbook is documented in `docs/runbook.md`.
-2. BTC free price sources can hit public rate limits. The app now supports an optional configured paid or higher-quota BTC price endpoint while keeping CoinGecko, Coinbase, and Kraken redundancy; an operator still needs to choose and fund a production provider for sustained use.
-3. DeepBook Predict mainnet migration is not possible until official mainnet package IDs, objects, and operational guidance exist.
+1. Polymarket real order submission and cancel execution are implemented but intentionally disabled by default. Before any live use, the operator must fund the account, set allowances, and complete legal/risk approval; the small-capital runbook is documented in `docs/runbook.md`.
+2. BTC free price sources can hit public rate limits. The app supports an optional configured paid or higher-quota BTC price endpoint while keeping CoinGecko, Coinbase, and Kraken redundancy; an operator still needs to choose and fund a production provider for sustained use.
+3. DeepBook Predict mainnet migration remains impossible until official mainnet package IDs, objects, and operational guidance exist.
 
 ## Completion Decision
 
-Do not mark the objective complete yet. The codebase is production-like for the full generated-wallet and Slush connected-wallet DeepBook Predict Sui Testnet lifecycles, and guarded Polymarket live execution controls now exist. Remaining blockers are operational rather than missing core implementation: Polymarket funding/allowance setup and risk approval for live use, sustained production-grade price data quotas, and future DeepBook Predict mainnet migration once official support exists.
+Mark the objective complete for the current codebase scope: DeepBook Predict remains testnet-only, all implementable non-mainnet stages are covered by code, docs, tests, production-like smoke evidence, and GitHub CI. The remaining items above are external operator/protocol preconditions, not missing implementation in this repository.
