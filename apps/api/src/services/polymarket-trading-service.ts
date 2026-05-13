@@ -1,4 +1,4 @@
-import { Chain, ClobClient, createL2Headers, OrderType, Side, type ApiKeyCreds, type TickSize } from "@polymarket/clob-client-v2";
+import { Chain, ClobClient, createL2Headers, OrderType, Side, SignatureTypeV2, type ApiKeyCreds, type TickSize } from "@polymarket/clob-client-v2";
 import { createWalletClient, custom } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
@@ -35,6 +35,14 @@ function polymarketNetwork() {
 
 function polymarketClientChain() {
   return polymarketChainId() === 80002 ? Chain.AMOY : Chain.POLYGON;
+}
+
+function polymarketSignatureType() {
+  const value = Number(envValue("POLYMARKET_SIGNATURE_TYPE") || "0");
+  if (value === SignatureTypeV2.POLY_PROXY) return SignatureTypeV2.POLY_PROXY;
+  if (value === SignatureTypeV2.POLY_GNOSIS_SAFE) return SignatureTypeV2.POLY_GNOSIS_SAFE;
+  if (value === SignatureTypeV2.POLY_1271) return SignatureTypeV2.POLY_1271;
+  return SignatureTypeV2.EOA;
 }
 
 function isPolygonAddress(value: string) {
@@ -122,6 +130,7 @@ function buildAuthenticatedPolymarketClient() {
     chain: polymarketClientChain(),
     signer: buildPolymarketWalletClient(walletAddress),
     creds: getPolymarketCreds(),
+    signatureType: polymarketSignatureType(),
     funderAddress: envValue("POLYMARKET_FUNDER_ADDRESS") || undefined,
     throwOnError: true,
   });
@@ -224,22 +233,28 @@ async function getAuthenticatedBalanceAllowance() {
     return { ready: false, payload: null, error: "L2 credentials are not configured." };
   }
 
-  const endpoint = "/balance-allowance";
-  const url = queryUrl(clobUrl(), endpoint, { asset_type: "COLLATERAL", ...(funderAddress ? { funder: funderAddress } : {}) });
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 7000);
-  try {
+  const fetchSignedBalanceEndpoint = async (endpoint: "/balance-allowance" | "/balance-allowance/update", parseJson = true) => {
+    const url = queryUrl(clobUrl(), endpoint, {
+      asset_type: "COLLATERAL",
+      signature_type: polymarketSignatureType(),
+      ...(funderAddress ? { funder: funderAddress } : {}),
+    });
     const headers = await createL2Headers(
       buildPolymarketWalletClient(walletAddress),
       { key: apiKey, secret: apiSecret, passphrase: apiPassphrase } satisfies ApiKeyCreds,
       { method: "GET", requestPath: endpoint },
     );
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: asStringHeaders(headers),
-    });
-    if (!response.ok) return { ready: true, payload: null, error: `CLOB balance/allowance endpoint returned ${response.status}.` };
-    return { ready: true, payload: await response.json(), error: null };
+    const response = await fetch(url, { signal: controller.signal, headers: asStringHeaders(headers) });
+    if (!response.ok) throw new Error(`CLOB ${endpoint} endpoint returned ${response.status}.`);
+    if (!parseJson) return null;
+    return response.json();
+  };
+
+  try {
+    await fetchSignedBalanceEndpoint("/balance-allowance/update", false);
+    return { ready: true, payload: await fetchSignedBalanceEndpoint("/balance-allowance"), error: null };
   } catch (error) {
     return { ready: true, payload: null, error: error instanceof Error ? error.message : "CLOB balance/allowance endpoint is unavailable." };
   } finally {
@@ -273,7 +288,7 @@ export async function getPolymarketTradingReadiness() {
   const apiKey = envValue("POLYMARKET_API_KEY");
   const apiSecret = envValue("POLYMARKET_API_SECRET");
   const apiPassphrase = envValue("POLYMARKET_API_PASSPHRASE");
-  const signatureType = envValue("POLYMARKET_SIGNATURE_TYPE") || "0";
+  const signatureType = String(polymarketSignatureType());
   const chainId = polymarketChainId();
   const liveTradingChainReady = chainId === 137;
   const liveTradingEnabled = envValue("POLYMARKET_ENABLE_LIVE_TRADING") === "true";

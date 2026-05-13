@@ -216,6 +216,7 @@ process.env.POLYMARKET_API_KEY = "key";
 process.env.POLYMARKET_API_SECRET = Buffer.from("secret").toString("base64");
 process.env.POLYMARKET_API_PASSPHRASE = "passphrase";
 process.env.POLYMARKET_CHAIN_ID = "137";
+process.env.POLYMARKET_SIGNATURE_TYPE = "3";
 process.env.POLYMARKET_ENABLE_LIVE_TRADING = "false";
 const monitorNow = 1778662840000;
 globalThis.fetch = async (input) => {
@@ -334,8 +335,22 @@ globalThis.fetch = async (input, init) => {
       ],
     });
   }
+  if (url.startsWith("https://clob.polymarket.test/balance-allowance/update?")) {
+    const searchParams = new URL(url).searchParams;
+    assert.equal(searchParams.get("asset_type"), "COLLATERAL");
+    assert.equal(searchParams.get("signature_type"), "3");
+    const headers = new Headers(init?.headers);
+    assert.equal(headers.get("POLY_ADDRESS"), process.env.POLYMARKET_WALLET_ADDRESS);
+    assert.equal(headers.get("POLY_API_KEY"), process.env.POLYMARKET_API_KEY);
+    assert.equal(headers.get("POLY_PASSPHRASE"), process.env.POLYMARKET_API_PASSPHRASE);
+    assert.ok(headers.get("POLY_TIMESTAMP"));
+    assert.ok(headers.get("POLY_SIGNATURE"));
+    return Response.json({});
+  }
   if (url.startsWith("https://clob.polymarket.test/balance-allowance?")) {
-    assert.equal(new URL(url).searchParams.get("asset_type"), "COLLATERAL");
+    const searchParams = new URL(url).searchParams;
+    assert.equal(searchParams.get("asset_type"), "COLLATERAL");
+    assert.equal(searchParams.get("signature_type"), "3");
     const headers = new Headers(init?.headers);
     assert.equal(headers.get("POLY_ADDRESS"), process.env.POLYMARKET_WALLET_ADDRESS);
     assert.equal(headers.get("POLY_API_KEY"), process.env.POLYMARKET_API_KEY);
