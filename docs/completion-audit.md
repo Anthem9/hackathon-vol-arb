@@ -140,16 +140,16 @@ collection, and a hard readiness gate before any live trading.
 ### BTC 5m Current Evidence
 
 - Latest low-cost checkpoint: `pnpm btc5m:checkpoint:status`, generated
-  `2026-05-13T20:37:13.093Z`.
+  `2026-05-13T20:45:05.237Z` on git `0eec461`.
 - Local last-report command: `pnpm btc5m:checkpoint:last`; use it to inspect the latest
   saved checkpoint without running network checks, readiness, GA, or collectors.
 - Background collector: running, PID `38702`, launched through `caffeinate`.
 - Current execution quality: `trade_proxy_only`.
-- Markets with orderbook snapshots: `35/2007`.
-- Current orderbook market coverage: `0.017438963627304436`.
+- Markets with orderbook snapshots: `37/2007`.
+- Current orderbook market coverage: `0.018435475834578975`.
 - Global `partial_orderbook` target: `201` markets.
-- Remaining markets until `partial_orderbook`: `166`.
-- Estimated continuous collection time until `partial_orderbook`: `13.83` hours.
+- Remaining markets until `partial_orderbook`: `164`.
+- Estimated continuous collection time until `partial_orderbook`: `13.67` hours.
 - Weakest Beijing regimes: `weekday_beijing_day` and `weekend_beijing_night`, both
   still at `0` orderbook markets.
 - Current collection recommendation: keep the running untargeted collector active because
