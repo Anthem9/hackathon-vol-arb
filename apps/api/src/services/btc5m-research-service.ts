@@ -1634,6 +1634,7 @@ const TARGET_SEGMENTS: BacktestParams["targetSegment"][] = ["all", "weekday_beij
 const MIN_ACCEPTANCE_MARKETS = 500;
 const MIN_VALIDATION_TRADES = 8;
 const MIN_STRESS_VALIDATION_TRADES = 4;
+const MIN_WALK_FORWARD_WINDOWS = 3;
 
 function findLimitBuyFill(points: PricePoint[], submittedAt: number, limitPrice: number, params: BacktestParams) {
   const deadline = submittedAt + params.entryMaxWaitSeconds * 1000;
@@ -1969,6 +1970,62 @@ function filterPointsForMarkets(points: PricePoint[], markets: Btc5mMarket[]) {
   return points.filter((point) => slugs.has(point.marketSlug));
 }
 
+function runWalkForwardValidation(input: { markets: Btc5mMarket[]; points: PricePoint[]; params: BacktestParams; windows?: number }) {
+  const pointSlugs = new Set(input.points.map((point) => point.marketSlug));
+  const sorted = input.markets.filter((market) => pointSlugs.has(market.slug)).sort((a, b) => a.startTime - b.startTime);
+  const requestedWindows = Math.max(2, Math.min(8, Math.trunc(input.windows ?? 4)));
+  const windows = Math.min(requestedWindows, sorted.length);
+  if (windows < 2) {
+    return {
+      requestedWindows,
+      windows: [],
+      windowCount: 0,
+      totalPnl: 0,
+      totalTrades: 0,
+      profitableWindows: 0,
+      losingWindows: 0,
+      accepted: false,
+    };
+  }
+  const reports = [];
+  for (let index = 0; index < windows; index += 1) {
+    const startIndex = Math.floor((sorted.length * index) / windows);
+    const endIndex = Math.floor((sorted.length * (index + 1)) / windows);
+    const windowMarkets = sorted.slice(startIndex, endIndex);
+    if (windowMarkets.length === 0) continue;
+    const report = runBtc5mBacktestFromData({
+      markets: windowMarkets,
+      points: filterPointsForMarkets(input.points, windowMarkets),
+      params: input.params,
+    });
+    reports.push({
+      index,
+      markets: windowMarkets.length,
+      startTime: new Date(windowMarkets[0]?.startTime ?? 0).toISOString(),
+      endTime: new Date(windowMarkets.at(-1)?.endTime ?? 0).toISOString(),
+      totalPnl: report.totalPnl,
+      tradeCount: report.tradeCount,
+      maxDrawdown: report.maxDrawdown,
+      winRate: report.winRate,
+      segmentBreakdown: report.segmentBreakdown,
+    });
+  }
+  const totalPnl = reports.reduce((sum, report) => sum + report.totalPnl, 0);
+  const totalTrades = reports.reduce((sum, report) => sum + report.tradeCount, 0);
+  const profitableWindows = reports.filter((report) => report.totalPnl > 0).length;
+  const losingWindows = reports.filter((report) => report.totalPnl < 0).length;
+  return {
+    requestedWindows,
+    windows: reports,
+    windowCount: reports.length,
+    totalPnl,
+    totalTrades,
+    profitableWindows,
+    losingWindows,
+    accepted: reports.length >= MIN_WALK_FORWARD_WINDOWS && totalPnl > 0 && profitableWindows > losingWindows,
+  };
+}
+
 function summarizeExecutionCoverage(markets: Btc5mMarket[], points: PricePoint[]) {
   const marketsWithTrades = new Set(points.filter((point) => point.source === "trade_proxy").map((point) => point.marketSlug)).size;
   const marketsWithOrderbook = new Set(points.filter((point) => point.source === "orderbook_snapshot").map((point) => point.marketSlug)).size;
@@ -1998,6 +2055,7 @@ function buildAcceptanceBlockers(input: {
   paperBlocked: boolean;
   validation: BacktestReport;
   stressValidation: BacktestReport;
+  walkForwardValidation: ReturnType<typeof runWalkForwardValidation>;
   coverageAccepted: boolean;
   executionQuality: string;
 }) {
@@ -2067,6 +2125,30 @@ function buildAcceptanceBlockers(input: {
       required: stressDrawdownLimit,
     });
   }
+  if (input.walkForwardValidation.windowCount < MIN_WALK_FORWARD_WINDOWS) {
+    blockers.push({
+      code: "walk_forward_window_count_below_min",
+      message: "Walk-forward validation requires enough sequential windows.",
+      observed: input.walkForwardValidation.windowCount,
+      required: MIN_WALK_FORWARD_WINDOWS,
+    });
+  }
+  if (input.walkForwardValidation.totalPnl <= 0) {
+    blockers.push({
+      code: "walk_forward_pnl_not_positive",
+      message: "Walk-forward aggregate PnL must be positive.",
+      observed: input.walkForwardValidation.totalPnl,
+      required: "> 0",
+    });
+  }
+  if (input.walkForwardValidation.profitableWindows <= input.walkForwardValidation.losingWindows) {
+    blockers.push({
+      code: "walk_forward_profitable_windows_not_dominant",
+      message: "Walk-forward validation must have more profitable windows than losing windows.",
+      observed: `${input.walkForwardValidation.profitableWindows}/${input.walkForwardValidation.windowCount}`,
+      required: "profitableWindows > losingWindows",
+    });
+  }
   if (!input.coverageAccepted) {
     blockers.push({
       code: "execution_quality_below_partial_orderbook",
@@ -2130,6 +2212,7 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
   const bestTrain = history.map((item) => item.best).sort((a, b) => scoreReport(b, blockedStrategies) - scoreReport(a, blockedStrategies))[0] ?? runBtc5mBacktestFromData({ markets: trainMarkets, points: trainPoints });
   const validation = runBtc5mBacktestFromData({ markets: validationMarkets, points: validationPoints, params: bestTrain.parameters });
   const stressValidation = runBtc5mBacktestFromData({ markets: validationMarkets, points: validationPoints, params: stressBacktestParams(bestTrain.parameters) });
+  const walkForwardValidation = runWalkForwardValidation({ markets: dataset.markets, points: dataset.points, params: bestTrain.parameters });
   const strategyPaper = paperSummary.byStrategy[validation.strategy];
   const paperBlocked = Boolean(strategyPaper && strategyPaper.settled >= 20 && strategyPaper.totalPnl < 0);
   if (input.persistBest) await persistBacktestReport({ ...validation, runId: `${validation.runId}-validation`, strategy: `${validation.strategy}_validation` });
@@ -2144,6 +2227,7 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
     paperBlocked,
     validation,
     stressValidation,
+    walkForwardValidation,
     coverageAccepted,
     executionQuality: executionCoverage.executionQuality,
   });
@@ -2164,6 +2248,7 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
     bestTrain,
     validation,
     stressValidation,
+    walkForwardValidation,
     paperSummary,
     acceptanceGates: {
       paperBlocked,
@@ -2175,9 +2260,12 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
       minDatasetMarkets: MIN_ACCEPTANCE_MARKETS,
       minValidationTrades: MIN_VALIDATION_TRADES,
       minStressValidationTrades: MIN_STRESS_VALIDATION_TRADES,
+      minWalkForwardWindows: MIN_WALK_FORWARD_WINDOWS,
       minExecutionQuality: "partial_orderbook",
       validationPnl: "> 0",
       stressValidationPnl: "> 0",
+      walkForwardPnl: "> 0",
+      walkForwardProfitableWindows: "profitableWindows > losingWindows",
     },
     acceptanceBlockers,
     accepted: acceptanceBlockers.length === 0,

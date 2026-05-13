@@ -61,6 +61,9 @@ Additional forward collection run:
   validation failure, stress failure, and negative paper-signal evidence.
 - GA acceptance now also requires at least `500` markets in the dataset, preventing small
   smoke checks from being interpreted as live-ready strategy evidence.
+- GA acceptance now includes walk-forward validation across sequential market windows.
+  A candidate must have enough windows, positive aggregate walk-forward PnL, and more
+  profitable windows than losing windows before it can be considered live-ready.
 - Auxiliary BTC 1m data was collected for baseline volatility:
   - Binance was unavailable from the current network.
   - Coinbase stored `9645` 1m close ticks.

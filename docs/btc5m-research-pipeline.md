@@ -305,12 +305,18 @@ Stress validation reruns the best train parameters on the validation slice with:
 - `probabilityEdge` increased by `0.02`,
 - `minRecentTradeVolume` increased by `25%` when enabled.
 
+Walk-forward validation also reruns the best train parameters across sequential market
+windows. Acceptance requires at least 3 walk-forward windows, positive aggregate PnL, and
+more profitable windows than losing windows. This is a separate anti-overfitting gate from
+the segment-stratified holdout validation.
+
 The final result includes:
 
 - `seed`
 - `bestTrain`
 - `validation`
 - `stressValidation`
+- `walkForwardValidation`
 - `acceptanceGates`
 - `acceptanceBlockers`
 - `acceptanceRequirements`

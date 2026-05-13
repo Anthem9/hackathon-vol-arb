@@ -456,6 +456,14 @@ async function main() {
           maxDrawdown: result.stressValidation.maxDrawdown,
           winRate: result.stressValidation.winRate,
         },
+        walkForwardValidation: {
+          accepted: result.walkForwardValidation.accepted,
+          windowCount: result.walkForwardValidation.windowCount,
+          totalPnl: result.walkForwardValidation.totalPnl,
+          totalTrades: result.walkForwardValidation.totalTrades,
+          profitableWindows: result.walkForwardValidation.profitableWindows,
+          losingWindows: result.walkForwardValidation.losingWindows,
+        },
       });
     }
     console.log(
