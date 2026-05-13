@@ -269,6 +269,7 @@ The genetic search mutates these parameters:
 - `takeProfitMultiple`
 - `stopLossFraction`
 - `maxHoldSeconds`
+- `forceExitBeforeEndSeconds`
 - `minSecondsRemaining`
 - `maxSecondsRemaining`
 - `probabilityEdge`
@@ -280,6 +281,7 @@ The genetic search mutates these parameters:
 - `minRecentTradeVolume`
 - `tradeVolumeLookbackSeconds`
 - `useKellySizing`
+- `allowHoldToSettlement`
 - `targetSegment`: `all`, `weekday_beijing_day`, `weekday_beijing_night`,
   `weekend_beijing_day`, or `weekend_beijing_night`
 

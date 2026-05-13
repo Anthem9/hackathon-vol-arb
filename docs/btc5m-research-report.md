@@ -81,6 +81,9 @@ Additional forward collection run:
   - interpretation: the current search can still find small in-sample wins, but the
     candidate is rejected on out-of-sample behavior and on insufficient real orderbook
     execution evidence.
+- GA search space now includes `allowHoldToSettlement` and `forceExitBeforeEndSeconds`,
+  so it can compare candidates that allow settlement against candidates that require an
+  earlier limit-order exit.
 - Auxiliary BTC 1m data was collected for baseline volatility:
   - Binance was unavailable from the current network.
   - Coinbase stored `9645` 1m close ticks.

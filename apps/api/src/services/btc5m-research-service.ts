@@ -1900,6 +1900,7 @@ function mutateParams(parent: BacktestParams, random: RandomSource): BacktestPar
     takeProfitMultiple: Math.max(1.2, Math.min(8, parent.takeProfitMultiple + randomBetween(-0.5, 0.5, random))),
     stopLossFraction: Math.max(0.1, Math.min(0.95, parent.stopLossFraction + randomBetween(-0.08, 0.08, random))),
     maxHoldSeconds: Math.max(10, Math.min(240, Math.round(parent.maxHoldSeconds + randomBetween(-20, 20, random)))),
+    forceExitBeforeEndSeconds: Math.max(3, Math.min(90, Math.round(parent.forceExitBeforeEndSeconds + randomBetween(-8, 8, random)))),
     minSecondsRemaining: Math.max(5, Math.min(120, Math.round(parent.minSecondsRemaining + randomBetween(-10, 10, random)))),
     maxSecondsRemaining: Math.max(30, Math.min(290, Math.round(parent.maxSecondsRemaining + randomBetween(-20, 20, random)))),
     probabilityEdge: Math.max(0, Math.min(0.4, parent.probabilityEdge + randomBetween(-0.03, 0.03, random))),
@@ -1911,6 +1912,7 @@ function mutateParams(parent: BacktestParams, random: RandomSource): BacktestPar
     minRecentTradeVolume: Math.max(0, Math.min(5000, parent.minRecentTradeVolume + randomBetween(-150, 150, random))),
     tradeVolumeLookbackSeconds: Math.max(5, Math.min(120, Math.round(parent.tradeVolumeLookbackSeconds + randomBetween(-10, 10, random)))),
     useKellySizing: random() > 0.7 ? !parent.useKellySizing : parent.useKellySizing,
+    allowHoldToSettlement: random() > 0.85 ? !parent.allowHoldToSettlement : parent.allowHoldToSettlement,
   };
 }
 
@@ -2182,6 +2184,7 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
     takeProfitMultiple: randomBetween(1.4, 5, random),
     stopLossFraction: randomBetween(0.25, 0.8, random),
     maxHoldSeconds: Math.round(randomBetween(20, 160, random)),
+    forceExitBeforeEndSeconds: Math.round(randomBetween(5, 60, random)),
     minSecondsRemaining: Math.round(randomBetween(10, 80, random)),
     maxSecondsRemaining: Math.round(randomBetween(120, 280, random)),
     probabilityEdge: randomBetween(0.02, 0.2, random),
@@ -2192,6 +2195,7 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
     coneVolatilityMultiplier: randomBetween(0.5, 2.5, random),
     minRecentTradeVolume: index % 4 === 0 ? 0 : randomBetween(10, 1000, random),
     tradeVolumeLookbackSeconds: Math.round(randomBetween(10, 90, random)),
+    allowHoldToSettlement: index % 2 === 0,
   }));
   const history: Array<{ generation: number; bestScore: number; best: BacktestReport }> = [];
   for (let generation = 0; generation < generations; generation += 1) {
