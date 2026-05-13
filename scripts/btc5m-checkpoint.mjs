@@ -39,28 +39,26 @@ const limitMarkets = process.env.BTC5M_CHECKPOINT_LIMIT_MARKETS ?? "2016";
 const generations = process.env.BTC5M_CHECKPOINT_GENERATIONS ?? "1";
 const population = process.env.BTC5M_CHECKPOINT_POPULATION ?? "4";
 const seed = process.env.BTC5M_CHECKPOINT_SEED ?? "7";
+const withGa = process.env.BTC5M_CHECKPOINT_WITH_GA !== "false";
 
 const orderbookPlan = runJson("pnpm", ["--silent", "btc5m:orderbook:plan"]);
+const readinessArgs = [
+  "--silent",
+  "--filter",
+  "@vol-arb/api",
+  "btc5m:research",
+  "readiness",
+  "--days",
+  days,
+  "--limit-markets",
+  limitMarkets,
+];
+if (withGa) {
+  readinessArgs.push("--with-ga", "--generations", generations, "--population", population, "--seed", seed);
+}
 const readiness = runJson(
   "pnpm",
-  [
-    "--silent",
-    "--filter",
-    "@vol-arb/api",
-    "btc5m:research",
-    "readiness",
-    "--days",
-    days,
-    "--limit-markets",
-    limitMarkets,
-    "--with-ga",
-    "--generations",
-    generations,
-    "--population",
-    population,
-    "--seed",
-    seed,
-  ],
+  readinessArgs,
   180_000,
 );
 
@@ -83,6 +81,7 @@ const output = {
     generations: Number(generations),
     population: Number(population),
     seed: Number(seed),
+    withGa,
   },
   summary: {
     liveReady: Boolean(readiness.liveReady),
