@@ -269,7 +269,7 @@ Both strategies support:
 - decision delay,
 - assumed spread for price-history proxy data.
 - Beijing day/night and weekday/weekend segment reporting.
-- trader-style risk stops before new entries.
+- trader-style risk stops before new entries, including max daily trades.
 
 Backtest reports include gross profit, gross loss, profit factor, average trade PnL,
 return on capital, and drawdown fraction in addition to total PnL and win rate.
@@ -304,6 +304,7 @@ The genetic search mutates these parameters:
 - `assumedSpread`
 - `decisionDelaySeconds`
 - `entryMaxWaitSeconds`
+- `maxDailyTrades`
 - `kellyFraction`
 - `coneVolatilityMultiplier`
 - `minRecentTradeVolume`

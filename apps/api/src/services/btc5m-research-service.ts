@@ -58,6 +58,7 @@ export type BacktestParams = {
   maxDrawdownFraction: number;
   maxConsecutiveLosses: number;
   maxOpenMarkets: number;
+  maxDailyTrades: number;
   useKellySizing: boolean;
   kellyFraction: number;
   coneVolatilityMultiplier: number;
@@ -148,6 +149,7 @@ export const DEFAULT_BACKTEST_PARAMS: BacktestParams = {
   maxDrawdownFraction: 0.25,
   maxConsecutiveLosses: 6,
   maxOpenMarkets: 1,
+  maxDailyTrades: 24,
   useKellySizing: false,
   kellyFraction: 0.25,
   coneVolatilityMultiplier: 1,
@@ -1730,6 +1732,7 @@ export function runBtc5mBacktestFromData(input: { markets: Btc5mMarket[]; points
   let consecutiveLosses = 0;
   let stopped = false;
   const dailyPnl = new Map<string, number>();
+  const dailyTrades = new Map<string, number>();
   const trades: BacktestTrade[] = [];
 
   for (const market of markets) {
@@ -1738,6 +1741,7 @@ export function runBtc5mBacktestFromData(input: { markets: Btc5mMarket[]; points
     const dayKey = utcDayKey(market.startTime);
     const dayLossLimit = params.initialCapital * params.maxDailyLossFraction;
     if ((dailyPnl.get(dayKey) ?? 0) <= -dayLossLimit) continue;
+    if ((dailyTrades.get(dayKey) ?? 0) >= params.maxDailyTrades) continue;
     const marketPoints = pointsByMarket.get(market.slug) ?? [];
     const upPoints = marketPoints.filter((point) => point.outcome === "up");
     const downPoints = marketPoints.filter((point) => point.outcome === "down");
@@ -1815,6 +1819,7 @@ export function runBtc5mBacktestFromData(input: { markets: Btc5mMarket[]; points
       capital += proceeds;
       const pnl = proceeds - entryCost;
       dailyPnl.set(dayKey, (dailyPnl.get(dayKey) ?? 0) + pnl);
+      dailyTrades.set(dayKey, (dailyTrades.get(dayKey) ?? 0) + 1);
       consecutiveLosses = pnl < 0 ? consecutiveLosses + 1 : 0;
       trades.push({
         marketSlug: market.slug,
@@ -1969,6 +1974,7 @@ function mutateParams(parent: BacktestParams, random: RandomSource): BacktestPar
     assumedSpread: Math.max(0, Math.min(0.08, parent.assumedSpread + randomBetween(-0.005, 0.005, random))),
     decisionDelaySeconds: Math.max(0, Math.min(5, Math.round(parent.decisionDelaySeconds + randomBetween(-1, 1, random)))),
     entryMaxWaitSeconds: Math.max(1, Math.min(60, Math.round(parent.entryMaxWaitSeconds + randomBetween(-5, 5, random)))),
+    maxDailyTrades: Math.max(3, Math.min(96, Math.round(parent.maxDailyTrades + randomBetween(-6, 6, random)))),
     kellyFraction: Math.max(0.05, Math.min(0.5, parent.kellyFraction + randomBetween(-0.05, 0.05, random))),
     coneVolatilityMultiplier: Math.max(0.25, Math.min(4, parent.coneVolatilityMultiplier + randomBetween(-0.25, 0.25, random))),
     minRecentTradeVolume: Math.max(0, Math.min(5000, parent.minRecentTradeVolume + randomBetween(-150, 150, random))),
@@ -2312,6 +2318,7 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
     probabilityEdge: randomBetween(0.02, 0.2, random),
     decisionDelaySeconds: Math.round(randomBetween(0, 5, random)),
     entryMaxWaitSeconds: Math.round(randomBetween(3, 30, random)),
+    maxDailyTrades: Math.round(randomBetween(6, 48, random)),
     useKellySizing: index % 3 === 0,
     kellyFraction: randomBetween(0.1, 0.35, random),
     coneVolatilityMultiplier: randomBetween(0.5, 2.5, random),

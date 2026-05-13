@@ -103,6 +103,8 @@ Additional forward collection run:
 - `orderbook_snapshot` points now keep bid/ask side information. Candidate selection and
   entries use asks, while exits use bids, preventing bid prices from being treated as
   executable entry asks.
+- Backtest risk controls now include `maxDailyTrades`, and the GA can search that limit to
+  reduce overtrading risk.
 - GA acceptance now checks orderbook coverage by Beijing regime. Targeted strategies need
   `partial_orderbook` coverage in their selected segment, and `targetSegment=all`
   strategies need at least 3 Beijing regimes with `partial_orderbook` coverage.
