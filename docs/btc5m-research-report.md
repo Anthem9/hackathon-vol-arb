@@ -388,6 +388,19 @@ Additional forward collection run:
   - train: `7` markets, `2307` points, `0` selected trades for the best train candidate.
   - validation: `2` markets, `1278` points, `0` trades.
   - accepted: `false`.
+- Current forward-collection status after adding orderbook planning:
+  - command: `pnpm btc5m:orderbook:plan`.
+  - background collector: running under `caffeinate`, untargeted, PID recorded in
+    `.local/run/btc5m-orderbook-collector.pid`.
+  - markets with orderbook snapshots: `28/2007`.
+  - execution quality: `trade_proxy_only`.
+  - global `partial_orderbook` gap: `173` more 5-minute markets, approximately `14.42`
+    continuous collection hours.
+  - weakest Beijing regimes: `weekday_beijing_day` and `weekend_beijing_night`, both
+    still at `0` orderbook markets.
+  - current recommendation: keep the active untargeted collector running because it will
+    naturally enter the next weak `weekday_beijing_day` window instead of stopping and
+    restarting unnecessarily.
 
 The in-sample trade is not considered a strategy candidate because validation produced no trades and the sample is too small.
 
@@ -430,13 +443,15 @@ To actually evaluate whether a profitable strategy exists, the project needs den
 4. Re-run seeded GA after enough `orderbook_snapshot` and trade data exists, then require
    ordinary validation and stress validation to pass.
 
-Suggested forward collector schedule:
+Suggested forward collector commands:
 
 ```bash
-pnpm --filter @vol-arb/api btc5m:research collect-orderbook-live --duration-seconds 3600 --interval-ms 1000 --progress-every 30
+pnpm btc5m:orderbook:plan
+pnpm btc5m:orderbook:start:auto
 ```
 
-For longer operation, run repeated one-hour sessions under a process manager with log rotation.
+Use `plan` first. If it says `keep_current_collector_running`, do not stop the current
+collector just to switch modes; let it continue through the next weak Beijing segment.
 
 ## Current Conclusion
 
