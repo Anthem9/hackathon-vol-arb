@@ -55,6 +55,8 @@ try {
   assert.equal(lastSummary.generatedAt, "2026-05-13T02:00:00.000Z");
   assert.equal(lastSummary.summary.marketsWithOrderbook, 2);
   assert.equal(lastSummary.liveReady, true);
+  assert.ok(lastSummary.currentGit?.head);
+  assert.equal(typeof lastSummary.reportMatchesCurrentHead, "boolean");
 } finally {
   rmSync(tempReports, { recursive: true, force: true });
 }

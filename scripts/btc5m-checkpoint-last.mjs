@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -26,6 +27,15 @@ const reportsDir = process.env.BTC5M_CHECKPOINT_REPORT_DIR
   ? resolve(root, process.env.BTC5M_CHECKPOINT_REPORT_DIR)
   : resolve(root, ".local/reports");
 
+function runText(command, args) {
+  const result = spawnSync(command, args, {
+    cwd: root,
+    encoding: "utf8",
+    timeout: 10_000,
+  });
+  return result.status === 0 ? result.stdout.trim() : null;
+}
+
 if (!existsSync(reportsDir)) {
   throw new Error("No .local/reports directory exists. Run pnpm btc5m:checkpoint:status or pnpm btc5m:checkpoint first.");
 }
@@ -47,12 +57,23 @@ if (candidates.length === 0) {
 }
 
 const latest = candidates[0];
+const currentGit = {
+  head: runText("git", ["rev-parse", "HEAD"]),
+  shortHead: runText("git", ["rev-parse", "--short", "HEAD"]),
+  dirty: Boolean(runText("git", ["status", "--short"])),
+};
 const output = full
-  ? latest.parsed
+  ? {
+      ...latest.parsed,
+      currentGit,
+      reportMatchesCurrentHead: Boolean(latest.parsed.git?.head && latest.parsed.git.head === currentGit.head && !currentGit.dirty),
+    }
   : {
       generatedAt: latest.parsed.generatedAt,
       reportFile: latest.path,
       git: latest.parsed.git,
+      currentGit,
+      reportMatchesCurrentHead: Boolean(latest.parsed.git?.head && latest.parsed.git.head === currentGit.head && !currentGit.dirty),
       runtime: latest.parsed.runtime,
       inputs: latest.parsed.inputs,
       summary: latest.parsed.summary,
