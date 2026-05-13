@@ -10,6 +10,9 @@ function usage() {
 
 Reads the most recent local BTC 5m checkpoint report from .local/reports without
 running coverage, readiness, GA, network calls, or orderbook collection.
+
+Environment overrides:
+  BTC5M_CHECKPOINT_REPORT_DIR=.local/reports
 `;
 }
 

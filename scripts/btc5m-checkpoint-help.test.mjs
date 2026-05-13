@@ -19,6 +19,7 @@ assert.match(result.stdout, /BTC5M_CHECKPOINT_REPORT_FILE/);
 assert.equal(lastResult.status, 0, lastResult.stderr || lastResult.stdout);
 assert.match(lastResult.stdout, /pnpm btc5m:checkpoint:last \[--full\]/);
 assert.match(lastResult.stdout, /without\s+running coverage, readiness, GA, network calls, or orderbook collection/);
+assert.match(lastResult.stdout, /BTC5M_CHECKPOINT_REPORT_DIR/);
 
 const tempReports = mkdtempSync(join(tmpdir(), "btc5m-checkpoint-last-"));
 try {
