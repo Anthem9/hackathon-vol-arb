@@ -139,8 +139,15 @@ collection, and a hard readiness gate before any live trading.
 
 ### BTC 5m Current Evidence
 
-- Latest low-cost checkpoint: `pnpm btc5m:checkpoint:status`, generated
-  `2026-05-13T20:53:21.798Z` on git `7eaf794`.
+- Authoritative current status commands:
+  - `pnpm btc5m:orderbook:health:ok` for a local collector health gate.
+  - `pnpm btc5m:orderbook:plan` for current orderbook coverage and collection action.
+  - `pnpm btc5m:checkpoint:last:current` for the latest saved checkpoint matching the
+    current clean HEAD.
+  - `pnpm btc5m:checkpoint:status` to generate a fresh no-GA checkpoint when the saved
+    report is stale or when coverage has materially changed.
+- Last committed low-cost checkpoint snapshot: generated `2026-05-13T21:16:16.911Z`
+  on git `02b139e`.
 - Local last-report command: `pnpm btc5m:checkpoint:last`; use it to inspect the latest
   saved checkpoint without running network checks, readiness, GA, or collectors. If it
   reports `reportMatchesCurrentHead=false`, rerun `pnpm btc5m:checkpoint:status` before
@@ -150,11 +157,12 @@ collection, and a hard readiness gate before any live trading.
   before a saved report is treated as live-ready evidence.
 - Background collector: running, PID `38702`, launched through `caffeinate`.
 - Current execution quality: `trade_proxy_only`.
-- Markets with orderbook snapshots: `38/2007`.
-- Current orderbook market coverage: `0.018933731938216243`.
+- Last committed snapshot markets with orderbook: `43/2007`.
+- Last committed snapshot orderbook market coverage: `0.02142501245640259`.
 - Global `partial_orderbook` target: `201` markets.
-- Remaining markets until `partial_orderbook`: `163`.
-- Estimated continuous collection time until `partial_orderbook`: `13.58` hours.
+- Last committed snapshot remaining markets until `partial_orderbook`: `158`.
+- Last committed snapshot estimated continuous collection time until `partial_orderbook`:
+  `13.17` hours.
 - Weakest Beijing regimes: `weekday_beijing_day` and `weekend_beijing_night`, both
   still at `0` orderbook markets.
 - Current collection recommendation: keep the running untargeted collector active because
