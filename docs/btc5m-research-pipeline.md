@@ -203,9 +203,10 @@ pnpm btc5m:checkpoint
 ```
 
 The checkpoint writes an ignored JSON report under `.local/reports`, includes its own
-`reportFile` path plus a top-level summary for coverage/readiness status, and records the current Git commit,
-dirty-worktree status, Node version, and pnpm version for reproducibility. Override
-defaults with `BTC5M_CHECKPOINT_DAYS`,
+`reportFile` path plus a top-level summary for coverage/readiness status, next weak
+segment window, and estimated hours until `partial_orderbook`, and records the current
+Git commit, dirty-worktree status, Node version, and pnpm version for reproducibility.
+Override defaults with `BTC5M_CHECKPOINT_DAYS`,
 `BTC5M_CHECKPOINT_LIMIT_MARKETS`,
 `BTC5M_CHECKPOINT_GENERATIONS`, `BTC5M_CHECKPOINT_POPULATION`,
 `BTC5M_CHECKPOINT_SEED`, `BTC5M_CHECKPOINT_WITH_GA=false`, or
