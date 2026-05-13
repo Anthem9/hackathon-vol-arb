@@ -72,6 +72,12 @@ async function main() {
           days: numberArg(args, "days", 7),
           limit: numberArg(args, "limit", 2016),
           throttleMs: numberArg(args, "throttle-ms", 100),
+          timeoutMs: numberArg(args, "timeout-ms", 2500),
+          onProgress: (progress) => {
+            if (progress.processed === progress.total || progress.processed % numberArg(args, "progress-every", 100) === 0) {
+              console.error(`collect-markets ${progress.processed}/${progress.total} stored=${progress.stored} missing=${progress.missing} errors=${progress.errors}`);
+            }
+          },
         }),
         null,
         2,
@@ -87,6 +93,12 @@ async function main() {
           limitMarkets: numberArg(args, "limit-markets", 2016),
           throttleMs: numberArg(args, "throttle-ms", 100),
           fidelitySeconds: numberArg(args, "fidelity-seconds", 60),
+          timeoutMs: numberArg(args, "timeout-ms", 3000),
+          onProgress: (progress) => {
+            if (progress.processed === progress.total || progress.processed % numberArg(args, "progress-every", 50) === 0) {
+              console.error(`collect-price-history ${progress.processed}/${progress.total} points=${progress.points} errors=${progress.errors}`);
+            }
+          },
         }),
         null,
         2,

@@ -275,8 +275,8 @@ export function buildRecentBtc5mSlugs(days = 7, now = Date.now()) {
   return slugs;
 }
 
-export async function fetchBtc5mMarketBySlug(slug: string): Promise<Btc5mMarket | null> {
-  const payload = await fetchJson<unknown[]>(`${gammaUrl()}/events?slug=${encodeURIComponent(slug)}`, 6000);
+export async function fetchBtc5mMarketBySlug(slug: string, timeoutMs = 6000): Promise<Btc5mMarket | null> {
+  const payload = await fetchJson<unknown[]>(`${gammaUrl()}/events?slug=${encodeURIComponent(slug)}`, timeoutMs);
   const event = Array.isArray(payload) ? asRecord(payload[0]) : {};
   return Object.keys(event).length > 0 ? normalizeMarket(event) : null;
 }
@@ -377,12 +377,13 @@ export async function upsertBtc5mMarket(market: Btc5mMarket) {
   );
 }
 
-export async function collectRecentBtc5mMarkets(input: { days?: number; limit?: number; throttleMs?: number } = {}) {
+export async function collectRecentBtc5mMarkets(input: { days?: number; limit?: number; throttleMs?: number; timeoutMs?: number; onProgress?: (progress: { processed: number; total: number; stored: number; missing: number; errors: number }) => void } = {}) {
   const slugs = buildRecentBtc5mSlugs(input.days ?? 7).slice(-(input.limit ?? Number.MAX_SAFE_INTEGER));
   const result = { requested: slugs.length, stored: 0, missing: 0, errors: [] as string[] };
-  for (const slug of slugs) {
+  for (let index = 0; index < slugs.length; index += 1) {
+    const slug = slugs[index] ?? "";
     try {
-      const market = await fetchBtc5mMarketBySlug(slug);
+      const market = await fetchBtc5mMarketBySlug(slug, input.timeoutMs ?? 2500);
       if (!market) {
         result.missing += 1;
       } else {
@@ -392,6 +393,7 @@ export async function collectRecentBtc5mMarkets(input: { days?: number; limit?: 
     } catch (error) {
       result.errors.push(`${slug}: ${error instanceof Error ? error.message : String(error)}`);
     }
+    input.onProgress?.({ processed: index + 1, total: slugs.length, stored: result.stored, missing: result.missing, errors: result.errors.length });
     if (input.throttleMs) await sleep(input.throttleMs);
   }
   return result;
@@ -437,10 +439,10 @@ async function readMarketsForBacktest(days = 7, limit = 2500): Promise<Btc5mMark
   }));
 }
 
-async function fetchPriceHistory(market: Btc5mMarket, outcome: "up" | "down", fidelitySeconds = DEFAULT_PRICE_HISTORY_FIDELITY_SECONDS): Promise<PricePoint[]> {
+async function fetchPriceHistory(market: Btc5mMarket, outcome: "up" | "down", fidelitySeconds = DEFAULT_PRICE_HISTORY_FIDELITY_SECONDS, timeoutMs = 3000): Promise<PricePoint[]> {
   const tokenId = outcome === "up" ? market.upTokenId : market.downTokenId;
   const url = `${clobUrl()}/prices-history?market=${encodeURIComponent(tokenId)}&startTs=${Math.floor(market.startTime / 1000)}&endTs=${Math.floor(market.endTime / 1000)}&fidelity=${fidelitySeconds}`;
-  const payload = await fetchJson<unknown>(url, 6000);
+  const payload = await fetchJson<unknown>(url, timeoutMs);
   const payloadRecord = asRecord(payload);
   const history: unknown[] = Array.isArray(payloadRecord.history) ? payloadRecord.history : Array.isArray(payload) ? payload : [];
   return history
@@ -456,13 +458,15 @@ async function fetchPriceHistory(market: Btc5mMarket, outcome: "up" | "down", fi
     .filter((point) => Number.isFinite(point.price) && Number.isFinite(point.time));
 }
 
-export async function collectBtc5mPriceHistory(input: { days?: number; limitMarkets?: number; throttleMs?: number; fidelitySeconds?: number } = {}) {
+export async function collectBtc5mPriceHistory(input: { days?: number; limitMarkets?: number; throttleMs?: number; fidelitySeconds?: number; timeoutMs?: number; onProgress?: (progress: { processed: number; total: number; points: number; errors: number }) => void } = {}) {
   const markets = await readMarketsForBacktest(input.days ?? 7, input.limitMarkets ?? 2500);
   const result = { markets: markets.length, points: 0, errors: [] as string[] };
+  const total = markets.length * 2;
+  let processed = 0;
   for (const market of markets) {
     for (const outcome of ["up", "down"] as const) {
       try {
-        const points = await fetchPriceHistory(market, outcome, input.fidelitySeconds ?? DEFAULT_PRICE_HISTORY_FIDELITY_SECONDS);
+        const points = await fetchPriceHistory(market, outcome, input.fidelitySeconds ?? DEFAULT_PRICE_HISTORY_FIDELITY_SECONDS, input.timeoutMs ?? 3000);
         for (const point of points) {
           await runDatabaseQuery(
             `insert into polymarket_btc5m_price_history
@@ -476,6 +480,8 @@ export async function collectBtc5mPriceHistory(input: { days?: number; limitMark
       } catch (error) {
         result.errors.push(`${market.slug}/${outcome}: ${error instanceof Error ? error.message : String(error)}`);
       }
+      processed += 1;
+      input.onProgress?.({ processed, total, points: result.points, errors: result.errors.length });
       if (input.throttleMs) await sleep(input.throttleMs);
     }
   }
