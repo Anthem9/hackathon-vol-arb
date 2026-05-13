@@ -133,6 +133,20 @@ export async function checkDatabaseConnection(): Promise<PersistenceStatus> {
   }
 }
 
+export async function runDatabaseQuery<T extends pg.QueryResultRow = pg.QueryResultRow>(text: string, params: unknown[] = []): Promise<pg.QueryResult<T> | null> {
+  try {
+    const db = await ensureDatabase();
+    if (!db) return null;
+    const result = await db.query<T>(text, params);
+    lastError = null;
+    lastWriteAt = Date.now();
+    return result;
+  } catch (error) {
+    lastError = error instanceof Error ? error.message : "Unknown Postgres query error";
+    throw error;
+  }
+}
+
 export async function persistDashboardSnapshot(data: DashboardData): Promise<PersistenceStatus> {
   try {
     const db = await ensureDatabase();

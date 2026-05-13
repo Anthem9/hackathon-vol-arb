@@ -10,9 +10,10 @@
     "deepbook:testnet": "tsx src/services/deepbook-testnet-executor-cli.ts",
     "deepbook:wallet-monitor": "tsx src/services/deepbook-wallet-monitor-cli.ts",
     "polymarket:credentials": "tsx src/services/polymarket-credentials-cli.ts",
+    "btc5m:research": "tsx src/services/btc5m-research-cli.ts",
     "build": "tsc --noEmit",
     "lint": "tsc --noEmit",
-    "test": "tsx src/services/deepbook-transaction-service.test.ts && tsx src/services/runtime-services.test.ts",
+    "test": "tsx src/services/deepbook-transaction-service.test.ts && tsx src/services/runtime-services.test.ts && tsx src/services/btc5m-research-service.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

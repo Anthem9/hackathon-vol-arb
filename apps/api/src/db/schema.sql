@@ -122,6 +122,118 @@ create table if not exists wallet_mint_dry_run_events (
   created_at timestamptz not null default now()
 );
 
+create table if not exists polymarket_btc5m_markets (
+  slug text primary key,
+  event_id text,
+  market_id text,
+  condition_id text,
+  question text not null,
+  start_time timestamptz not null,
+  end_time timestamptz not null,
+  up_token_id text not null,
+  down_token_id text not null,
+  closed boolean not null default false,
+  resolved boolean not null default false,
+  winning_outcome text,
+  raw_json jsonb not null default '{}'::jsonb,
+  collected_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists polymarket_btc5m_orderbook_snapshots (
+  id bigserial primary key,
+  market_slug text not null references polymarket_btc5m_markets(slug) on delete cascade,
+  token_id text not null,
+  outcome text not null check (outcome in ('up', 'down')),
+  bid numeric(20, 8),
+  ask numeric(20, 8),
+  bid_size numeric(32, 8),
+  ask_size numeric(32, 8),
+  spread numeric(20, 8),
+  snapshot_time timestamptz not null,
+  collected_at timestamptz not null default now(),
+  source text not null default 'clob_book',
+  raw_json jsonb not null default '{}'::jsonb,
+  unique (market_slug, token_id, snapshot_time, source)
+);
+
+create table if not exists polymarket_btc5m_price_history (
+  id bigserial primary key,
+  market_slug text not null references polymarket_btc5m_markets(slug) on delete cascade,
+  token_id text not null,
+  outcome text not null check (outcome in ('up', 'down')),
+  price numeric(20, 8) not null,
+  point_time timestamptz not null,
+  fidelity_seconds integer not null,
+  source text not null default 'clob_prices_history',
+  raw_json jsonb not null default '{}'::jsonb,
+  collected_at timestamptz not null default now(),
+  unique (market_slug, token_id, point_time, fidelity_seconds, source)
+);
+
+create table if not exists polymarket_btc5m_trades (
+  id bigserial primary key,
+  trade_id text,
+  market_slug text not null references polymarket_btc5m_markets(slug) on delete cascade,
+  token_id text not null,
+  outcome text not null check (outcome in ('up', 'down')),
+  price numeric(20, 8) not null,
+  size numeric(32, 8),
+  side text,
+  trade_time timestamptz not null,
+  transaction_hash text,
+  source text not null default 'clob_data_trades',
+  raw_json jsonb not null default '{}'::jsonb,
+  collected_at timestamptz not null default now()
+);
+
+create table if not exists btc_price_ticks (
+  id bigserial primary key,
+  source text not null,
+  symbol text not null default 'BTC/USD',
+  price numeric(20, 8) not null,
+  source_timestamp timestamptz not null,
+  collected_at timestamptz not null default now(),
+  raw_json jsonb not null default '{}'::jsonb,
+  unique (source, symbol, source_timestamp)
+);
+
+create table if not exists btc5m_backtest_runs (
+  id bigserial primary key,
+  run_id text not null unique,
+  strategy text not null,
+  parameters jsonb not null default '{}'::jsonb,
+  data_start timestamptz,
+  data_end timestamptz,
+  initial_capital numeric(20, 8) not null,
+  final_capital numeric(20, 8) not null,
+  total_pnl numeric(20, 8) not null,
+  max_drawdown numeric(20, 8) not null,
+  win_rate numeric(10, 6) not null,
+  trade_count integer not null,
+  payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists btc5m_backtest_orders (
+  id bigserial primary key,
+  run_id text not null references btc5m_backtest_runs(run_id) on delete cascade,
+  market_slug text not null,
+  token_id text not null,
+  outcome text not null check (outcome in ('up', 'down')),
+  action text not null check (action in ('limit_buy', 'limit_sell', 'settle', 'cancel')),
+  limit_price numeric(20, 8),
+  requested_size numeric(32, 8),
+  filled_size numeric(32, 8) not null default 0,
+  status text not null,
+  submit_time timestamptz,
+  fill_time timestamptz,
+  cancel_time timestamptz,
+  realized_pnl numeric(20, 8) not null default 0,
+  payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
 create index if not exists dashboard_snapshots_created_at_idx
   on dashboard_snapshots (created_at desc);
 
@@ -161,3 +273,27 @@ create index if not exists wallet_mint_dry_run_events_owner_created_idx
 
 create index if not exists wallet_mint_dry_run_events_market_idx
   on wallet_mint_dry_run_events (network, owner, manager_id, oracle_id, expiry, strike, direction, created_at desc);
+
+create index if not exists polymarket_btc5m_markets_time_idx
+  on polymarket_btc5m_markets (start_time desc);
+
+create index if not exists polymarket_btc5m_orderbook_market_time_idx
+  on polymarket_btc5m_orderbook_snapshots (market_slug, snapshot_time);
+
+create index if not exists polymarket_btc5m_price_history_market_time_idx
+  on polymarket_btc5m_price_history (market_slug, point_time);
+
+create index if not exists polymarket_btc5m_trades_market_time_idx
+  on polymarket_btc5m_trades (market_slug, trade_time);
+
+create unique index if not exists polymarket_btc5m_trades_unique_idx
+  on polymarket_btc5m_trades (market_slug, token_id, trade_time, price, coalesce(size, 0), source);
+
+create index if not exists btc_price_ticks_source_time_idx
+  on btc_price_ticks (source, source_timestamp);
+
+create index if not exists btc5m_backtest_runs_created_idx
+  on btc5m_backtest_runs (created_at desc);
+
+create index if not exists btc5m_backtest_orders_run_idx
+  on btc5m_backtest_orders (run_id, market_slug);
