@@ -64,8 +64,10 @@ const readiness = runJson(
   180_000,
 );
 
+const filePath = reportPath();
 const output = {
   generatedAt: new Date().toISOString(),
+  reportFile: filePath,
   git: {
     head: runText("git", ["rev-parse", "HEAD"]),
     shortHead: runText("git", ["rev-parse", "--short", "HEAD"]),
@@ -102,7 +104,6 @@ const output = {
   notEvaluatedChecks: readiness.notEvaluatedChecks ?? [],
 };
 
-const filePath = reportPath();
 mkdirSync(dirname(filePath), { recursive: true });
 writeFileSync(filePath, `${JSON.stringify(output, null, 2)}\n`);
-console.log(JSON.stringify({ ...output, reportFile: filePath }, null, 2));
+console.log(JSON.stringify(output, null, 2));
