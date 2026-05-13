@@ -1,0 +1,60 @@
+#!/usr/bin/env node
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { resolve } from "node:path";
+
+const root = resolve(new URL("..", import.meta.url).pathname);
+
+function usage() {
+  return `Usage:
+  pnpm btc5m:checkpoint:last [--full]
+
+Reads the most recent local BTC 5m checkpoint report from .local/reports without
+running coverage, readiness, GA, network calls, or orderbook collection.
+`;
+}
+
+if (process.argv.includes("--help") || process.argv.includes("-h")) {
+  console.log(usage());
+  process.exit(0);
+}
+
+const full = process.argv.includes("--full");
+const reportsDir = resolve(root, ".local/reports");
+
+if (!existsSync(reportsDir)) {
+  throw new Error("No .local/reports directory exists. Run pnpm btc5m:checkpoint:status or pnpm btc5m:checkpoint first.");
+}
+
+const candidates = readdirSync(reportsDir, { withFileTypes: true })
+  .filter((entry) => entry.isFile() && /^btc5m-checkpoint-.+\.json$/.test(entry.name))
+  .map((entry) => {
+    const path = resolve(reportsDir, entry.name);
+    const raw = readFileSync(path, "utf8");
+    const parsed = JSON.parse(raw);
+    const generatedAt = Date.parse(parsed.generatedAt ?? "");
+    return { path, generatedAt, parsed };
+  })
+  .filter((entry) => Number.isFinite(entry.generatedAt))
+  .sort((left, right) => right.generatedAt - left.generatedAt);
+
+if (candidates.length === 0) {
+  throw new Error("No BTC 5m checkpoint report files were found under .local/reports.");
+}
+
+const latest = candidates[0];
+const output = full
+  ? latest.parsed
+  : {
+      generatedAt: latest.parsed.generatedAt,
+      reportFile: latest.path,
+      git: latest.parsed.git,
+      runtime: latest.parsed.runtime,
+      inputs: latest.parsed.inputs,
+      summary: latest.parsed.summary,
+      liveReady: latest.parsed.liveReady,
+      recommendedAction: latest.parsed.recommendedAction,
+      failedChecks: latest.parsed.failedChecks,
+      notEvaluatedChecks: latest.parsed.notEvaluatedChecks,
+    };
+
+console.log(JSON.stringify(output, null, 2));

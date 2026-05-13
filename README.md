@@ -144,10 +144,11 @@ BTC 5m strategy research is separate from live trading. Use the checkpoint tools
 ```bash
 pnpm btc5m:orderbook:status
 pnpm btc5m:orderbook:plan
+pnpm btc5m:checkpoint:last
 pnpm btc5m:checkpoint:status
 ```
 
-`checkpoint:status` is the low-cost no-GA status check while waiting for data. Final acceptance must use the full checkpoint gate:
+`checkpoint:last` only reads the latest local `.local/reports` checkpoint JSON and does not run network checks, readiness, GA, or collectors. `checkpoint:status` is the low-cost no-GA status check while waiting for data. Final acceptance must use the full checkpoint gate:
 
 ```bash
 pnpm btc5m:checkpoint
