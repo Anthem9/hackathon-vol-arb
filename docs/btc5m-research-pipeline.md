@@ -216,6 +216,13 @@ The sweep output includes aggregate `blockerCounts`, `strategyCounts`,
 `targetSegmentCounts`, `bestValidationRun`, and `bestWalkForwardRun` so repeated seeds can
 be compared without manually reading every full run.
 
+Add `--save-report` to write the full sweep JSON under `.local/reports`, or pass
+`--report-file <path>` for an explicit local artifact:
+
+```bash
+pnpm --filter @vol-arb/api btc5m:research genetic-sweep --days 7 --seeds 5 --seed-start 1 --generations 6 --population 12 --save-report
+```
+
 ## Resource Controls
 
 Defaults are intentionally conservative:

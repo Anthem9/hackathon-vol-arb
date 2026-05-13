@@ -15,8 +15,11 @@ import {
   runBtc5mGeneticSearch,
 } from "./btc5m-research-service";
 import { closeDatabase } from "../db/postgres";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, isAbsolute, resolve } from "node:path";
 
 type Args = Record<string, string | boolean>;
+const workspaceRoot = resolve(new URL("../../../..", import.meta.url).pathname);
 
 function parseArgs(argv: string[]) {
   const [command = "help", ...rest] = argv;
@@ -66,7 +69,7 @@ function usage() {
   pnpm --filter @vol-arb/api btc5m:research paper-summary
   pnpm --filter @vol-arb/api btc5m:research backtest --days 7 --limit-markets 2016 --persist
   pnpm --filter @vol-arb/api btc5m:research genetic --days 7 --generations 6 --population 12 --validation-fraction 0.2857 [--seed 42] [--persist-best]
-  pnpm --filter @vol-arb/api btc5m:research genetic-sweep --days 7 --seeds 5 --seed-start 1 --generations 6 --population 12
+  pnpm --filter @vol-arb/api btc5m:research genetic-sweep --days 7 --seeds 5 --seed-start 1 --generations 6 --population 12 [--save-report] [--report-file .local/reports/sweep.json]
 
 All simulated orders are limit orders. The default initial capital is 100 USDC and max risk per trade is 10% of current equity.`;
 }
@@ -94,6 +97,19 @@ function parseTargetSegments(args: Args) {
     .split(",")
     .map((segment) => segment.trim())
     .filter(Boolean);
+}
+
+function defaultSweepReportFile() {
+  return resolve(workspaceRoot, ".local/reports", `btc5m-genetic-sweep-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
+}
+
+function resolveWorkspacePath(path: string) {
+  return isAbsolute(path) ? path : resolve(workspaceRoot, path);
+}
+
+function saveJsonReport(filePath: string, payload: unknown) {
+  mkdirSync(dirname(filePath), { recursive: true });
+  writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`);
 }
 
 async function waitForTargetSegment(input: { targetSegments: string[]; checkSeconds: number; shouldStop: () => boolean }) {
@@ -503,25 +519,23 @@ async function main() {
         targetSegment: run.bestTrain.parameters.targetSegment,
       }))
       .sort((a, b) => b.totalPnl - a.totalPnl || b.profitableWindows - a.profitableWindows)[0];
-    console.log(
-      JSON.stringify(
-        {
-          days,
-          seedStart,
-          seeds: seedCount,
-          acceptedCount: runs.filter((run) => run.accepted).length,
-          executionQualities: [...new Set(runs.map((run) => run.executionQuality))],
-          blockerCounts,
-          strategyCounts,
-          targetSegmentCounts,
-          bestValidationRun,
-          bestWalkForwardRun,
-          runs,
-        },
-        null,
-        2,
-      ),
-    );
+    const reportFile = boolArg(args, "save-report") || args["report-file"] ? resolveWorkspacePath(stringArg(args, "report-file", defaultSweepReportFile())) : null;
+    const output = {
+      days,
+      seedStart,
+      seeds: seedCount,
+      acceptedCount: runs.filter((run) => run.accepted).length,
+      executionQualities: [...new Set(runs.map((run) => run.executionQuality))],
+      blockerCounts,
+      strategyCounts,
+      targetSegmentCounts,
+      bestValidationRun,
+      bestWalkForwardRun,
+      reportFile,
+      runs,
+    };
+    if (reportFile) saveJsonReport(reportFile, output);
+    console.log(JSON.stringify(output, null, 2));
     return;
   }
   throw new Error(`Unknown command: ${command}\n${usage()}`);
