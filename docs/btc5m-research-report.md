@@ -89,6 +89,20 @@ Additional forward collection run:
 - Added `longshot_cone`, a convex payout strategy family that uses probability-cone
   estimates but selects by relative expected return (`probability / price - 1`) instead
   of absolute probability edge.
+- Latest 3-seed full-window sweep after adding `longshot_cone`:
+  - command: `genetic-sweep --days 7 --limit-markets 2016 --seeds 3 --seed-start 41 --generations 2 --population 9`.
+  - accepted count: `0`.
+  - execution quality: `trade_proxy_only`.
+  - blocker counts: validation PnL not positive `2/3`, stress PnL not positive `3/3`,
+    walk-forward PnL not positive `3/3`, walk-forward profitable windows not dominant
+    `3/3`, execution quality below `partial_orderbook` `3/3`.
+  - strategy counts: `probability_cone=2`, `longshot_cone=1`.
+  - best validation run: seed `43`, `probability_cone`, `weekend_beijing_night`,
+    validation PnL `4.7082955973`, `24` trades, win rate `0.291667`.
+  - same seed failed walk-forward: `-13.6100481018` PnL, `15` trades, `0` profitable
+    windows and `2` losing windows.
+  - interpretation: a single holdout slice can look profitable, but the broader
+    walk-forward test still rejects the current candidate family.
 - Auxiliary BTC 1m data was collected for baseline volatility:
   - Binance was unavailable from the current network.
   - Coinbase stored `9645` 1m close ticks.
