@@ -18,7 +18,7 @@
     "btc5m:orderbook:start:auto": "node scripts/btc5m-orderbook-collector.mjs start-auto",
     "btc5m:orderbook:stop": "node scripts/btc5m-orderbook-collector.mjs stop",
     "btc5m:checkpoint": "node scripts/btc5m-checkpoint.mjs",
-    "btc5m:checkpoint:status": "node scripts/btc5m-checkpoint.mjs --no-ga",
+    "btc5m:checkpoint:status": "node scripts/btc5m-checkpoint.mjs --no-ga --summary-only",
     "btc5m:checkpoint:gate": "node scripts/btc5m-checkpoint.mjs --require-live-ready",
     "build": "turbo build",
     "lint": "turbo lint",

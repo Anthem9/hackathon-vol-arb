@@ -214,7 +214,9 @@ Override defaults with `BTC5M_CHECKPOINT_DAYS`,
 `BTC5M_CHECKPOINT_SEED`, `--no-ga`, `BTC5M_CHECKPOINT_WITH_GA=false`, or
 `BTC5M_CHECKPOINT_REPORT_FILE`. Keep GA enabled for final acceptance; disabling it is only
 for cheap coverage/status checkpoints while waiting for orderbook data.
-`pnpm btc5m:checkpoint:status` is the no-GA shortcut.
+`pnpm btc5m:checkpoint:status` is the no-GA shortcut and prints only the compact summary
+while still saving the full report. Use `--summary-only` directly for the same terminal
+behavior.
 Use `--require-live-ready` for automated final gates; it exits non-zero unless
 `liveReady=true`. `pnpm btc5m:checkpoint:gate` is the shortcut for that final gate.
 
