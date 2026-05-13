@@ -265,12 +265,22 @@ const btcFiveMinuteMonitor = await getBtcFiveMinuteMonitor({
       { price: 100200, timestamp: 1778662840000 },
     ],
   }),
+  fetchFastReference: async () => ({
+    source: "test",
+    price: 100202,
+    timestamp: monitorNow,
+    ageSeconds: 0,
+    basisToChainlink: 2,
+    error: null,
+  }),
 });
 assert.equal(btcFiveMinuteMonitor.mode, "read_only");
 assert.equal(btcFiveMinuteMonitor.market?.slug, "btc-updown-5m-1778662800");
 assert.equal(btcFiveMinuteMonitor.rtds.price, 100200);
 assert.equal(btcFiveMinuteMonitor.orderbook.up.ask, 0.51);
 assert.ok((btcFiveMinuteMonitor.model.probabilityUp ?? 0) > 0.5);
+assert.equal(btcFiveMinuteMonitor.model.openPrice, 100000);
+assert.ok((btcFiveMinuteMonitor.model.cone.upper68 ?? 0) > 100200);
 assert.notEqual(btcFiveMinuteMonitor.model.decision, "blocked");
 globalThis.fetch = async (input, init) => {
   const url = String(input);

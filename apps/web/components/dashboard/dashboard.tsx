@@ -94,6 +94,12 @@ function formatMonitorPercent(value: number | null | undefined, signed = false) 
   return signed && value > 0 ? `+${formatted}` : formatted;
 }
 
+function formatMonitorUsdDelta(value: number | null | undefined) {
+  if (value === null || value === undefined || !Number.isFinite(value)) return "--";
+  const prefix = value > 0 ? "+" : "";
+  return `${prefix}${value.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 })}`;
+}
+
 function payloadString(payload: Record<string, unknown>, key: string) {
   const value = payload[key];
   return typeof value === "string" && value.trim() ? value : null;
@@ -661,25 +667,56 @@ function BtcFiveMinuteMonitorPanel() {
 
       <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
-          label="Chainlink Spot"
+          label="Settlement Price"
           value={formatMonitorUsd(monitor?.rtds.price)}
           detail={`${monitor?.rtds.connected ? "RTDS live" : "RTDS disconnected"} · age ${monitor?.rtds.ageSeconds?.toFixed(1) ?? "--"}s`}
           icon={<Activity className="h-5 w-5" />}
           tone={monitor?.rtds.connected ? "cyan" : "amber"}
         />
         <MetricCard
-          label="Window"
+          label="Open Price"
+          value={formatMonitorUsd(monitor?.model.openPrice)}
+          detail={`${monitor?.model.openPriceSource === "chainlink_window_start" ? "window start" : "fallback"} · ${secondsRemaining === null || secondsRemaining === undefined ? "--" : `${Math.max(0, Math.floor(secondsRemaining))}s left`}`}
+          icon={<Gauge className="h-5 w-5" />}
+          tone={monitor?.model.openPriceSource === "chainlink_window_start" ? "green" : "amber"}
+        />
+        <MetricCard
+          label="Fast Reference"
+          value={formatMonitorUsd(monitor?.fastReference.price)}
+          detail={`${monitor?.fastReference.source ?? "loading"} · basis ${formatMonitorUsdDelta(monitor?.fastReference.basisToChainlink)}`}
+          icon={<Zap className="h-5 w-5" />}
+          tone={monitor?.fastReference.price ? "cyan" : "amber"}
+        />
+        <MetricCard
+          label="Market Window"
           value={secondsRemaining === null || secondsRemaining === undefined ? "--" : `${Math.max(0, Math.floor(secondsRemaining))}s`}
           detail={monitor?.market ? monitor.market.question : "No active BTC 5m market"}
           icon={<Radar className="h-5 w-5" />}
           tone={monitor?.market ? "cyan" : "red"}
         />
+      </div>
+
+      <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
-          label="Model Up"
+          label="Prob. Close >= Open"
           value={formatMonitorPercent(monitor?.model.probabilityUp)}
-          detail={`strike ${formatMonitorUsd(monitor?.model.strike)} · vol ${formatMonitorPercent(monitor?.model.annualizedVol)}`}
+          detail={`down ${formatMonitorPercent(monitor?.model.probabilityDown)} · vol ${formatMonitorPercent(monitor?.model.annualizedVol)}`}
           icon={<TrendingUp className="h-5 w-5" />}
           tone="violet"
+        />
+        <MetricCard
+          label="68% Cone"
+          value={`${formatMonitorUsd(monitor?.model.cone.lower68)} - ${formatMonitorUsd(monitor?.model.cone.upper68)}`}
+          detail={`expected move ${formatMonitorUsdDelta(monitor?.model.cone.expectedMove68)}`}
+          icon={<Activity className="h-5 w-5" />}
+          tone="cyan"
+        />
+        <MetricCard
+          label="95% Cone"
+          value={`${formatMonitorUsd(monitor?.model.cone.lower95)} - ${formatMonitorUsd(monitor?.model.cone.upper95)}`}
+          detail={`expected move ${formatMonitorUsdDelta(monitor?.model.cone.expectedMove95)}`}
+          icon={<Gauge className="h-5 w-5" />}
+          tone="amber"
         />
         <MetricCard
           label="Signal"
@@ -692,19 +729,23 @@ function BtcFiveMinuteMonitorPanel() {
 
       <div className="mt-5 grid gap-4 lg:grid-cols-2">
         {[
-          ["UP", monitor?.orderbook.up, monitor?.model.edgeUp],
-          ["DOWN", monitor?.orderbook.down, monitor?.model.edgeDown],
-        ].map(([label, book, edge]) => {
+          ["UP contract", monitor?.orderbook.up, monitor?.model.edgeUp, monitor?.model.probabilityUp],
+          ["DOWN contract", monitor?.orderbook.down, monitor?.model.edgeDown, monitor?.model.probabilityDown],
+        ].map(([label, book, edge, fair]) => {
           const side = book as BtcFiveMinuteMonitor["orderbook"]["up"] | undefined;
           return (
             <div key={String(label)} className="rounded-lg border border-white/10 bg-white/[0.035] p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-slate-100">{String(label)} book</p>
+                <p className="text-sm font-semibold text-slate-100">{String(label)} pricing</p>
                 <p className={`text-lg font-semibold ${(edge as number | null | undefined) && (edge as number) > 0 ? "text-terminal-green" : "text-terminal-muted"}`}>
                   edge {formatMonitorPercent(edge as number | null | undefined, true)}
                 </p>
               </div>
-              <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
+              <div className="mt-4 grid grid-cols-4 gap-3 text-sm">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.16em] text-terminal-muted">fair</p>
+                  <p className="mt-1 text-slate-200">{formatMonitorPercent(fair as number | null | undefined)}</p>
+                </div>
                 <div>
                   <p className="text-xs uppercase tracking-[0.16em] text-terminal-muted">bid</p>
                   <p className="mt-1 text-slate-200">{formatMonitorPercent(side?.bid)}</p>

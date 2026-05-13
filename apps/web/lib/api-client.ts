@@ -310,10 +310,18 @@ export type BtcFiveMinuteMonitor = {
     up: { bid: number | null; ask: number | null; mid: number | null; spread: number | null; bidSize: number | null; askSize: number | null };
     down: { bid: number | null; ask: number | null; mid: number | null; spread: number | null; bidSize: number | null; askSize: number | null };
   };
+  fastReference: {
+    source: string;
+    price: number | null;
+    timestamp: number | null;
+    ageSeconds: number | null;
+    basisToChainlink: number | null;
+    error: string | null;
+  };
   model: {
     spot: number | null;
-    strike: number | null;
-    strikeSource: "chainlink_window_start" | "current_tick_fallback" | "unavailable";
+    openPrice: number | null;
+    openPriceSource: "chainlink_window_start" | "current_tick_fallback" | "unavailable";
     secondsRemaining: number | null;
     annualizedVol: number | null;
     sampleCount: number;
@@ -321,6 +329,14 @@ export type BtcFiveMinuteMonitor = {
     probabilityDown: number | null;
     edgeUp: number | null;
     edgeDown: number | null;
+    cone: {
+      lower68: number | null;
+      upper68: number | null;
+      lower95: number | null;
+      upper95: number | null;
+      expectedMove68: number | null;
+      expectedMove95: number | null;
+    };
     minEdge: number;
     decision: "watch_up" | "watch_down" | "no_edge" | "blocked";
     reasons: string[];

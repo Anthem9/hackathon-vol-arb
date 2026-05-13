@@ -28,6 +28,15 @@ type ChainlinkTick = {
   timestamp: number;
 };
 
+type FastReferencePrice = {
+  source: string;
+  price: number | null;
+  timestamp: number | null;
+  ageSeconds: number | null;
+  basisToChainlink: number | null;
+  error: string | null;
+};
+
 export type BtcFiveMinuteMonitor = {
   mode: "read_only";
   status: "healthy" | "warning" | "critical";
@@ -47,10 +56,11 @@ export type BtcFiveMinuteMonitor = {
     up: OrderbookSide;
     down: OrderbookSide;
   };
+  fastReference: FastReferencePrice;
   model: {
     spot: number | null;
-    strike: number | null;
-    strikeSource: "chainlink_window_start" | "current_tick_fallback" | "unavailable";
+    openPrice: number | null;
+    openPriceSource: "chainlink_window_start" | "current_tick_fallback" | "unavailable";
     secondsRemaining: number | null;
     annualizedVol: number | null;
     sampleCount: number;
@@ -58,6 +68,14 @@ export type BtcFiveMinuteMonitor = {
     probabilityDown: number | null;
     edgeUp: number | null;
     edgeDown: number | null;
+    cone: {
+      lower68: number | null;
+      upper68: number | null;
+      lower95: number | null;
+      upper95: number | null;
+      expectedMove68: number | null;
+      expectedMove95: number | null;
+    };
     minEdge: number;
     decision: "watch_up" | "watch_down" | "no_edge" | "blocked";
     reasons: string[];
@@ -72,6 +90,7 @@ type MonitorOptions = {
   rtdsUrl?: string;
   minEdge?: number;
   fetchChainlinkTicks?: () => Promise<{ ticks: ChainlinkTick[]; connected: boolean; error: string | null }>;
+  fetchFastReference?: () => Promise<FastReferencePrice>;
 };
 
 const DEFAULT_MIN_EDGE = 0.03;
@@ -341,6 +360,70 @@ async function fetchOrderbook(clobUrl: string, tokenId: string | undefined): Pro
   }
 }
 
+async function fetchFastReferencePrice(spot: number | null, now: number): Promise<FastReferencePrice> {
+  const endpoints = [
+    {
+      source: "Binance BTCUSDT",
+      url: "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT",
+      parse: (payload: unknown) => (isRecord(payload) ? asNumber(payload.price) : Number.NaN),
+    },
+    {
+      source: "Coinbase BTC-USD",
+      url: "https://api.coinbase.com/v2/prices/BTC-USD/spot",
+      parse: (payload: unknown) => {
+        const data = isRecord(payload) && isRecord(payload.data) ? payload.data : {};
+        return asNumber(data.amount);
+      },
+    },
+  ];
+  for (const endpoint of endpoints) {
+    try {
+      const payload = await fetchJson<unknown>(endpoint.url, 2500);
+      const price = endpoint.parse(payload);
+      if (!Number.isFinite(price)) throw new Error("price field missing");
+      return {
+        source: endpoint.source,
+        price,
+        timestamp: now,
+        ageSeconds: 0,
+        basisToChainlink: spot ? price - spot : null,
+        error: null,
+      };
+    } catch (error) {
+      if (endpoint === endpoints[endpoints.length - 1]) {
+        return {
+          source: "unavailable",
+          price: null,
+          timestamp: null,
+          ageSeconds: null,
+          basisToChainlink: null,
+          error: error instanceof Error ? error.message : "Fast reference price unavailable.",
+        };
+      }
+    }
+  }
+  return { source: "unavailable", price: null, timestamp: null, ageSeconds: null, basisToChainlink: null, error: "Fast reference price unavailable." };
+}
+
+function buildCone(spot: number | null, variancePerSecond: number, secondsRemaining: number | null) {
+  if (!spot || secondsRemaining === null) {
+    return { lower68: null, upper68: null, lower95: null, upper95: null, expectedMove68: null, expectedMove95: null };
+  }
+  const sigma = Math.sqrt(Math.max(variancePerSecond * Math.max(secondsRemaining, 1), 1e-12));
+  const lower68 = spot * Math.exp(-sigma);
+  const upper68 = spot * Math.exp(sigma);
+  const lower95 = spot * Math.exp(-2 * sigma);
+  const upper95 = spot * Math.exp(2 * sigma);
+  return {
+    lower68,
+    upper68,
+    lower95,
+    upper95,
+    expectedMove68: Math.max(Math.abs(spot - lower68), Math.abs(upper68 - spot)),
+    expectedMove95: Math.max(Math.abs(spot - lower95), Math.abs(upper95 - spot)),
+  };
+}
+
 export async function getBtcFiveMinuteMonitor(options: MonitorOptions = {}): Promise<BtcFiveMinuteMonitor> {
   const now = options.now?.() ?? Date.now();
   const gammaUrl = options.gammaUrl ?? envValue("POLYMARKET_GAMMA_API_BASE") ?? "https://gamma-api.polymarket.com";
@@ -374,22 +457,28 @@ export async function getBtcFiveMinuteMonitor(options: MonitorOptions = {}): Pro
   const secondsRemaining = market ? Math.max(0, (market.endTime - now) / 1000) : null;
   if (secondsRemaining !== null && secondsRemaining < 30) reasons.push("Current 5m market is inside the final 30 seconds.");
   const spot = tick?.price ?? null;
-  const strike = resolveStrike(market, spot);
-  if (strike.source === "current_tick_fallback") reasons.push("Window-start Chainlink tick is not cached yet; using current tick as neutral fallback.");
-  if (strike.source === "unavailable") reasons.push("No usable strike/start price is available.");
+  const openPrice = resolveStrike(market, spot);
+  if (openPrice.source === "current_tick_fallback") reasons.push("Window-start Chainlink tick is not cached yet; using current tick as neutral fallback.");
+  if (openPrice.source === "unavailable") reasons.push("No usable opening price is available.");
   const vol = estimateVariancePerSecond();
   if (vol.fallback) reasons.push("Using fallback BTC annualized volatility until enough RTDS samples are cached.");
+
+  const fastReference = options.fetchFastReference ? await options.fetchFastReference() : await fetchFastReferencePrice(spot, now);
+  if (fastReference.price !== null && spot !== null && Math.abs(fastReference.price - spot) > 20) {
+    reasons.push(`Fast reference differs from Chainlink by $${Math.abs(fastReference.price - spot).toFixed(2)}; settlement feed may be lagging.`);
+  }
 
   let pUp: number | null = null;
   let pDown: number | null = null;
   let edgeUp: number | null = null;
   let edgeDown: number | null = null;
-  if (spot && strike.strike && secondsRemaining !== null) {
-    pUp = probabilityUp(spot, strike.strike, vol.variance, secondsRemaining);
+  if (spot && openPrice.strike && secondsRemaining !== null) {
+    pUp = probabilityUp(spot, openPrice.strike, vol.variance, secondsRemaining);
     pDown = 1 - pUp;
     edgeUp = upBook.ask !== null ? pUp - upBook.ask : null;
     edgeDown = downBook.ask !== null ? pDown - downBook.ask : null;
   }
+  const cone = buildCone(spot, vol.variance, secondsRemaining);
 
   let decision: BtcFiveMinuteMonitor["model"]["decision"] = "blocked";
   if (reasons.length === 0) {
@@ -418,10 +507,11 @@ export async function getBtcFiveMinuteMonitor(options: MonitorOptions = {}): Pro
       up: upBook,
       down: downBook,
     },
+    fastReference,
     model: {
       spot,
-      strike: strike.strike,
-      strikeSource: strike.source,
+      openPrice: openPrice.strike,
+      openPriceSource: openPrice.source,
       secondsRemaining,
       annualizedVol: Math.sqrt(vol.variance * SECONDS_PER_YEAR),
       sampleCount: vol.samples,
@@ -429,6 +519,7 @@ export async function getBtcFiveMinuteMonitor(options: MonitorOptions = {}): Pro
       probabilityDown: pDown,
       edgeUp,
       edgeDown,
+      cone,
       minEdge,
       decision,
       reasons,
