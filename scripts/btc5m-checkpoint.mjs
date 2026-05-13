@@ -5,6 +5,28 @@ import { dirname, resolve } from "node:path";
 
 const root = resolve(new URL("..", import.meta.url).pathname);
 
+function usage() {
+  return `Usage:
+  pnpm btc5m:checkpoint [--no-ga] [--require-live-ready]
+  pnpm btc5m:checkpoint:status
+  pnpm btc5m:checkpoint:gate
+
+Environment overrides:
+  BTC5M_CHECKPOINT_DAYS=7
+  BTC5M_CHECKPOINT_LIMIT_MARKETS=2016
+  BTC5M_CHECKPOINT_GENERATIONS=1
+  BTC5M_CHECKPOINT_POPULATION=4
+  BTC5M_CHECKPOINT_SEED=7
+  BTC5M_CHECKPOINT_WITH_GA=false
+  BTC5M_CHECKPOINT_REPORT_FILE=.local/reports/checkpoint.json
+`;
+}
+
+if (process.argv.includes("--help") || process.argv.includes("-h")) {
+  console.log(usage());
+  process.exit(0);
+}
+
 function runJson(command, args, timeout = 120_000) {
   const result = spawnSync(command, args, {
     cwd: root,
