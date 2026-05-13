@@ -2172,7 +2172,7 @@ function summarizeExecutionCoverage(markets: Btc5mMarket[], points: PricePoint[]
   };
 }
 
-function buildAcceptanceBlockers(input: {
+export function buildBtc5mAcceptanceBlockers(input: {
   datasetMarkets: number;
   targetSegment: BacktestParams["targetSegment"];
   paperBlocked: boolean;
@@ -2372,7 +2372,7 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
     stressValidation.totalPnl > 0 &&
     stressValidation.maxDrawdown <= stressValidation.initialCapital * stressValidation.parameters.maxDrawdownFraction;
   const coverageAccepted = executionCoverage.executionQuality === "partial_orderbook" || executionCoverage.executionQuality === "orderbook_backtest_ready";
-  const acceptanceBlockers = buildAcceptanceBlockers({
+  const acceptanceBlockers = buildBtc5mAcceptanceBlockers({
     datasetMarkets: dataset.markets.length,
     targetSegment: bestTrain.parameters.targetSegment,
     paperBlocked,

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { DEFAULT_BACKTEST_PARAMS, runBtc5mBacktestFromData, type Btc5mMarket, type PricePoint } from "./btc5m-research-service";
+import { buildBtc5mAcceptanceBlockers, DEFAULT_BACKTEST_PARAMS, runBtc5mBacktestFromData, type Btc5mMarket, type PricePoint } from "./btc5m-research-service";
 
 const start = Date.UTC(2026, 0, 1, 0, 0, 0);
 const market: Btc5mMarket = {
@@ -210,5 +210,37 @@ const staleSignalReport = runBtc5mBacktestFromData({
 });
 
 assert.equal(staleSignalReport.tradeCount, 0);
+
+const acceptanceReadyReport = {
+  ...report,
+  tradeCount: 100,
+  totalPnl: 1,
+  maxDrawdown: 0,
+  initialCapital: 100,
+  parameters: DEFAULT_BACKTEST_PARAMS,
+};
+const executionQualityBlockers = buildBtc5mAcceptanceBlockers({
+  datasetMarkets: 500,
+  targetSegment: "all",
+  paperBlocked: false,
+  validation: acceptanceReadyReport,
+  stressValidation: acceptanceReadyReport,
+  walkForwardValidation: {
+    requestedWindows: 4,
+    windows: [],
+    accepted: true,
+    windowCount: 4,
+    totalPnl: 1,
+    totalTrades: 100,
+    profitableWindows: 3,
+    losingWindows: 1,
+  },
+  coverageAccepted: false,
+  executionQuality: "trade_proxy_only",
+  segmentCoverage: {},
+  partialOrderbookSegments: ["weekday_beijing_day", "weekday_beijing_night", "weekend_beijing_day"],
+});
+
+assert.ok(executionQualityBlockers.some((blocker) => blocker.code === "execution_quality_below_partial_orderbook"));
 
 console.log("btc5m-research-service tests passed");
