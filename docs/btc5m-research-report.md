@@ -59,6 +59,8 @@ Additional forward collection run:
 - GA output now includes `acceptanceRequirements` and machine-readable
   `acceptanceBlockers`, so downstream automation can distinguish data insufficiency from
   validation failure, stress failure, and negative paper-signal evidence.
+- GA acceptance now also requires at least `500` markets in the dataset, preventing small
+  smoke checks from being interpreted as live-ready strategy evidence.
 - Auxiliary BTC 1m data was collected for baseline volatility:
   - Binance was unavailable from the current network.
   - Coinbase stored `9645` 1m close ticks.

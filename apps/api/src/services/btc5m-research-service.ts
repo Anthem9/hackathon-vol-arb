@@ -1631,6 +1631,7 @@ function chooseOutcome(params: BacktestParams, up: PricePoint | undefined, down:
 }
 
 const TARGET_SEGMENTS: BacktestParams["targetSegment"][] = ["all", "weekday_beijing_day", "weekday_beijing_night", "weekend_beijing_day", "weekend_beijing_night"];
+const MIN_ACCEPTANCE_MARKETS = 500;
 const MIN_VALIDATION_TRADES = 8;
 const MIN_STRESS_VALIDATION_TRADES = 4;
 
@@ -1993,6 +1994,7 @@ function summarizeExecutionCoverage(markets: Btc5mMarket[], points: PricePoint[]
 }
 
 function buildAcceptanceBlockers(input: {
+  datasetMarkets: number;
   paperBlocked: boolean;
   validation: BacktestReport;
   stressValidation: BacktestReport;
@@ -2000,6 +2002,14 @@ function buildAcceptanceBlockers(input: {
   executionQuality: string;
 }) {
   const blockers: Array<{ code: string; message: string; observed?: number | string; required?: number | string }> = [];
+  if (input.datasetMarkets < MIN_ACCEPTANCE_MARKETS) {
+    blockers.push({
+      code: "dataset_market_count_below_min",
+      message: "Acceptance requires a broad market sample; small GA smoke runs are research-only.",
+      observed: input.datasetMarkets,
+      required: MIN_ACCEPTANCE_MARKETS,
+    });
+  }
   if (input.paperBlocked) {
     blockers.push({
       code: "paper_signal_blocked",
@@ -2130,6 +2140,7 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
     stressValidation.maxDrawdown <= stressValidation.initialCapital * stressValidation.parameters.maxDrawdownFraction;
   const coverageAccepted = executionCoverage.executionQuality === "partial_orderbook" || executionCoverage.executionQuality === "orderbook_backtest_ready";
   const acceptanceBlockers = buildAcceptanceBlockers({
+    datasetMarkets: dataset.markets.length,
     paperBlocked,
     validation,
     stressValidation,
@@ -2161,6 +2172,7 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
       coverageAccepted,
     },
     acceptanceRequirements: {
+      minDatasetMarkets: MIN_ACCEPTANCE_MARKETS,
       minValidationTrades: MIN_VALIDATION_TRADES,
       minStressValidationTrades: MIN_STRESS_VALIDATION_TRADES,
       minExecutionQuality: "partial_orderbook",

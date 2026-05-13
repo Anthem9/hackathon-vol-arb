@@ -294,6 +294,8 @@ requires at least 8 validation trades, positive PnL, acceptable drawdown, and a 
 stress validation. Final `accepted` also requires `executionQuality` to be
 `partial_orderbook` or `orderbook_backtest_ready`; a run based on `trade_proxy_only`,
 `thin_trade_proxy`, or `insufficient` evidence remains research-only even if PnL gates pass.
+Acceptance also requires at least 500 markets in the GA dataset, so small smoke runs cannot
+be mistaken for production-ready evidence.
 
 Stress validation reruns the best train parameters on the validation slice with:
 
