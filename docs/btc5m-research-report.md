@@ -64,6 +64,23 @@ Additional forward collection run:
 - GA acceptance now includes walk-forward validation across sequential market windows.
   A candidate must have enough windows, positive aggregate walk-forward PnL, and more
   profitable windows than losing windows before it can be considered live-ready.
+- Current full 7-day GA smoke check after adding acceptance blockers:
+  - command: `genetic --days 7 --limit-markets 2016 --generations 2 --population 8 --seed 11`.
+  - dataset: `2007` markets, `651716` points, `1531` markets with trades, `20` markets
+    with orderbook snapshots.
+  - execution quality: `trade_proxy_only`, still below `partial_orderbook`.
+  - best train candidate: `probability_cone`, target segment `weekday_beijing_day`,
+    train PnL `5.9599931015` across `10` trades.
+  - validation: `6` trades, `-14.4422438280` PnL, `0` win rate.
+  - stress validation: `6` trades, `-14.4421666640` PnL.
+  - walk-forward validation: `4` windows, `16` trades, `-2.5580953689` aggregate PnL,
+    `1` profitable window and `3` losing windows.
+  - acceptance blockers: validation trade count below minimum, validation PnL not
+    positive, stress PnL not positive, walk-forward PnL not positive, walk-forward
+    profitable windows not dominant, and execution quality below `partial_orderbook`.
+  - interpretation: the current search can still find small in-sample wins, but the
+    candidate is rejected on out-of-sample behavior and on insufficient real orderbook
+    execution evidence.
 - Auxiliary BTC 1m data was collected for baseline volatility:
   - Binance was unavailable from the current network.
   - Coinbase stored `9645` 1m close ticks.
