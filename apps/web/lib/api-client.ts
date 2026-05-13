@@ -281,6 +281,53 @@ export type PolymarketTradingReadiness = {
   };
 };
 
+export type BtcFiveMinuteMonitor = {
+  mode: "read_only";
+  status: "healthy" | "warning" | "critical";
+  updatedAt: number;
+  rtds: {
+    connected: boolean;
+    topic: "crypto_prices_chainlink";
+    symbol: "btc/usd";
+    price: number | null;
+    timestamp: number | null;
+    ageSeconds: number | null;
+    tickCount: number;
+    error: string | null;
+  };
+  market: {
+    eventId: string;
+    marketId: string;
+    conditionId: string;
+    question: string;
+    slug: string;
+    startTime: number;
+    endTime: number;
+    upTokenId: string;
+    downTokenId: string;
+  } | null;
+  orderbook: {
+    up: { bid: number | null; ask: number | null; mid: number | null; spread: number | null; bidSize: number | null; askSize: number | null };
+    down: { bid: number | null; ask: number | null; mid: number | null; spread: number | null; bidSize: number | null; askSize: number | null };
+  };
+  model: {
+    spot: number | null;
+    strike: number | null;
+    strikeSource: "chainlink_window_start" | "current_tick_fallback" | "unavailable";
+    secondsRemaining: number | null;
+    annualizedVol: number | null;
+    sampleCount: number;
+    probabilityUp: number | null;
+    probabilityDown: number | null;
+    edgeUp: number | null;
+    edgeDown: number | null;
+    minEdge: number;
+    decision: "watch_up" | "watch_down" | "no_edge" | "blocked";
+    reasons: string[];
+  };
+  notes: string[];
+};
+
 export type PolymarketAccountState = {
   network: "polygon" | "polygon-amoy";
   chainId: 137 | 80002;
@@ -486,6 +533,10 @@ export async function backfillDeepBookTransactions(owner?: string, limit = 25) {
 
 export async function fetchPolymarketTradingReadiness(): Promise<PolymarketTradingReadiness> {
   return getJson<PolymarketTradingReadiness>("/api/polymarket/trading-readiness");
+}
+
+export async function fetchBtcFiveMinuteMonitor(): Promise<BtcFiveMinuteMonitor> {
+  return getJson<BtcFiveMinuteMonitor>("/api/polymarket/btc-5m-monitor");
 }
 
 export async function previewPolymarketOrder(payload: { market: string; tokenId: string; side: "buy" | "sell"; price: string; size: string }) {

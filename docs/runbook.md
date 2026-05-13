@@ -99,6 +99,7 @@ curl http://localhost:4000/api/deepbook/readiness
 curl http://localhost:4000/api/deepbook/positions
 curl http://localhost:4000/api/maintenance/status
 curl http://localhost:4000/api/polymarket/trading-readiness
+curl http://localhost:4000/api/polymarket/btc-5m-monitor
 curl http://localhost:4000/api/polymarket/account
 curl -X POST http://localhost:4000/api/polymarket/order-preview \
   -H 'content-type: application/json' \
@@ -120,6 +121,7 @@ Expected result:
 - `/api/health?deep=1` includes source status.
 - `/api/deepbook/readiness` reports Sui Testnet blockers and next action.
 - `/api/polymarket/trading-readiness` never returns secret values.
+- `/api/polymarket/btc-5m-monitor` returns a read-only BTC 5m window, Chainlink RTDS tick, Up/Down books, probability estimate, edge, and blockers. It does not require a Polymarket API key and does not sign or submit orders.
 - `/api/polymarket/account` reads public Data API positions and, when L2 credentials are configured, reads CLOB collateral balance, allowances, and open orders with official CLOB L2 signing.
 - `/api/polymarket/order-preview` calculates notional, max loss, max profit, collateral balance/allowance preflight, and blockers without signing or submitting an order.
 - `/api/polymarket/cancel-preview` validates an order id against authenticated open orders when credentials are configured, but does not cancel.

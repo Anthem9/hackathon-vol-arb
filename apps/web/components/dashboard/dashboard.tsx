@@ -26,9 +26,9 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { DashboardApiData, DeepBookTestnetReadiness, MaintenanceStatus, PolymarketAccountState, PolymarketCancelExecution, PolymarketCancelPreview, PolymarketOrderExecution, PolymarketOrderPreview, PolymarketTradingReadiness } from "../../lib/api-client";
+import type { BtcFiveMinuteMonitor, DashboardApiData, DeepBookTestnetReadiness, MaintenanceStatus, PolymarketAccountState, PolymarketCancelExecution, PolymarketCancelPreview, PolymarketOrderExecution, PolymarketOrderPreview, PolymarketTradingReadiness } from "../../lib/api-client";
 import type { HealthStatus } from "@vol-arb/core";
-import { backfillDeepBookTransactions, executePolymarketCancel, executePolymarketOrder, fetchDashboardData, fetchDeepBookPositions, fetchDeepBookReadiness, fetchMaintenanceStatus, fetchPolymarketAccount, fetchPolymarketTradingReadiness, postAlertAction, previewPolymarketCancel, previewPolymarketOrder, reconcileDeepBookTransactions, runMaintenance, type DeepBookPositionState } from "../../lib/api-client";
+import { backfillDeepBookTransactions, executePolymarketCancel, executePolymarketOrder, fetchBtcFiveMinuteMonitor, fetchDashboardData, fetchDeepBookPositions, fetchDeepBookReadiness, fetchMaintenanceStatus, fetchPolymarketAccount, fetchPolymarketTradingReadiness, postAlertAction, previewPolymarketCancel, previewPolymarketOrder, reconcileDeepBookTransactions, runMaintenance, type DeepBookPositionState } from "../../lib/api-client";
 import { StatusPill } from "../ui/status-pill";
 
 const WalletTradePanel = dynamic(
@@ -81,6 +81,17 @@ function formatDusdcBaseUnits(value: number | string | null | undefined) {
   const whole = amount / 1_000_000n;
   const fraction = (amount % 1_000_000n).toString().padStart(6, "0").replace(/0+$/, "");
   return `${fraction ? `${whole}.${fraction}` : whole.toString()} DUSDC`;
+}
+
+function formatMonitorUsd(value: number | null | undefined) {
+  if (value === null || value === undefined || !Number.isFinite(value)) return "--";
+  return value.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+}
+
+function formatMonitorPercent(value: number | null | undefined, signed = false) {
+  if (value === null || value === undefined || !Number.isFinite(value)) return "--";
+  const formatted = `${(value * 100).toFixed(1)}%`;
+  return signed && value > 0 ? `+${formatted}` : formatted;
 }
 
 function payloadString(payload: Record<string, unknown>, key: string) {
@@ -599,6 +610,124 @@ function TestnetReadiness() {
             <p className="mt-2 text-xs text-terminal-amber">{readiness.readiness.warnings.join("; ")}</p>
           ) : null}
         </div>
+      </div>
+    </section>
+  );
+}
+
+function BtcFiveMinuteMonitorPanel() {
+  const [monitor, setMonitor] = useState<BtcFiveMinuteMonitor | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadMonitor = useCallback(async () => {
+    try {
+      const next = await fetchBtcFiveMinuteMonitor();
+      setMonitor(next);
+      setError(null);
+    } catch (caught: unknown) {
+      setError(caught instanceof Error ? caught.message : "Unable to load BTC 5m monitor.");
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadMonitor();
+    const interval = window.setInterval(() => {
+      if (!document.hidden) void loadMonitor();
+    }, 4_000);
+    return () => window.clearInterval(interval);
+  }, [loadMonitor]);
+
+  const decisionTone = monitor?.model.decision === "watch_up" || monitor?.model.decision === "watch_down"
+    ? "green"
+    : monitor?.status === "critical"
+      ? "red"
+      : monitor?.status === "warning"
+        ? "amber"
+        : "cyan";
+  const decisionLabel = monitor?.model.decision.replace("_", " ").toUpperCase() ?? "LOADING";
+  const secondsRemaining = monitor?.model.secondsRemaining;
+
+  return (
+    <section id="btc-5m-monitor" className="scroll-mt-32 rounded-lg border border-cyan-300/20 bg-terminal-panel/90 p-5 shadow-glow">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-terminal-cyan">Polymarket Chainlink BTC/USD</p>
+          <h2 className="mt-2 text-lg font-semibold">BTC 5m Probability Monitor</h2>
+        </div>
+        <StatusPill value={monitor?.status ?? (error ? "critical" : "warning")} />
+      </div>
+
+      {error ? <p className="mt-4 rounded-md border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-100">{error}</p> : null}
+
+      <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Chainlink Spot"
+          value={formatMonitorUsd(monitor?.rtds.price)}
+          detail={`${monitor?.rtds.connected ? "RTDS live" : "RTDS disconnected"} · age ${monitor?.rtds.ageSeconds?.toFixed(1) ?? "--"}s`}
+          icon={<Activity className="h-5 w-5" />}
+          tone={monitor?.rtds.connected ? "cyan" : "amber"}
+        />
+        <MetricCard
+          label="Window"
+          value={secondsRemaining === null || secondsRemaining === undefined ? "--" : `${Math.max(0, Math.floor(secondsRemaining))}s`}
+          detail={monitor?.market ? monitor.market.question : "No active BTC 5m market"}
+          icon={<Radar className="h-5 w-5" />}
+          tone={monitor?.market ? "cyan" : "red"}
+        />
+        <MetricCard
+          label="Model Up"
+          value={formatMonitorPercent(monitor?.model.probabilityUp)}
+          detail={`strike ${formatMonitorUsd(monitor?.model.strike)} · vol ${formatMonitorPercent(monitor?.model.annualizedVol)}`}
+          icon={<TrendingUp className="h-5 w-5" />}
+          tone="violet"
+        />
+        <MetricCard
+          label="Signal"
+          value={decisionLabel}
+          detail={`min edge ${formatMonitorPercent(monitor?.model.minEdge)} · samples ${monitor?.model.sampleCount ?? 0}`}
+          icon={<ShieldCheck className="h-5 w-5" />}
+          tone={decisionTone}
+        />
+      </div>
+
+      <div className="mt-5 grid gap-4 lg:grid-cols-2">
+        {[
+          ["UP", monitor?.orderbook.up, monitor?.model.edgeUp],
+          ["DOWN", monitor?.orderbook.down, monitor?.model.edgeDown],
+        ].map(([label, book, edge]) => {
+          const side = book as BtcFiveMinuteMonitor["orderbook"]["up"] | undefined;
+          return (
+            <div key={String(label)} className="rounded-lg border border-white/10 bg-white/[0.035] p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm font-semibold text-slate-100">{String(label)} book</p>
+                <p className={`text-lg font-semibold ${(edge as number | null | undefined) && (edge as number) > 0 ? "text-terminal-green" : "text-terminal-muted"}`}>
+                  edge {formatMonitorPercent(edge as number | null | undefined, true)}
+                </p>
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.16em] text-terminal-muted">bid</p>
+                  <p className="mt-1 text-slate-200">{formatMonitorPercent(side?.bid)}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.16em] text-terminal-muted">ask</p>
+                  <p className="mt-1 text-slate-200">{formatMonitorPercent(side?.ask)}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.16em] text-terminal-muted">spread</p>
+                  <p className="mt-1 text-slate-200">{formatMonitorPercent(side?.spread)}</p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-5 rounded-md border border-white/10 bg-black/20 p-4">
+        <p className="text-xs font-medium uppercase tracking-[0.18em] text-terminal-muted">Gate</p>
+        <p className="mt-2 text-sm text-slate-200">
+          {monitor?.model.reasons.length ? monitor.model.reasons.join("; ") : "No probability-monitor blockers."}
+        </p>
       </div>
     </section>
   );
@@ -1259,6 +1388,7 @@ export function Dashboard({
       { label: "SVI Health", href: "#svi-health" },
       { label: "Audit", href: "#audit" },
       { label: "Testnet", href: "#testnet-readiness" },
+      { label: "BTC 5m", href: "#btc-5m-monitor" },
       { label: "Polymarket", href: "#polymarket-readiness" },
       { label: "Maintenance", href: "#maintenance" },
       { label: "Wallet", href: "#wallet" },
@@ -1311,6 +1441,7 @@ export function Dashboard({
           <SviHealth data={data} />
           <PreTradeAudit data={data} />
           <TestnetReadiness />
+          <BtcFiveMinuteMonitorPanel />
           <PolymarketReadiness />
           <MaintenancePanel />
           <section id="wallet" className="scroll-mt-32">

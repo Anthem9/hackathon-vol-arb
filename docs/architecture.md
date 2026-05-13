@@ -33,6 +33,12 @@ Polymarket Gamma crypto market discovery
   -> CLOB book and midpoint reads
   -> opportunity scoring
 
+Polymarket BTC 5m monitor
+  -> Gamma btc-updown-5m window scan
+  -> public Chainlink BTC/USD RTDS ticks
+  -> Up/Down CLOB order books
+  -> probability cone and read-only signal diagnostics
+
 Configured BTC price endpoint + CoinGecko + Coinbase + Kraken BTC spot
   -> source divergence check
   -> overview and status panels
@@ -56,7 +62,7 @@ Server Testnet Executor
   -> chain transaction event persistence
 ```
 
-Polymarket contributes comparison markets, external prices, account/open-order reads, and guarded execution controls. Authenticated order and cancel submission are blocked by default unless live flags, explicit approval, L2 credentials, Polygon mainnet, notional limits, and exact manual confirmation text all pass.
+Polymarket contributes comparison markets, external prices, account/open-order reads, guarded execution controls, and a BTC 5m auxiliary monitor. The monitor uses Polymarket's Chainlink BTC/USD RTDS settlement feed rather than exchange spot feeds, compares the probability model against public CLOB Up/Down asks, and never submits orders. Authenticated order and cancel submission are blocked by default unless live flags, explicit approval, L2 credentials, Polygon mainnet, notional limits, and exact manual confirmation text all pass.
 
 ## Product Direction
 

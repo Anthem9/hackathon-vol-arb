@@ -34,6 +34,7 @@ import {
   getPolymarketAccountState,
   getPolymarketTradingReadiness,
 } from "./services/polymarket-trading-service";
+import { getBtcFiveMinuteMonitor } from "./services/polymarket-btc-5m-monitor-service";
 import { checkDatabaseConnection } from "./db/postgres";
 
 function loadLocalEnv() {
@@ -164,6 +165,10 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
     }
     if (url.pathname === "/api/polymarket/trading-readiness") {
       sendJson(req, res, 200, await getPolymarketTradingReadiness());
+      return;
+    }
+    if (url.pathname === "/api/polymarket/btc-5m-monitor") {
+      sendJson(req, res, 200, await getBtcFiveMinuteMonitor());
       return;
     }
     if (url.pathname === "/api/polymarket/order-preview") {

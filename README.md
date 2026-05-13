@@ -12,6 +12,7 @@ Version 2 adds real read-only service integration:
 
 - DeepBook Predict testnet indexed server and Sui testnet OracleSVI object reads
 - Polymarket public Gamma market discovery and CLOB orderbook/midpoint reads
+- Polymarket BTC 5m read-only monitor using Chainlink BTC/USD RTDS settlement ticks, Gamma window discovery, and CLOB Up/Down order books
 - BTC spot from free public sources plus an optional configured paid or higher-quota endpoint
 - `DATA_MODE=mock|hybrid|real` switching with mock fallback
 - Dry-run risk controls before wallet confirmation
@@ -124,6 +125,7 @@ Polymarket authenticated trading readiness is exposed without submitting orders:
 
 ```bash
 curl http://localhost:4000/api/polymarket/trading-readiness
+curl http://localhost:4000/api/polymarket/btc-5m-monitor
 curl http://localhost:4000/api/polymarket/account
 curl -X POST http://localhost:4000/api/polymarket/order-preview \
   -H 'content-type: application/json' \
@@ -134,6 +136,8 @@ curl -X POST http://localhost:4000/api/polymarket/cancel-preview \
 ```
 
 Live Polymarket submission endpoints exist at `/api/polymarket/order-execute` and `/api/polymarket/cancel-execute`, but default to blocked. Set `POLYMARKET_ENABLE_LIVE_TRADING=true` and `POLYMARKET_LIVE_TRADING_APPROVED=true` only after API credentials, signing wallet, funding, per-order notional limits, and manual confirmation controls are ready.
+
+The BTC 5m monitor is not a trading endpoint. It scans the current `btc-updown-5m-{window}` Gamma event, reads the public CLOB books for Up/Down, subscribes to `crypto_prices_chainlink` `btc/usd` on Polymarket RTDS, and displays probability/edge diagnostics on the dashboard. It requires no Polymarket API key.
 
 Environment profiles:
 

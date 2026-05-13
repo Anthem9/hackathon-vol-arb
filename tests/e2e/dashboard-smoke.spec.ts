@@ -11,6 +11,11 @@ test("production-like dashboard loads and primary anchors work", async ({ page }
   const tradeCells = page.getByText("TRADE", { exact: true });
   await expect(tradeCells).toHaveCount(0);
 
+  await page.getByRole("link", { name: "BTC 5m" }).click();
+  await expect(page).toHaveURL(/#btc-5m-monitor$/);
+  await expect(page.getByRole("heading", { name: "BTC 5m Probability Monitor" })).toBeVisible();
+  await expect(page.getByText("Chainlink Spot", { exact: true })).toBeVisible();
+
   await page.getByRole("link", { name: "Polymarket" }).click();
   await expect(page).toHaveURL(/#polymarket-readiness$/);
   await expect(page.getByRole("heading", { name: "Polymarket Trading Readiness" })).toBeVisible();

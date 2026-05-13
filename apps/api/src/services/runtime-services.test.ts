@@ -13,6 +13,7 @@ import {
   getPolymarketAccountState,
   getPolymarketTradingReadiness,
 } from "./polymarket-trading-service";
+import { getBtcFiveMinuteMonitor } from "./polymarket-btc-5m-monitor-service";
 import { checkDatabaseConnection } from "../db/postgres";
 
 process.env.DATA_MODE = "mock";
@@ -216,6 +217,61 @@ process.env.POLYMARKET_API_SECRET = Buffer.from("secret").toString("base64");
 process.env.POLYMARKET_API_PASSPHRASE = "passphrase";
 process.env.POLYMARKET_CHAIN_ID = "137";
 process.env.POLYMARKET_ENABLE_LIVE_TRADING = "false";
+const monitorNow = 1778662840000;
+globalThis.fetch = async (input) => {
+  const url = String(input);
+  if (url === "https://gamma.polymarket.test/events?slug=btc-updown-5m-1778662800") {
+    return Response.json([
+      {
+        id: "event-1",
+        slug: "btc-updown-5m-1778662800",
+        markets: [
+          {
+            id: "market-1",
+            conditionId: `0x${"c".repeat(64)}`,
+            question: "Bitcoin Up or Down - May 13, 5:00AM-5:05AM ET",
+            slug: "btc-updown-5m-1778662800",
+            endDate: new Date(1778663100000).toISOString(),
+            closed: false,
+            outcomes: JSON.stringify(["Up", "Down"]),
+            clobTokenIds: JSON.stringify(["up-token", "down-token"]),
+          },
+        ],
+      },
+    ]);
+  }
+  if (url.startsWith("https://gamma.polymarket.test/events?slug=btc-updown-5m-")) {
+    return Response.json([]);
+  }
+  if (url === "https://clob.polymarket.test/book?token_id=up-token") {
+    return Response.json({ bids: [{ price: "0.48", size: "20" }], asks: [{ price: "0.51", size: "15" }] });
+  }
+  if (url === "https://clob.polymarket.test/book?token_id=down-token") {
+    return Response.json({ bids: [{ price: "0.46", size: "20" }], asks: [{ price: "0.49", size: "15" }] });
+  }
+  throw new Error(`unexpected monitor fetch ${url}`);
+};
+const btcFiveMinuteMonitor = await getBtcFiveMinuteMonitor({
+  now: () => monitorNow,
+  gammaUrl: "https://gamma.polymarket.test",
+  clobUrl: "https://clob.polymarket.test",
+  fetchChainlinkTicks: async () => ({
+    connected: true,
+    error: null,
+    ticks: [
+      { price: 100000, timestamp: 1778662800000 },
+      { price: 100080, timestamp: 1778662810000 },
+      { price: 100150, timestamp: 1778662820000 },
+      { price: 100200, timestamp: 1778662840000 },
+    ],
+  }),
+});
+assert.equal(btcFiveMinuteMonitor.mode, "read_only");
+assert.equal(btcFiveMinuteMonitor.market?.slug, "btc-updown-5m-1778662800");
+assert.equal(btcFiveMinuteMonitor.rtds.price, 100200);
+assert.equal(btcFiveMinuteMonitor.orderbook.up.ask, 0.51);
+assert.ok((btcFiveMinuteMonitor.model.probabilityUp ?? 0) > 0.5);
+assert.notEqual(btcFiveMinuteMonitor.model.decision, "blocked");
 globalThis.fetch = async (input, init) => {
   const url = String(input);
   if (url === "https://clob.polymarket.test/") return new Response("OK", { status: 200 });
