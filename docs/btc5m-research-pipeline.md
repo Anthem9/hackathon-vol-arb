@@ -201,6 +201,7 @@ Save a combined orderbook-plan plus readiness checkpoint:
 ```bash
 pnpm btc5m:checkpoint
 pnpm btc5m:checkpoint:status
+pnpm btc5m:checkpoint:gate
 ```
 
 The checkpoint writes an ignored JSON report under `.local/reports`, includes its own
@@ -215,7 +216,7 @@ Override defaults with `BTC5M_CHECKPOINT_DAYS`,
 for cheap coverage/status checkpoints while waiting for orderbook data.
 `pnpm btc5m:checkpoint:status` is the no-GA shortcut.
 Use `--require-live-ready` for automated final gates; it exits non-zero unless
-`liveReady=true`.
+`liveReady=true`. `pnpm btc5m:checkpoint:gate` is the shortcut for that final gate.
 
 Record a real-time paper signal without submitting any order:
 

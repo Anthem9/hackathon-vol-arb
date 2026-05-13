@@ -134,7 +134,7 @@ collection, and a hard readiness gate before any live trading.
 | Add probability-cone baseline strategy | `probability_cone`, `longshot_cone` | Implemented |
 | Add genetic algorithm strategy search | `genetic`, `genetic-sweep`, seeded runs, report saving | Implemented with train/validation, stress validation, walk-forward validation, and multi-seed sweeps |
 | Prevent stale or non-executable signals | `maxSignalStalenessSeconds`, bid/ask side separation, visible liquidity participation, observed-size checks | Implemented and tested |
-| Preserve experiment evidence and gate final acceptance | `--save-report` for backtest, genetic, genetic-sweep, readiness; `pnpm btc5m:checkpoint`; `pnpm btc5m:checkpoint:status`; `pnpm btc5m:checkpoint --require-live-ready` | Implemented; reports write under ignored `.local/reports`, checkpoint combines orderbook plan plus readiness in one artifact, `checkpoint:status` provides a no-GA status shortcut while waiting for data, and `--require-live-ready` exits non-zero unless the strategy is actually ready |
+| Preserve experiment evidence and gate final acceptance | `--save-report` for backtest, genetic, genetic-sweep, readiness; `pnpm btc5m:checkpoint`; `pnpm btc5m:checkpoint:status`; `pnpm btc5m:checkpoint:gate`; `pnpm btc5m:checkpoint --require-live-ready` | Implemented; reports write under ignored `.local/reports`, checkpoint combines orderbook plan plus readiness in one artifact, `checkpoint:status` provides a no-GA status shortcut while waiting for data, and `checkpoint:gate` exits non-zero unless the strategy is actually ready |
 | Gate live use on real evidence instead of in-sample PnL | `btc5m:research readiness --with-ga`, `acceptanceBlockers`, orderbook coverage gates | Implemented; current result is correctly not live-ready |
 
 ### BTC 5m Current Evidence
@@ -162,8 +162,9 @@ collection, and a hard readiness gate before any live trading.
 - Low-cost checkpoint command: `pnpm btc5m:checkpoint:status`, equivalent to
   `node scripts/btc5m-checkpoint.mjs --no-ga`; use it for frequent coverage checks while
   waiting for orderbook data, but keep GA enabled for final acceptance.
-- Final gate command: `pnpm btc5m:checkpoint --require-live-ready`; current status
-  intentionally exits non-zero because `liveReady=false`.
+- Final gate command: `pnpm btc5m:checkpoint:gate`, equivalent to
+  `pnpm btc5m:checkpoint --require-live-ready`; current status intentionally exits
+  non-zero because `liveReady=false`.
 
 ### BTC 5m Completion Decision
 
@@ -180,7 +181,7 @@ The next required action is continued forward orderbook collection through weak 
 segments, using `pnpm btc5m:checkpoint:status` for cheap interim checks. Once orderbook
 coverage reaches the required threshold, rerun `pnpm btc5m:checkpoint`, saved backtest,
 seeded GA, multi-seed sweep, and readiness reports, then require
-`pnpm btc5m:checkpoint --require-live-ready` to pass. Only a readiness/checkpoint result
+`pnpm btc5m:checkpoint:gate` to pass. Only a readiness/checkpoint result
 with `liveReady=true` and no acceptance blockers should be treated as evidence for moving
 toward controlled live operation.
 
