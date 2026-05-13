@@ -134,24 +134,27 @@ collection, and a hard readiness gate before any live trading.
 | Add probability-cone baseline strategy | `probability_cone`, `longshot_cone` | Implemented |
 | Add genetic algorithm strategy search | `genetic`, `genetic-sweep`, seeded runs, report saving | Implemented with train/validation, stress validation, walk-forward validation, and multi-seed sweeps |
 | Prevent stale or non-executable signals | `maxSignalStalenessSeconds`, bid/ask side separation, visible liquidity participation, observed-size checks | Implemented and tested |
-| Preserve experiment evidence and gate final acceptance | `--save-report` for backtest, genetic, genetic-sweep, readiness; `pnpm btc5m:checkpoint`; `pnpm btc5m:checkpoint:last`; `pnpm btc5m:checkpoint:status`; `pnpm btc5m:checkpoint:gate`; `pnpm btc5m:checkpoint --require-live-ready` | Implemented; reports write under ignored `.local/reports`, checkpoint combines orderbook plan plus readiness in one artifact, `checkpoint:last` reads the latest saved local report without network/GA work and reports whether it matches current HEAD, `checkpoint:status` provides a no-GA status shortcut while waiting for data, and `checkpoint:gate` exits non-zero unless the strategy is actually ready |
+| Preserve experiment evidence and gate final acceptance | `--save-report` for backtest, genetic, genetic-sweep, readiness; `pnpm btc5m:checkpoint`; `pnpm btc5m:checkpoint:last`; `pnpm btc5m:checkpoint:last:current`; `pnpm btc5m:checkpoint:last:live`; `pnpm btc5m:checkpoint:status`; `pnpm btc5m:checkpoint:gate`; `pnpm btc5m:checkpoint --require-live-ready` | Implemented; reports write under ignored `.local/reports`, checkpoint combines orderbook plan plus readiness in one artifact, `checkpoint:last` reads the latest saved local report without network/GA work and reports whether it matches current HEAD, `checkpoint:last:current` and `checkpoint:last:live` guard saved reports, `checkpoint:status` provides a no-GA status shortcut while waiting for data, and `checkpoint:gate` exits non-zero unless the strategy is actually ready |
 | Gate live use on real evidence instead of in-sample PnL | `btc5m:research readiness --with-ga`, `acceptanceBlockers`, orderbook coverage gates | Implemented; current result is correctly not live-ready |
 
 ### BTC 5m Current Evidence
 
 - Latest low-cost checkpoint: `pnpm btc5m:checkpoint:status`, generated
-  `2026-05-13T20:45:05.237Z` on git `0eec461`.
+  `2026-05-13T20:53:21.798Z` on git `7eaf794`.
 - Local last-report command: `pnpm btc5m:checkpoint:last`; use it to inspect the latest
   saved checkpoint without running network checks, readiness, GA, or collectors. If it
   reports `reportMatchesCurrentHead=false`, rerun `pnpm btc5m:checkpoint:status` before
   using the report as current evidence.
+- Saved-report guard commands: `pnpm btc5m:checkpoint:last:current` must pass before a
+  saved report is treated as current, and `pnpm btc5m:checkpoint:last:live` must pass
+  before a saved report is treated as live-ready evidence.
 - Background collector: running, PID `38702`, launched through `caffeinate`.
 - Current execution quality: `trade_proxy_only`.
-- Markets with orderbook snapshots: `37/2007`.
-- Current orderbook market coverage: `0.018435475834578975`.
+- Markets with orderbook snapshots: `38/2007`.
+- Current orderbook market coverage: `0.018933731938216243`.
 - Global `partial_orderbook` target: `201` markets.
-- Remaining markets until `partial_orderbook`: `164`.
-- Estimated continuous collection time until `partial_orderbook`: `13.67` hours.
+- Remaining markets until `partial_orderbook`: `163`.
+- Estimated continuous collection time until `partial_orderbook`: `13.58` hours.
 - Weakest Beijing regimes: `weekday_beijing_day` and `weekend_beijing_night`, both
   still at `0` orderbook markets.
 - Current collection recommendation: keep the running untargeted collector active because
