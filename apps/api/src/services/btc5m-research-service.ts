@@ -1730,6 +1730,17 @@ function scoreReport(report: BacktestReport, blockedStrategies: Set<string> = ne
   return report.totalPnl - report.maxDrawdown * 0.35 + report.winRate * 2;
 }
 
+function stressBacktestParams(params: BacktestParams): BacktestParams {
+  return {
+    ...params,
+    assumedSpread: Math.min(0.08, params.assumedSpread + 0.01),
+    decisionDelaySeconds: Math.min(8, params.decisionDelaySeconds + 2),
+    entryMaxWaitSeconds: Math.max(1, Math.floor(params.entryMaxWaitSeconds * 0.5)),
+    probabilityEdge: Math.min(0.4, params.probabilityEdge + 0.02),
+    minRecentTradeVolume: params.minRecentTradeVolume > 0 ? params.minRecentTradeVolume * 1.25 : 0,
+  };
+}
+
 function splitMarketsForValidation(markets: Btc5mMarket[], validationFraction: number, points: PricePoint[] = []) {
   const pointSlugs = new Set(points.map((point) => point.marketSlug));
   const marketsWithPoints = markets.filter((market) => pointSlugs.has(market.slug));
@@ -1817,9 +1828,12 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
   }
   const bestTrain = history.map((item) => item.best).sort((a, b) => scoreReport(b, blockedStrategies) - scoreReport(a, blockedStrategies))[0] ?? runBtc5mBacktestFromData({ markets: trainMarkets, points: trainPoints });
   const validation = runBtc5mBacktestFromData({ markets: validationMarkets, points: validationPoints, params: bestTrain.parameters });
+  const stressValidation = runBtc5mBacktestFromData({ markets: validationMarkets, points: validationPoints, params: stressBacktestParams(bestTrain.parameters) });
   const strategyPaper = paperSummary.byStrategy[validation.strategy];
   const paperBlocked = Boolean(strategyPaper && strategyPaper.settled >= 20 && strategyPaper.totalPnl < 0);
   if (input.persistBest) await persistBacktestReport({ ...validation, runId: `${validation.runId}-validation`, strategy: `${validation.strategy}_validation` });
+  const validationAccepted = validation.tradeCount >= 8 && validation.totalPnl > 0 && validation.maxDrawdown <= validation.initialCapital * validation.parameters.maxDrawdownFraction;
+  const stressAccepted = stressValidation.tradeCount >= 4 && stressValidation.totalPnl > 0 && stressValidation.maxDrawdown <= stressValidation.initialCapital * stressValidation.parameters.maxDrawdownFraction;
   return {
     generations,
     population: populationSize,
@@ -1834,8 +1848,9 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
     },
     bestTrain,
     validation,
+    stressValidation,
     paperSummary,
-    accepted: !paperBlocked && validation.tradeCount >= 8 && validation.totalPnl > 0 && validation.maxDrawdown <= validation.initialCapital * validation.parameters.maxDrawdownFraction,
+    accepted: !paperBlocked && validationAccepted && stressAccepted,
     history: history.map((item) => ({
       generation: item.generation,
       bestScore: item.bestScore,

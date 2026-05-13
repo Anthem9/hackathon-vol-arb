@@ -153,6 +153,20 @@ Additional forward collection run:
   - interpretation: this is the first candidate worth stricter follow-up. It is not yet a
     live-trading approval because most executable evidence comes from `trade_proxy`
     market trades rather than full historical orderbook depth.
+- A stress-validation gate was added after this first accepted research candidate. It
+  reruns the best train parameters on validation with wider assumed spread, longer
+  decision delay, shorter entry-fill window, higher probability edge, and higher recent
+  trade-volume requirement.
+- First GA run after adding stress validation:
+  - dataset: `81725` points.
+  - best train candidate: `probability_cone` targeting `weekend_beijing_night`.
+  - train: `9` trades, `10.5647` PnL.
+  - validation: `0` trades, `0` PnL.
+  - stress validation: `0` trades, `0` PnL.
+  - accepted by the stricter gate: `false`.
+  - interpretation: the earlier positive validation is a research lead, not a robust
+    strategy. The current search space still needs stricter executable-liquidity modeling
+    and repeated walk-forward confirmation before any live/paper trading integration.
 - Latest coverage:
   - markets: `2012`; resolved markets: `2012`.
   - price points: `25`; orderbook snapshots: `1998`; trades: `78116`; BTC ticks: `9598`.

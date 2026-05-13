@@ -190,12 +190,22 @@ totalPnl - maxDrawdown * 0.35 + winRate * 2
 ```
 
 Candidates with fewer than 8 train trades are heavily penalized, and validation acceptance
-requires at least 8 validation trades, positive PnL, and acceptable drawdown.
+requires at least 8 validation trades, positive PnL, acceptable drawdown, and a positive
+stress validation.
+
+Stress validation reruns the best train parameters on the validation slice with:
+
+- `assumedSpread` increased by `0.01`,
+- `decisionDelaySeconds` increased by `2`,
+- `entryMaxWaitSeconds` cut in half,
+- `probabilityEdge` increased by `0.02`,
+- `minRecentTradeVolume` increased by `25%` when enabled.
 
 The final result includes:
 
 - `bestTrain`
 - `validation`
+- `stressValidation`
 - `accepted`
 - dataset counts for train and validation slices
 - paper-signal summary gates; a strategy with enough settled negative paper signals cannot be accepted
