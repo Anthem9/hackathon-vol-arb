@@ -181,6 +181,9 @@ Additional forward collection run:
   - `weekend_beijing_night`: `336` markets, `336` with trades, `0` with orderbook.
   - interpretation: current orderbook evidence is concentrated in Beijing weekday night.
     Future forward collection must deliberately cover Beijing daytime and weekend sessions.
+- Coverage now reports `weakestOrderbookSegments`; current weakest segments are
+  `weekday_beijing_day` and `weekend_beijing_night`, both with `0` markets covered by
+  orderbook snapshots.
 - Added background orderbook collector helpers:
   - `pnpm btc5m:orderbook:start`
   - `pnpm btc5m:orderbook:collector`

@@ -955,6 +955,27 @@ export async function getBtc5mResearchCoverage(input: { days?: number } = {}) {
     orderbookMarketCoverage < 0.1 ? "Historical orderbook snapshot coverage is sparse; limit-order fills are mostly inferred from trade_proxy evidence." : "",
     tradeMarketCoverage < 0.5 ? "Trade history covers less than half of recent markets; GA candidates may overfit markets with available data." : "",
   ].filter(Boolean);
+  const segmentMarketCoverage = Object.fromEntries(
+    (segmentMarketRows?.rows ?? []).map((segment) => {
+      const segmentMarkets = Number(segment.markets);
+      const segmentMarketsWithTrades = Number(segment.markets_with_trades);
+      const segmentMarketsWithOrderbook = Number(segment.markets_with_orderbook);
+      return [
+        segment.segment,
+        {
+          markets: segmentMarkets,
+          marketsWithTrades: segmentMarketsWithTrades,
+          marketsWithOrderbook: segmentMarketsWithOrderbook,
+          tradeMarketCoverage: segmentMarkets ? segmentMarketsWithTrades / segmentMarkets : 0,
+          orderbookMarketCoverage: segmentMarkets ? segmentMarketsWithOrderbook / segmentMarkets : 0,
+        },
+      ];
+    }),
+  );
+  const weakestOrderbookSegments = Object.entries(segmentMarketCoverage)
+    .sort(([, left], [, right]) => left.orderbookMarketCoverage - right.orderbookMarketCoverage || right.markets - left.markets)
+    .slice(0, 2)
+    .map(([segment, value]) => ({ segment, orderbookMarketCoverage: value.orderbookMarketCoverage, marketsWithOrderbook: value.marketsWithOrderbook, markets: value.markets }));
   return {
     days,
     markets,
@@ -982,23 +1003,8 @@ export async function getBtc5mResearchCoverage(input: { days?: number } = {}) {
     qualityWarnings,
     segmentSnapshots: Object.fromEntries((segmentRows?.rows ?? []).map((segment) => [segment.segment, Number(segment.snapshots)])),
     segmentTrades: Object.fromEntries((tradeSegmentRows?.rows ?? []).map((segment) => [segment.segment, Number(segment.trades)])),
-    segmentMarketCoverage: Object.fromEntries(
-      (segmentMarketRows?.rows ?? []).map((segment) => {
-        const segmentMarkets = Number(segment.markets);
-        const segmentMarketsWithTrades = Number(segment.markets_with_trades);
-        const segmentMarketsWithOrderbook = Number(segment.markets_with_orderbook);
-        return [
-          segment.segment,
-          {
-            markets: segmentMarkets,
-            marketsWithTrades: segmentMarketsWithTrades,
-            marketsWithOrderbook: segmentMarketsWithOrderbook,
-            tradeMarketCoverage: segmentMarkets ? segmentMarketsWithTrades / segmentMarkets : 0,
-            orderbookMarketCoverage: segmentMarkets ? segmentMarketsWithOrderbook / segmentMarkets : 0,
-          },
-        ];
-      }),
-    ),
+    segmentMarketCoverage,
+    weakestOrderbookSegments,
     nextAction:
       executionQuality === "orderbook_backtest_ready" || executionQuality === "partial_orderbook"
         ? "Run btc5m:research genetic with a larger population and validation split."
