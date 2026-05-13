@@ -158,6 +158,14 @@ Additional forward collection run:
   - command: `collect-orderbook-sessions --sessions 2 --duration-seconds 20 --interval-ms 1000 --pause-seconds 1 --progress-every 10`.
   - result: `2` sessions completed, `80` snapshots, `0` errors.
   - orderbook market coverage after smoke test: `0.50%`.
+- First longer segmented orderbook collection run:
+  - command: `collect-orderbook-sessions --sessions 3 --duration-seconds 300 --interval-ms 1000 --pause-seconds 2 --progress-every 60`.
+  - result: `3` sessions completed, `1800` snapshots, `0` errors.
+  - latest orderbook snapshots: `3987`.
+  - markets with orderbook snapshots: `13/2007`.
+  - latest orderbook market coverage: `0.65%`.
+  - interpretation: collection is stable, but at 5-minute market cadence reaching
+    `partial_orderbook` (`10%`) requires many hours across different Beijing sessions.
 - Trade coverage was expanded with additional Data API collection:
   - `collect-trades --days 7 --limit-markets 400 --pages-per-market 1 --stride 3`
     stored `200000` fetched trade rows with `0` errors.
