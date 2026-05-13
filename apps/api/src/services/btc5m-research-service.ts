@@ -960,6 +960,10 @@ export async function getBtc5mResearchCoverage(input: { days?: number } = {}) {
       const segmentMarkets = Number(segment.markets);
       const segmentMarketsWithTrades = Number(segment.markets_with_trades);
       const segmentMarketsWithOrderbook = Number(segment.markets_with_orderbook);
+      const segmentPartialOrderbookTargetMarkets = Math.ceil(segmentMarkets * 0.1);
+      const segmentReadyOrderbookTargetMarkets = Math.ceil(segmentMarkets * 0.5);
+      const segmentMarketsUntilPartialOrderbook = Math.max(0, segmentPartialOrderbookTargetMarkets - segmentMarketsWithOrderbook);
+      const segmentMarketsUntilReadyOrderbook = Math.max(0, segmentReadyOrderbookTargetMarkets - segmentMarketsWithOrderbook);
       return [
         segment.segment,
         {
@@ -968,6 +972,12 @@ export async function getBtc5mResearchCoverage(input: { days?: number } = {}) {
           marketsWithOrderbook: segmentMarketsWithOrderbook,
           tradeMarketCoverage: segmentMarkets ? segmentMarketsWithTrades / segmentMarkets : 0,
           orderbookMarketCoverage: segmentMarkets ? segmentMarketsWithOrderbook / segmentMarkets : 0,
+          partialOrderbookTargetMarkets: segmentPartialOrderbookTargetMarkets,
+          readyOrderbookTargetMarkets: segmentReadyOrderbookTargetMarkets,
+          marketsUntilPartialOrderbook: segmentMarketsUntilPartialOrderbook,
+          marketsUntilReadyOrderbook: segmentMarketsUntilReadyOrderbook,
+          estimatedContinuousHoursUntilPartialOrderbook: (segmentMarketsUntilPartialOrderbook * FIVE_MINUTES_SECONDS) / 3600,
+          estimatedContinuousHoursUntilReadyOrderbook: (segmentMarketsUntilReadyOrderbook * FIVE_MINUTES_SECONDS) / 3600,
         },
       ];
     }),

@@ -181,6 +181,10 @@ Additional forward collection run:
   - `weekend_beijing_night`: `336` markets, `336` with trades, `0` with orderbook.
   - interpretation: current orderbook evidence is concentrated in Beijing weekday night.
     Future forward collection must deliberately cover Beijing daytime and weekend sessions.
+- Segment coverage now includes segment-level `partial_orderbook` and
+  `orderbook_backtest_ready` targets, remaining markets, and estimated continuous
+  collection hours. This prevents the global coverage target from hiding a missing
+  Beijing day/night or weekday/weekend regime.
 - Coverage now reports `weakestOrderbookSegments`; current weakest segments are
   `weekday_beijing_day` and `weekend_beijing_night`, both with `0` markets covered by
   orderbook snapshots.

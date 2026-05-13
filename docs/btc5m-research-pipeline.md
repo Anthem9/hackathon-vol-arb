@@ -131,6 +131,10 @@ Use `segmentMarketCoverage` to check whether coverage is balanced across
 `weekend_beijing_night`. A global orderbook percentage is not enough if all snapshots come
 from only one segment.
 
+Each segment coverage row also reports the segment-level orderbook targets, including the
+number of additional markets and approximate continuous collection hours needed for that
+segment to reach `partial_orderbook` (`10%`) and `orderbook_backtest_ready` (`50%`).
+
 Coverage also reports `collectionRecommendation`, which compares the current Beijing
 segment against the weakest orderbook segments and tells whether current collection should
 continue or future collection should be prioritized in another segment.
