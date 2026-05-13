@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -57,6 +57,8 @@ try {
   const health = runCollector("health", recoveringLines);
   assert.equal(health.logHealth.health, "recovering");
   assert.equal(health.lastLogLines, undefined);
+  assert.ok(health.logUpdatedAt);
+  assert.equal(typeof health.logAgeSeconds, "number");
   writeFileSync(pidFile, `${process.pid}\n`);
   writeFileSync(metaFile, `${JSON.stringify({ pid: process.pid, caffeinate: true, command: "test" })}\n`);
   assert.equal(runCollector("health --require-ok", recoveringLines).logHealth.health, "recovering");
@@ -83,6 +85,22 @@ try {
     4,
   );
   assert.equal(warningHealth.logHealth.health, "warning");
+
+  runCollector("health --require-ok", healthyStatus.lastLogLines, 0);
+  const staleDate = new Date(Date.now() - 10_000);
+  utimesSync(logFile, staleDate, staleDate);
+  const staleResult = spawnSync("node", ["scripts/btc5m-orderbook-collector.mjs", "health", "--require-ok"], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      BTC5M_ORDERBOOK_PID_FILE: pidFile,
+      BTC5M_ORDERBOOK_META_FILE: metaFile,
+      BTC5M_ORDERBOOK_LOG_FILE: logFile,
+      BTC5M_ORDERBOOK_HEALTH_MAX_LOG_AGE_SECONDS: "1",
+    },
+  });
+  assert.equal(staleResult.status, 5, staleResult.stderr || staleResult.stdout);
+  assert.ok(JSON.parse(staleResult.stdout).logAgeSeconds > 1);
 } finally {
   rmSync(tempDir, { recursive: true, force: true });
 }

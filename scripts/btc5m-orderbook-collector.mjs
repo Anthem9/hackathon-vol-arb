@@ -67,9 +67,20 @@ function logHealth(lines) {
   };
 }
 
-function logSizeBytes() {
-  if (!existsSync(logFile)) return 0;
-  return statSync(logFile).size;
+function logStats() {
+  if (!existsSync(logFile)) {
+    return {
+      sizeBytes: 0,
+      updatedAt: null,
+      ageSeconds: null,
+    };
+  }
+  const stats = statSync(logFile);
+  return {
+    sizeBytes: stats.size,
+    updatedAt: stats.mtime.toISOString(),
+    ageSeconds: Math.max(0, (Date.now() - stats.mtime.getTime()) / 1000),
+  };
 }
 
 function readMeta() {
@@ -184,6 +195,7 @@ function status() {
   const lastLogLines = readLastLogLines();
   const running = Boolean(pid && isRunning(pid));
   const health = logHealth(lastLogLines);
+  const stats = logStats();
   console.log(
     JSON.stringify(
       {
@@ -195,7 +207,9 @@ function status() {
         configuredCaffeinate: useCaffeinate(),
         launchCaffeinate: meta?.pid === pid ? meta.caffeinate : null,
         meta,
-        logSizeBytes: logSizeBytes(),
+        logSizeBytes: stats.sizeBytes,
+        logUpdatedAt: stats.updatedAt,
+        logAgeSeconds: stats.ageSeconds,
         logHealth: health,
         lastLogLines,
       },
@@ -211,6 +225,8 @@ function health() {
   const lastLogLines = readLastLogLines();
   const running = Boolean(pid && isRunning(pid));
   const health = logHealth(lastLogLines);
+  const stats = logStats();
+  const maxLogAgeSeconds = Number(process.env.BTC5M_ORDERBOOK_HEALTH_MAX_LOG_AGE_SECONDS ?? "180");
   console.log(
     JSON.stringify(
       {
@@ -218,6 +234,9 @@ function health() {
         pid,
         logFile,
         launchCaffeinate: meta?.pid === pid ? meta.caffeinate : null,
+        logUpdatedAt: stats.updatedAt,
+        logAgeSeconds: stats.ageSeconds,
+        maxLogAgeSeconds,
         logHealth: health,
       },
       null,
@@ -228,6 +247,7 @@ function health() {
     if (!running) process.exitCode = 2;
     else if (!health.latestProgress) process.exitCode = 3;
     else if (health.health === "warning") process.exitCode = 4;
+    else if (Number.isFinite(maxLogAgeSeconds) && stats.ageSeconds !== null && stats.ageSeconds > maxLogAgeSeconds) process.exitCode = 5;
   }
 }
 
