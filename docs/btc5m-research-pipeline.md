@@ -310,9 +310,17 @@ The final result includes:
 - `validation`
 - `stressValidation`
 - `acceptanceGates`
+- `acceptanceBlockers`
+- `acceptanceRequirements`
 - `accepted`
 - dataset counts for train and validation slices
 - paper-signal summary gates; a strategy with enough settled negative paper signals cannot be accepted
+
+Use `acceptanceBlockers` as the machine-readable handoff for the next action. For example,
+`execution_quality_below_partial_orderbook` means the strategy may be statistically
+interesting but still cannot be treated as live-ready until more forward orderbook data is
+collected. Validation or stress blockers mean the strategy family or GA search space needs
+work before more data alone can justify trading.
 
 ## Risk Model
 

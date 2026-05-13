@@ -56,6 +56,9 @@ Additional forward collection run:
   - `lottery_reprice` is blocked by `251` settled signals, `-1219.97765` PnL, `0.007968` win rate.
 - GA now includes paper-signal summary in its output, cannot accept a strategy blocked by
   settled paper evidence, and excludes blocked strategies from the search pool.
+- GA output now includes `acceptanceRequirements` and machine-readable
+  `acceptanceBlockers`, so downstream automation can distinguish data insufficiency from
+  validation failure, stress failure, and negative paper-signal evidence.
 - Auxiliary BTC 1m data was collected for baseline volatility:
   - Binance was unavailable from the current network.
   - Coinbase stored `9645` 1m close ticks.

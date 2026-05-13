@@ -435,6 +435,7 @@ async function main() {
         accepted: result.accepted,
         executionQuality: result.dataset.executionQuality,
         acceptanceGates: result.acceptanceGates,
+        acceptanceBlockers: result.acceptanceBlockers,
         bestTrain: {
           strategy: result.bestTrain.strategy,
           totalPnl: result.bestTrain.totalPnl,

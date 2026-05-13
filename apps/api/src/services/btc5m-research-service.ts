@@ -1631,6 +1631,8 @@ function chooseOutcome(params: BacktestParams, up: PricePoint | undefined, down:
 }
 
 const TARGET_SEGMENTS: BacktestParams["targetSegment"][] = ["all", "weekday_beijing_day", "weekday_beijing_night", "weekend_beijing_day", "weekend_beijing_night"];
+const MIN_VALIDATION_TRADES = 8;
+const MIN_STRESS_VALIDATION_TRADES = 4;
 
 function findLimitBuyFill(points: PricePoint[], submittedAt: number, limitPrice: number, params: BacktestParams) {
   const deadline = submittedAt + params.entryMaxWaitSeconds * 1000;
@@ -1990,6 +1992,82 @@ function summarizeExecutionCoverage(markets: Btc5mMarket[], points: PricePoint[]
   };
 }
 
+function buildAcceptanceBlockers(input: {
+  paperBlocked: boolean;
+  validation: BacktestReport;
+  stressValidation: BacktestReport;
+  coverageAccepted: boolean;
+  executionQuality: string;
+}) {
+  const blockers: Array<{ code: string; message: string; observed?: number | string; required?: number | string }> = [];
+  if (input.paperBlocked) {
+    blockers.push({
+      code: "paper_signal_blocked",
+      message: "Settled paper-signal evidence is negative for this strategy.",
+      required: "non-negative settled paper evidence or insufficient settled sample",
+    });
+  }
+  if (input.validation.tradeCount < MIN_VALIDATION_TRADES) {
+    blockers.push({
+      code: "validation_trade_count_below_min",
+      message: "Validation trade count is too small for acceptance.",
+      observed: input.validation.tradeCount,
+      required: MIN_VALIDATION_TRADES,
+    });
+  }
+  if (input.validation.totalPnl <= 0) {
+    blockers.push({
+      code: "validation_pnl_not_positive",
+      message: "Validation PnL must be positive.",
+      observed: input.validation.totalPnl,
+      required: "> 0",
+    });
+  }
+  const validationDrawdownLimit = input.validation.initialCapital * input.validation.parameters.maxDrawdownFraction;
+  if (input.validation.maxDrawdown > validationDrawdownLimit) {
+    blockers.push({
+      code: "validation_drawdown_exceeded",
+      message: "Validation drawdown exceeds the configured hard limit.",
+      observed: input.validation.maxDrawdown,
+      required: validationDrawdownLimit,
+    });
+  }
+  if (input.stressValidation.tradeCount < MIN_STRESS_VALIDATION_TRADES) {
+    blockers.push({
+      code: "stress_trade_count_below_min",
+      message: "Stress validation trade count is too small for acceptance.",
+      observed: input.stressValidation.tradeCount,
+      required: MIN_STRESS_VALIDATION_TRADES,
+    });
+  }
+  if (input.stressValidation.totalPnl <= 0) {
+    blockers.push({
+      code: "stress_pnl_not_positive",
+      message: "Stress validation PnL must be positive.",
+      observed: input.stressValidation.totalPnl,
+      required: "> 0",
+    });
+  }
+  const stressDrawdownLimit = input.stressValidation.initialCapital * input.stressValidation.parameters.maxDrawdownFraction;
+  if (input.stressValidation.maxDrawdown > stressDrawdownLimit) {
+    blockers.push({
+      code: "stress_drawdown_exceeded",
+      message: "Stress validation drawdown exceeds the configured hard limit.",
+      observed: input.stressValidation.maxDrawdown,
+      required: stressDrawdownLimit,
+    });
+  }
+  if (!input.coverageAccepted) {
+    blockers.push({
+      code: "execution_quality_below_partial_orderbook",
+      message: "Execution evidence must reach at least partial_orderbook before a strategy can be accepted.",
+      observed: input.executionQuality,
+      required: "partial_orderbook",
+    });
+  }
+  return blockers;
+}
+
 export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets?: number; generations?: number; population?: number; validationFraction?: number; persistBest?: boolean; seed?: number } = {}) {
   const generations = Math.max(1, Math.min(50, input.generations ?? 6));
   const populationSize = Math.max(4, Math.min(60, input.population ?? 12));
@@ -2045,9 +2123,19 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
   const strategyPaper = paperSummary.byStrategy[validation.strategy];
   const paperBlocked = Boolean(strategyPaper && strategyPaper.settled >= 20 && strategyPaper.totalPnl < 0);
   if (input.persistBest) await persistBacktestReport({ ...validation, runId: `${validation.runId}-validation`, strategy: `${validation.strategy}_validation` });
-  const validationAccepted = validation.tradeCount >= 8 && validation.totalPnl > 0 && validation.maxDrawdown <= validation.initialCapital * validation.parameters.maxDrawdownFraction;
-  const stressAccepted = stressValidation.tradeCount >= 4 && stressValidation.totalPnl > 0 && stressValidation.maxDrawdown <= stressValidation.initialCapital * stressValidation.parameters.maxDrawdownFraction;
+  const validationAccepted = validation.tradeCount >= MIN_VALIDATION_TRADES && validation.totalPnl > 0 && validation.maxDrawdown <= validation.initialCapital * validation.parameters.maxDrawdownFraction;
+  const stressAccepted =
+    stressValidation.tradeCount >= MIN_STRESS_VALIDATION_TRADES &&
+    stressValidation.totalPnl > 0 &&
+    stressValidation.maxDrawdown <= stressValidation.initialCapital * stressValidation.parameters.maxDrawdownFraction;
   const coverageAccepted = executionCoverage.executionQuality === "partial_orderbook" || executionCoverage.executionQuality === "orderbook_backtest_ready";
+  const acceptanceBlockers = buildAcceptanceBlockers({
+    paperBlocked,
+    validation,
+    stressValidation,
+    coverageAccepted,
+    executionQuality: executionCoverage.executionQuality,
+  });
   return {
     generations,
     population: populationSize,
@@ -2072,7 +2160,15 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
       stressAccepted,
       coverageAccepted,
     },
-    accepted: !paperBlocked && validationAccepted && stressAccepted && coverageAccepted,
+    acceptanceRequirements: {
+      minValidationTrades: MIN_VALIDATION_TRADES,
+      minStressValidationTrades: MIN_STRESS_VALIDATION_TRADES,
+      minExecutionQuality: "partial_orderbook",
+      validationPnl: "> 0",
+      stressValidationPnl: "> 0",
+    },
+    acceptanceBlockers,
+    accepted: acceptanceBlockers.length === 0,
     history: history.map((item) => ({
       generation: item.generation,
       bestScore: item.bestScore,
