@@ -6,6 +6,7 @@ import {
   collectLiveOrderbookSnapshots,
   evaluateLatestBtc5mPaperSignal,
   getBtc5mResearchCoverage,
+  observeLiveBtc5m,
   collectRecentBtc5mMarkets,
   discoverBtc5mDataSources,
   runBtc5mBacktest,
@@ -54,6 +55,7 @@ function usage() {
   pnpm --filter @vol-arb/api btc5m:research collect-btc-price --days 7
   pnpm --filter @vol-arb/api btc5m:research snapshot-orderbook
   pnpm --filter @vol-arb/api btc5m:research collect-orderbook-live --duration-seconds 3600 --interval-ms 1000
+  pnpm --filter @vol-arb/api btc5m:research observe-live --duration-seconds 3600 --interval-ms 1000
   pnpm --filter @vol-arb/api btc5m:research coverage --days 7
   pnpm --filter @vol-arb/api btc5m:research paper-signal --persist
   pnpm --filter @vol-arb/api btc5m:research backtest --days 7 --limit-markets 2016 --persist
@@ -177,6 +179,38 @@ async function main() {
             if (progress.iterations === 1 || progress.iterations % numberArg(args, "progress-every", 30) === 0) {
               console.error(
                 `collect-orderbook-live iterations=${progress.iterations} snapshots=${progress.snapshots} errors=${progress.errors} elapsed=${progress.elapsedSeconds.toFixed(1)}s`,
+              );
+            }
+          },
+        }),
+        null,
+        2,
+      ),
+    );
+    return;
+  }
+  if (command === "observe-live") {
+    let stop = false;
+    process.once("SIGINT", () => {
+      stop = true;
+      console.error("Stopping live observer after current iteration...");
+    });
+    process.once("SIGTERM", () => {
+      stop = true;
+      console.error("Stopping live observer after current iteration...");
+    });
+    console.log(
+      JSON.stringify(
+        await observeLiveBtc5m({
+          durationSeconds: numberArg(args, "duration-seconds", 300),
+          intervalMs: numberArg(args, "interval-ms", 1000),
+          maxIterations: numberArg(args, "max-iterations", Number.MAX_SAFE_INTEGER),
+          persistSignals: !boolArg(args, "no-persist-signals"),
+          shouldStop: () => stop,
+          onProgress: (progress) => {
+            if (progress.iterations === 1 || progress.iterations % numberArg(args, "progress-every", 30) === 0) {
+              console.error(
+                `observe-live iterations=${progress.iterations} snapshots=${progress.snapshots} signals=${progress.signals} wouldEnter=${progress.wouldEnter} errors=${progress.errors} elapsed=${progress.elapsedSeconds.toFixed(1)}s`,
               );
             }
           },

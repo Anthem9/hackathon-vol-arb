@@ -647,6 +647,60 @@ export async function collectLiveOrderbookSnapshots(input: {
   };
 }
 
+export async function observeLiveBtc5m(input: {
+  durationSeconds?: number;
+  intervalMs?: number;
+  maxIterations?: number;
+  persistSignals?: boolean;
+  onProgress?: (progress: { iterations: number; snapshots: number; signals: number; wouldEnter: number; errors: number; elapsedSeconds: number }) => void;
+  shouldStop?: () => boolean;
+} = {}) {
+  const startedAt = Date.now();
+  const durationMs = Math.max(1, input.durationSeconds ?? 300) * 1000;
+  const intervalMs = Math.max(250, input.intervalMs ?? 1000);
+  const maxIterations = Math.max(1, input.maxIterations ?? Number.MAX_SAFE_INTEGER);
+  const result = {
+    iterations: 0,
+    snapshots: 0,
+    signals: 0,
+    wouldEnter: 0,
+    errors: [] as string[],
+    startedAt,
+    finishedAt: startedAt,
+  };
+
+  while (Date.now() - startedAt < durationMs && result.iterations < maxIterations && !input.shouldStop?.()) {
+    const iterationStartedAt = Date.now();
+    try {
+      const snapshot = await collectCurrentOrderbookSnapshots();
+      result.snapshots += snapshot.snapshots;
+      result.errors.push(...snapshot.errors);
+      const signal = await evaluateLatestBtc5mPaperSignal({ persist: input.persistSignals ?? true });
+      result.signals += 1;
+      result.wouldEnter += signal.decision === "would_enter" ? 1 : 0;
+    } catch (error) {
+      result.errors.push(error instanceof Error ? error.message : String(error));
+    }
+    result.iterations += 1;
+    result.finishedAt = Date.now();
+    input.onProgress?.({
+      iterations: result.iterations,
+      snapshots: result.snapshots,
+      signals: result.signals,
+      wouldEnter: result.wouldEnter,
+      errors: result.errors.length,
+      elapsedSeconds: (result.finishedAt - startedAt) / 1000,
+    });
+    const sleepMs = Math.max(0, intervalMs - (Date.now() - iterationStartedAt));
+    if (sleepMs > 0) await sleep(sleepMs);
+  }
+  result.finishedAt = Date.now();
+  return {
+    ...result,
+    elapsedSeconds: (result.finishedAt - result.startedAt) / 1000,
+  };
+}
+
 export async function collectBinanceBtcOneMinute(input: { days?: number; throttleMs?: number } = {}) {
   const end = Date.now();
   let start = end - Math.max(1, input.days ?? 7) * 24 * 60 * 60 * 1000;
