@@ -66,6 +66,7 @@ function usage() {
   pnpm --filter @vol-arb/api btc5m:research paper-summary
   pnpm --filter @vol-arb/api btc5m:research backtest --days 7 --limit-markets 2016 --persist
   pnpm --filter @vol-arb/api btc5m:research genetic --days 7 --generations 6 --population 12 --validation-fraction 0.2857 [--seed 42] [--persist-best]
+  pnpm --filter @vol-arb/api btc5m:research genetic-sweep --days 7 --seeds 5 --seed-start 1 --generations 6 --population 12
 
 All simulated orders are limit orders. The default initial capital is 100 USDC and max risk per trade is 10% of current equity.`;
 }
@@ -357,6 +358,64 @@ async function main() {
           seed: args.seed === undefined ? undefined : numberArg(args, "seed", 0),
           persistBest: boolArg(args, "persist-best"),
         }),
+        null,
+        2,
+      ),
+    );
+    return;
+  }
+  if (command === "genetic-sweep") {
+    const days = numberArg(args, "days", 7);
+    const seedStart = Math.trunc(numberArg(args, "seed-start", 1));
+    const seedCount = Math.max(1, Math.trunc(numberArg(args, "seeds", 5)));
+    const runs = [];
+    for (let index = 0; index < seedCount; index += 1) {
+      const seed = seedStart + index;
+      const result = await runBtc5mGeneticSearch({
+        days,
+        limitMarkets: numberArg(args, "limit-markets", 2016),
+        generations: numberArg(args, "generations", 6),
+        population: numberArg(args, "population", 12),
+        validationFraction: numberArg(args, "validation-fraction", 2 / 7),
+        seed,
+      });
+      runs.push({
+        seed,
+        accepted: result.accepted,
+        executionQuality: result.dataset.executionQuality,
+        acceptanceGates: result.acceptanceGates,
+        bestTrain: {
+          strategy: result.bestTrain.strategy,
+          totalPnl: result.bestTrain.totalPnl,
+          tradeCount: result.bestTrain.tradeCount,
+          maxDrawdown: result.bestTrain.maxDrawdown,
+          parameters: result.bestTrain.parameters,
+        },
+        validation: {
+          totalPnl: result.validation.totalPnl,
+          tradeCount: result.validation.tradeCount,
+          maxDrawdown: result.validation.maxDrawdown,
+          winRate: result.validation.winRate,
+          segmentBreakdown: result.validation.segmentBreakdown,
+        },
+        stressValidation: {
+          totalPnl: result.stressValidation.totalPnl,
+          tradeCount: result.stressValidation.tradeCount,
+          maxDrawdown: result.stressValidation.maxDrawdown,
+          winRate: result.stressValidation.winRate,
+        },
+      });
+    }
+    console.log(
+      JSON.stringify(
+        {
+          days,
+          seedStart,
+          seeds: seedCount,
+          acceptedCount: runs.filter((run) => run.accepted).length,
+          executionQualities: [...new Set(runs.map((run) => run.executionQuality))],
+          runs,
+        },
         null,
         2,
       ),

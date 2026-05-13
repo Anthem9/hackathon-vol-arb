@@ -189,6 +189,12 @@ Run genetic strategy search:
 pnpm --filter @vol-arb/api btc5m:research genetic --days 7 --limit-markets 2016 --generations 6 --population 12 --validation-fraction 0.2857 --seed 42 --persist-best
 ```
 
+Run a multi-seed GA sweep:
+
+```bash
+pnpm --filter @vol-arb/api btc5m:research genetic-sweep --days 7 --seeds 5 --seed-start 1 --generations 6 --population 12
+```
+
 ## Resource Controls
 
 Defaults are intentionally conservative:
@@ -236,6 +242,9 @@ markets exist. With the default 7-day window, the validation fraction is `2/7`.
 Use `--seed <integer>` when comparing strategy changes. Seeded runs use a deterministic
 internal random generator, so the same dataset and same search settings produce the same
 candidate sequence.
+
+Use `genetic-sweep` to check whether results are stable across multiple seeds. A single
+profitable seed is not enough evidence for a strategy candidate.
 
 The genetic search mutates these parameters:
 

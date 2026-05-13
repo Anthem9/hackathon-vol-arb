@@ -261,6 +261,13 @@ Additional forward collection run:
   - two runs matched exactly after ignoring timestamp-derived `runId` fields.
   - result: train `14` trades / `-0.0548` PnL; validation `3` trades / `-2.6093` PnL;
     stress validation `3` trades / `-3.2767` PnL; accepted `false`.
+- Added `genetic-sweep` to summarize multiple seeded GA runs. Smoke check:
+  - command: `genetic-sweep --days 7 --seeds 2 --seed-start 1 --generations 1 --population 4`.
+  - result: `acceptedCount=0`, `executionQualities=["trade_proxy_only"]`.
+  - seed `1`: validation `4` trades / `-22.1549` PnL; stress validation `4` trades /
+    `-22.3840` PnL.
+  - seed `2`: validation `6` trades / `-15.4268` PnL; stress validation `6` trades /
+    `-16.7194` PnL.
 - GA acceptance now includes an explicit coverage gate:
   - `accepted` requires `coverageAccepted=true`.
   - `coverageAccepted` is true only when execution quality is `partial_orderbook` or
