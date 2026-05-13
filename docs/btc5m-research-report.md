@@ -16,7 +16,7 @@ Commands exercised:
 pnpm --filter @vol-arb/api btc5m:research probe
 pnpm --filter @vol-arb/api btc5m:research collect-markets --days 7 --limit 240 --throttle-ms 25 --timeout-ms 2000 --progress-every 50
 pnpm --filter @vol-arb/api btc5m:research collect-price-history --days 7 --limit-markets 30 --throttle-ms 25 --fidelity-seconds 60 --timeout-ms 2500 --progress-every 20
-pnpm --filter @vol-arb/api btc5m:research genetic --days 7 --limit-markets 240 --generations 2 --population 6 --persist-best
+pnpm --filter @vol-arb/api btc5m:research genetic --days 7 --limit-markets 240 --generations 2 --population 6 --validation-fraction 0.2857 --persist-best
 pnpm --filter @vol-arb/api btc5m:research coverage --days 7
 ```
 
@@ -26,6 +26,7 @@ Observed:
 - Price history sample: `4` points from `30` markets in that run.
 - Genetic search input: `26` stored `clob_prices_history` points available across the sampled DB set.
 - Genetic search result: `0` trades, `0` PnL.
+- Genetic search now reports train and holdout validation separately; a candidate is not accepted unless validation has enough trades, positive PnL, and acceptable drawdown.
 
 ## Interpretation
 

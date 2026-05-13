@@ -1106,9 +1106,28 @@ function scoreReport(report: BacktestReport) {
   return report.totalPnl - report.maxDrawdown * 0.35 + report.winRate * 2;
 }
 
-export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets?: number; generations?: number; population?: number; persistBest?: boolean } = {}) {
+function splitMarketsForValidation(markets: Btc5mMarket[], validationFraction: number) {
+  const sorted = [...markets].sort((a, b) => a.startTime - b.startTime);
+  const validationCount = Math.max(1, Math.floor(sorted.length * Math.max(0.05, Math.min(0.5, validationFraction))));
+  const splitIndex = Math.max(1, sorted.length - validationCount);
+  return {
+    trainMarkets: sorted.slice(0, splitIndex),
+    validationMarkets: sorted.slice(splitIndex),
+  };
+}
+
+function filterPointsForMarkets(points: PricePoint[], markets: Btc5mMarket[]) {
+  const slugs = new Set(markets.map((market) => market.slug));
+  return points.filter((point) => slugs.has(point.marketSlug));
+}
+
+export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets?: number; generations?: number; population?: number; validationFraction?: number; persistBest?: boolean } = {}) {
   const generations = Math.max(1, Math.min(50, input.generations ?? 6));
   const populationSize = Math.max(4, Math.min(60, input.population ?? 12));
+  const dataset = await readPricePoints(input.days ?? 7, input.limitMarkets ?? 2500);
+  const { trainMarkets, validationMarkets } = splitMarketsForValidation(dataset.markets, input.validationFraction ?? 2 / 7);
+  const trainPoints = filterPointsForMarkets(dataset.points, trainMarkets);
+  const validationPoints = filterPointsForMarkets(dataset.points, validationMarkets);
   let population = Array.from({ length: populationSize }, (_, index): BacktestParams => ({
     ...DEFAULT_BACKTEST_PARAMS,
     strategy: index % 2 === 0 ? "lottery_reprice" : "probability_cone",
@@ -1127,7 +1146,7 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
   for (let generation = 0; generation < generations; generation += 1) {
     const reports = [];
     for (const params of population) {
-      reports.push(await runBtc5mBacktest({ days: input.days ?? 7, limitMarkets: input.limitMarkets ?? 2500, params }));
+      reports.push(runBtc5mBacktestFromData({ markets: trainMarkets, points: trainPoints, params }));
     }
     const ranked = reports.map((report) => ({ report, score: scoreReport(report) })).sort((a, b) => b.score - a.score);
     const best = ranked[0];
@@ -1139,12 +1158,24 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
       population.push(mutateParams(parent));
     }
   }
-  const best = history.map((item) => item.best).sort((a, b) => scoreReport(b) - scoreReport(a))[0] ?? (await runBtc5mBacktest({ days: input.days ?? 7, limitMarkets: input.limitMarkets ?? 2500 }));
-  if (input.persistBest) await persistBacktestReport(best);
+  const bestTrain = history.map((item) => item.best).sort((a, b) => scoreReport(b) - scoreReport(a))[0] ?? runBtc5mBacktestFromData({ markets: trainMarkets, points: trainPoints });
+  const validation = runBtc5mBacktestFromData({ markets: validationMarkets, points: validationPoints, params: bestTrain.parameters });
+  if (input.persistBest) await persistBacktestReport({ ...validation, runId: `${validation.runId}-validation`, strategy: `${validation.strategy}_validation` });
   return {
     generations,
     population: populationSize,
-    best,
+    validationFraction: input.validationFraction ?? 2 / 7,
+    dataset: {
+      markets: dataset.markets.length,
+      points: dataset.points.length,
+      trainMarkets: trainMarkets.length,
+      trainPoints: trainPoints.length,
+      validationMarkets: validationMarkets.length,
+      validationPoints: validationPoints.length,
+    },
+    bestTrain,
+    validation,
+    accepted: validation.tradeCount >= 5 && validation.totalPnl > 0 && validation.maxDrawdown <= validation.initialCapital * validation.parameters.maxDrawdownFraction,
     history: history.map((item) => ({
       generation: item.generation,
       bestScore: item.bestScore,

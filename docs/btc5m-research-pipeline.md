@@ -82,7 +82,7 @@ pnpm --filter @vol-arb/api btc5m:research backtest --days 7 --limit-markets 2016
 Run genetic strategy search:
 
 ```bash
-pnpm --filter @vol-arb/api btc5m:research genetic --days 7 --limit-markets 2016 --generations 6 --population 12 --persist-best
+pnpm --filter @vol-arb/api btc5m:research genetic --days 7 --limit-markets 2016 --generations 6 --population 12 --validation-fraction 0.2857 --persist-best
 ```
 
 ## Resource Controls
@@ -119,6 +119,8 @@ Both strategies support:
 
 ## Genetic Algorithm
 
+The genetic search reads the dataset once, sorts markets by time, searches on the train slice, and evaluates the best candidate on the holdout validation slice. With the default 7-day window, the validation fraction is `2/7`, matching the original 5-day train / 2-day validation plan.
+
 The genetic search mutates these parameters:
 
 - `entryMaxPrice`
@@ -140,6 +142,13 @@ totalPnl - maxDrawdown * 0.35 + winRate * 2
 ```
 
 Candidates with fewer than 5 trades are heavily penalized.
+
+The final result includes:
+
+- `bestTrain`
+- `validation`
+- `accepted`
+- dataset counts for train and validation slices
 
 ## Risk Model
 

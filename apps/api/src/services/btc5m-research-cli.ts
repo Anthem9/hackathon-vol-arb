@@ -55,7 +55,7 @@ function usage() {
   pnpm --filter @vol-arb/api btc5m:research collect-orderbook-live --duration-seconds 3600 --interval-ms 1000
   pnpm --filter @vol-arb/api btc5m:research coverage --days 7
   pnpm --filter @vol-arb/api btc5m:research backtest --days 7 --limit-markets 2016 --persist
-  pnpm --filter @vol-arb/api btc5m:research genetic --days 7 --generations 6 --population 12 --persist-best
+  pnpm --filter @vol-arb/api btc5m:research genetic --days 7 --generations 6 --population 12 --validation-fraction 0.2857 --persist-best
 
 All simulated orders are limit orders. The default initial capital is 100 USDC and max risk per trade is 10% of current equity.`;
 }
@@ -211,6 +211,7 @@ async function main() {
           limitMarkets: numberArg(args, "limit-markets", 2016),
           generations: numberArg(args, "generations", 6),
           population: numberArg(args, "population", 12),
+          validationFraction: numberArg(args, "validation-fraction", 2 / 7),
           persistBest: boolArg(args, "persist-best"),
         }),
         null,
