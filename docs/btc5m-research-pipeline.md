@@ -200,6 +200,7 @@ Save a combined orderbook-plan plus readiness checkpoint:
 
 ```bash
 pnpm btc5m:checkpoint
+pnpm btc5m:checkpoint:status
 ```
 
 The checkpoint writes an ignored JSON report under `.local/reports`, includes its own
@@ -212,6 +213,7 @@ Override defaults with `BTC5M_CHECKPOINT_DAYS`,
 `BTC5M_CHECKPOINT_SEED`, `BTC5M_CHECKPOINT_WITH_GA=false`, or
 `BTC5M_CHECKPOINT_REPORT_FILE`. Keep GA enabled for final acceptance; disabling it is only
 for cheap coverage/status checkpoints while waiting for orderbook data.
+`pnpm btc5m:checkpoint:status` is the no-GA shortcut.
 
 Record a real-time paper signal without submitting any order:
 

@@ -18,6 +18,7 @@
     "btc5m:orderbook:start:auto": "node scripts/btc5m-orderbook-collector.mjs start-auto",
     "btc5m:orderbook:stop": "node scripts/btc5m-orderbook-collector.mjs stop",
     "btc5m:checkpoint": "node scripts/btc5m-checkpoint.mjs",
+    "btc5m:checkpoint:status": "BTC5M_CHECKPOINT_WITH_GA=false node scripts/btc5m-checkpoint.mjs",
     "build": "turbo build",
     "lint": "turbo lint",
     "secret:scan": "node scripts/secret-scan.mjs",
