@@ -196,6 +196,17 @@ consecutive-loss, open-market, daily-trade, and visible-liquidity limits. When `
 is used, settled paper evidence is checked against the selected GA strategy rather than
 failing the whole audit because an unselected strategy family has negative history.
 
+Save a combined orderbook-plan plus readiness checkpoint:
+
+```bash
+pnpm btc5m:checkpoint
+```
+
+The checkpoint writes an ignored JSON report under `.local/reports`. Override defaults
+with `BTC5M_CHECKPOINT_DAYS`, `BTC5M_CHECKPOINT_LIMIT_MARKETS`,
+`BTC5M_CHECKPOINT_GENERATIONS`, `BTC5M_CHECKPOINT_POPULATION`,
+`BTC5M_CHECKPOINT_SEED`, or `BTC5M_CHECKPOINT_REPORT_FILE`.
+
 Record a real-time paper signal without submitting any order:
 
 ```bash
