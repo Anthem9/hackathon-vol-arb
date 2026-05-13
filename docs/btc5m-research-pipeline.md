@@ -318,6 +318,11 @@ stress validation. Final `accepted` also requires `executionQuality` to be
 Acceptance also requires at least 500 markets in the GA dataset, so small smoke runs cannot
 be mistaken for production-ready evidence.
 
+Execution coverage is also checked by Beijing regime. If `targetSegment` is a specific
+segment, that segment must reach `partial_orderbook`. If `targetSegment=all`, at least 3
+Beijing regimes must reach `partial_orderbook`, so one over-sampled regime cannot make an
+all-regime strategy look production-ready.
+
 Stress validation reruns the best train parameters on the validation slice with:
 
 - `assumedSpread` increased by `0.01`,

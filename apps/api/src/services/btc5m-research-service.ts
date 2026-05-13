@@ -1648,6 +1648,7 @@ const MIN_ACCEPTANCE_MARKETS = 500;
 const MIN_VALIDATION_TRADES = 8;
 const MIN_STRESS_VALIDATION_TRADES = 4;
 const MIN_WALK_FORWARD_WINDOWS = 3;
+const MIN_BALANCED_ORDERBOOK_SEGMENTS = 3;
 
 function findLimitBuyFill(points: PricePoint[], submittedAt: number, limitPrice: number, params: BacktestParams) {
   const deadline = submittedAt + params.entryMaxWaitSeconds * 1000;
@@ -2052,8 +2053,10 @@ function runWalkForwardValidation(input: { markets: Btc5mMarket[]; points: Price
 }
 
 function summarizeExecutionCoverage(markets: Btc5mMarket[], points: PricePoint[]) {
-  const marketsWithTrades = new Set(points.filter((point) => point.source === "trade_proxy").map((point) => point.marketSlug)).size;
-  const marketsWithOrderbook = new Set(points.filter((point) => point.source === "orderbook_snapshot").map((point) => point.marketSlug)).size;
+  const tradeMarketSlugs = new Set(points.filter((point) => point.source === "trade_proxy").map((point) => point.marketSlug));
+  const orderbookMarketSlugs = new Set(points.filter((point) => point.source === "orderbook_snapshot").map((point) => point.marketSlug));
+  const marketsWithTrades = tradeMarketSlugs.size;
+  const marketsWithOrderbook = orderbookMarketSlugs.size;
   const tradeMarketCoverage = markets.length ? marketsWithTrades / markets.length : 0;
   const orderbookMarketCoverage = markets.length ? marketsWithOrderbook / markets.length : 0;
   const executionQuality =
@@ -2066,23 +2069,61 @@ function summarizeExecutionCoverage(markets: Btc5mMarket[], points: PricePoint[]
           : tradeMarketCoverage >= 0.1
             ? "thin_trade_proxy"
             : "insufficient";
+  const segmentCoverage: Record<string, { markets: number; marketsWithTrades: number; marketsWithOrderbook: number; tradeMarketCoverage: number; orderbookMarketCoverage: number; executionQuality: string }> = {};
+  for (const market of markets) {
+    const segment = beijingSegment(market.startTime);
+    const value = segmentCoverage[segment] ?? {
+      markets: 0,
+      marketsWithTrades: 0,
+      marketsWithOrderbook: 0,
+      tradeMarketCoverage: 0,
+      orderbookMarketCoverage: 0,
+      executionQuality: "insufficient",
+    };
+    value.markets += 1;
+    value.marketsWithTrades += tradeMarketSlugs.has(market.slug) ? 1 : 0;
+    value.marketsWithOrderbook += orderbookMarketSlugs.has(market.slug) ? 1 : 0;
+    segmentCoverage[segment] = value;
+  }
+  for (const value of Object.values(segmentCoverage)) {
+    value.tradeMarketCoverage = value.markets ? value.marketsWithTrades / value.markets : 0;
+    value.orderbookMarketCoverage = value.markets ? value.marketsWithOrderbook / value.markets : 0;
+    value.executionQuality =
+      value.orderbookMarketCoverage >= 0.5
+        ? "orderbook_backtest_ready"
+        : value.orderbookMarketCoverage >= 0.1
+          ? "partial_orderbook"
+          : value.tradeMarketCoverage >= 0.5
+            ? "trade_proxy_only"
+            : value.tradeMarketCoverage >= 0.1
+              ? "thin_trade_proxy"
+              : "insufficient";
+  }
+  const partialOrderbookSegments = Object.entries(segmentCoverage)
+    .filter(([, value]) => value.orderbookMarketCoverage >= 0.1)
+    .map(([segment]) => segment);
   return {
     marketsWithTrades,
     marketsWithOrderbook,
     tradeMarketCoverage,
     orderbookMarketCoverage,
     executionQuality,
+    segmentCoverage,
+    partialOrderbookSegments,
   };
 }
 
 function buildAcceptanceBlockers(input: {
   datasetMarkets: number;
+  targetSegment: BacktestParams["targetSegment"];
   paperBlocked: boolean;
   validation: BacktestReport;
   stressValidation: BacktestReport;
   walkForwardValidation: ReturnType<typeof runWalkForwardValidation>;
   coverageAccepted: boolean;
   executionQuality: string;
+  segmentCoverage: ReturnType<typeof summarizeExecutionCoverage>["segmentCoverage"];
+  partialOrderbookSegments: string[];
 }) {
   const blockers: Array<{ code: string; message: string; observed?: number | string; required?: number | string }> = [];
   if (input.datasetMarkets < MIN_ACCEPTANCE_MARKETS) {
@@ -2182,6 +2223,26 @@ function buildAcceptanceBlockers(input: {
       required: "partial_orderbook",
     });
   }
+  if (input.targetSegment === "all") {
+    if (input.partialOrderbookSegments.length < MIN_BALANCED_ORDERBOOK_SEGMENTS) {
+      blockers.push({
+        code: "balanced_segment_orderbook_coverage_below_min",
+        message: "All-segment strategies require partial orderbook coverage across multiple Beijing regimes.",
+        observed: input.partialOrderbookSegments.length,
+        required: MIN_BALANCED_ORDERBOOK_SEGMENTS,
+      });
+    }
+  } else {
+    const targetSegmentCoverage = input.segmentCoverage[input.targetSegment];
+    if (!targetSegmentCoverage || targetSegmentCoverage.orderbookMarketCoverage < 0.1) {
+      blockers.push({
+        code: "target_segment_orderbook_coverage_below_min",
+        message: "Targeted strategies require partial orderbook coverage in the selected Beijing regime.",
+        observed: targetSegmentCoverage?.orderbookMarketCoverage ?? 0,
+        required: ">= 0.1",
+      });
+    }
+  }
   return blockers;
 }
 
@@ -2251,12 +2312,15 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
   const coverageAccepted = executionCoverage.executionQuality === "partial_orderbook" || executionCoverage.executionQuality === "orderbook_backtest_ready";
   const acceptanceBlockers = buildAcceptanceBlockers({
     datasetMarkets: dataset.markets.length,
+    targetSegment: bestTrain.parameters.targetSegment,
     paperBlocked,
     validation,
     stressValidation,
     walkForwardValidation,
     coverageAccepted,
     executionQuality: executionCoverage.executionQuality,
+    segmentCoverage: executionCoverage.segmentCoverage,
+    partialOrderbookSegments: executionCoverage.partialOrderbookSegments,
   });
   return {
     generations,
@@ -2289,6 +2353,8 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
       minStressValidationTrades: MIN_STRESS_VALIDATION_TRADES,
       minWalkForwardWindows: MIN_WALK_FORWARD_WINDOWS,
       minExecutionQuality: "partial_orderbook",
+      minBalancedOrderbookSegments: MIN_BALANCED_ORDERBOOK_SEGMENTS,
+      targetSegmentExecutionQuality: "partial_orderbook",
       validationPnl: "> 0",
       stressValidationPnl: "> 0",
       walkForwardPnl: "> 0",

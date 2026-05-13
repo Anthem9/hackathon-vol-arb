@@ -450,6 +450,7 @@ async function main() {
         seed,
         accepted: result.accepted,
         executionQuality: result.dataset.executionQuality,
+        partialOrderbookSegments: result.dataset.partialOrderbookSegments,
         acceptanceGates: result.acceptanceGates,
         acceptanceBlockers: result.acceptanceBlockers,
         bestTrain: {

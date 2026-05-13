@@ -97,6 +97,9 @@ Additional forward collection run:
 - Stop-loss backtest fills are now more conservative: when a stop is crossed, the model
   exits with a limit sell at the observed bid instead of assuming a guaranteed fill at the
   original stop price.
+- GA acceptance now checks orderbook coverage by Beijing regime. Targeted strategies need
+  `partial_orderbook` coverage in their selected segment, and `targetSegment=all`
+  strategies need at least 3 Beijing regimes with `partial_orderbook` coverage.
 - Latest 3-seed full-window sweep after adding `longshot_cone`:
   - command: `genetic-sweep --days 7 --limit-markets 2016 --seeds 3 --seed-start 41 --generations 2 --population 9`.
   - accepted count: `0`.
