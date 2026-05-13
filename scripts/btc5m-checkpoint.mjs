@@ -18,6 +18,16 @@ function runJson(command, args, timeout = 120_000) {
   return JSON.parse(result.stdout);
 }
 
+function runText(command, args) {
+  const result = spawnSync(command, args, {
+    cwd: root,
+    encoding: "utf8",
+    env: process.env,
+    timeout: 10_000,
+  });
+  return result.status === 0 ? result.stdout.trim() : null;
+}
+
 function reportPath() {
   const explicit = process.env.BTC5M_CHECKPOINT_REPORT_FILE;
   if (explicit) return resolve(root, explicit);
@@ -56,6 +66,11 @@ const readiness = runJson(
 
 const output = {
   generatedAt: new Date().toISOString(),
+  git: {
+    head: runText("git", ["rev-parse", "HEAD"]),
+    shortHead: runText("git", ["rev-parse", "--short", "HEAD"]),
+    dirty: Boolean(runText("git", ["status", "--short"])),
+  },
   inputs: {
     days: Number(days),
     limitMarkets: Number(limitMarkets),

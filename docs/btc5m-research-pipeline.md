@@ -202,8 +202,9 @@ Save a combined orderbook-plan plus readiness checkpoint:
 pnpm btc5m:checkpoint
 ```
 
-The checkpoint writes an ignored JSON report under `.local/reports`. Override defaults
-with `BTC5M_CHECKPOINT_DAYS`, `BTC5M_CHECKPOINT_LIMIT_MARKETS`,
+The checkpoint writes an ignored JSON report under `.local/reports` and includes the
+current Git commit plus dirty-worktree status for reproducibility. Override defaults with
+`BTC5M_CHECKPOINT_DAYS`, `BTC5M_CHECKPOINT_LIMIT_MARKETS`,
 `BTC5M_CHECKPOINT_GENERATIONS`, `BTC5M_CHECKPOINT_POPULATION`,
 `BTC5M_CHECKPOINT_SEED`, or `BTC5M_CHECKPOINT_REPORT_FILE`.
 
