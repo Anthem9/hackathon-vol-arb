@@ -180,6 +180,17 @@ Include a small seeded GA smoke check when needed:
 pnpm --filter @vol-arb/api btc5m:research status --days 7 --with-ga --generations 1 --population 4 --seed 7
 ```
 
+Run the live-readiness audit before treating any strategy as executable:
+
+```bash
+pnpm --filter @vol-arb/api btc5m:research readiness --days 7 --with-ga --generations 1 --population 4 --seed 7
+```
+
+`readiness` is stricter than `status`: it emits a checklist for market sample size, trade
+coverage, orderbook coverage, Beijing segment balance, execution quality, settled paper
+evidence, GA acceptance, and hard risk controls. `liveReady` must be `true` before any
+live order path is considered.
+
 Record a real-time paper signal without submitting any order:
 
 ```bash

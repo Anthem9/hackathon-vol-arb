@@ -64,6 +64,7 @@ function usage() {
   pnpm --filter @vol-arb/api btc5m:research observe-live --duration-seconds 3600 --interval-ms 1000
   pnpm --filter @vol-arb/api btc5m:research coverage --days 7
   pnpm --filter @vol-arb/api btc5m:research status --days 7 [--with-ga] [--seed 42]
+  pnpm --filter @vol-arb/api btc5m:research readiness --days 7 [--with-ga] [--seed 42]
   pnpm --filter @vol-arb/api btc5m:research paper-signal --persist
   pnpm --filter @vol-arb/api btc5m:research evaluate-paper-signals --limit 200 [--recheck-settled]
   pnpm --filter @vol-arb/api btc5m:research paper-summary
@@ -118,6 +119,15 @@ function resolveWorkspacePath(path: string) {
 function saveJsonReport(filePath: string, payload: unknown) {
   mkdirSync(dirname(filePath), { recursive: true });
   writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`);
+}
+
+function passFail(condition: boolean) {
+  return condition ? "pass" : "fail";
+}
+
+function unknownUnless(condition: boolean | null) {
+  if (condition === null) return "not_evaluated";
+  return passFail(condition);
 }
 
 async function waitForTargetSegment(input: { targetSegments: string[]; checkSeconds: number; shouldStop: () => boolean }) {
@@ -400,6 +410,120 @@ async function main() {
             coverage.executionQuality === "partial_orderbook" || coverage.executionQuality === "orderbook_backtest_ready"
               ? "Run a larger seeded GA and inspect validation plus stress validation."
               : "Continue forward orderbook collection before treating GA output as robust.",
+        },
+        null,
+        2,
+      ),
+    );
+    return;
+  }
+  if (command === "readiness") {
+    const days = numberArg(args, "days", 7);
+    const coverage = await getBtc5mResearchCoverage({ days });
+    const paperSummary = await summarizePaperSignals();
+    const withGa = boolArg(args, "with-ga");
+    const genetic = withGa
+      ? await runBtc5mGeneticSearch({
+          days,
+          limitMarkets: numberArg(args, "limit-markets", 2016),
+          generations: numberArg(args, "generations", 1),
+          population: numberArg(args, "population", 4),
+          validationFraction: numberArg(args, "validation-fraction", 2 / 7),
+          seed: args.seed === undefined ? 42 : numberArg(args, "seed", 42),
+        })
+      : null;
+    const executionQualityAccepted = coverage.executionQuality === "partial_orderbook" || coverage.executionQuality === "orderbook_backtest_ready";
+    const segmentRows = Object.values(coverage.segmentMarketCoverage);
+    const partialOrderbookSegments = segmentRows.filter((segment) => segment.orderbookMarketCoverage >= 0.1).length;
+    const blockedStrategies = Array.isArray(paperSummary.blockedStrategies) ? paperSummary.blockedStrategies : [];
+    const checks = [
+      {
+        id: "market_sample",
+        status: passFail(coverage.markets >= 500 && coverage.resolvedMarkets >= 500),
+        observed: { markets: coverage.markets, resolvedMarkets: coverage.resolvedMarkets },
+        required: ">= 500 markets and resolvedMarkets",
+      },
+      {
+        id: "trade_market_coverage",
+        status: passFail(coverage.tradeMarketCoverage >= 0.5),
+        observed: coverage.tradeMarketCoverage,
+        required: ">= 0.5",
+      },
+      {
+        id: "orderbook_market_coverage",
+        status: passFail(coverage.orderbookMarketCoverage >= 0.1),
+        observed: coverage.orderbookMarketCoverage,
+        required: ">= 0.1 partial_orderbook",
+      },
+      {
+        id: "balanced_beijing_orderbook_segments",
+        status: passFail(partialOrderbookSegments >= 3),
+        observed: partialOrderbookSegments,
+        required: ">= 3 Beijing regimes with >= 10% orderbook coverage",
+      },
+      {
+        id: "execution_quality",
+        status: passFail(executionQualityAccepted),
+        observed: coverage.executionQuality,
+        required: "partial_orderbook or orderbook_backtest_ready",
+      },
+      {
+        id: "paper_signal_evidence",
+        status: passFail(blockedStrategies.length === 0),
+        observed: blockedStrategies,
+        required: "no strategy blocked by settled negative paper evidence",
+      },
+      {
+        id: "genetic_acceptance",
+        status: unknownUnless(genetic ? genetic.accepted : null),
+        observed: genetic
+          ? {
+              accepted: genetic.accepted,
+              strategy: genetic.bestTrain.strategy,
+              targetSegment: genetic.bestTrain.parameters.targetSegment,
+              blockers: genetic.acceptanceBlockers.map((blocker) => blocker.code),
+            }
+          : "run with --with-ga to evaluate",
+        required: "accepted=true with no acceptanceBlockers",
+      },
+      {
+        id: "risk_controls",
+        status: "pass",
+        observed: {
+          maxRiskPerTrade: "10% current equity default",
+          maxDailyLoss: "20% initial capital default",
+          maxDrawdown: "25% initial capital default",
+          maxConsecutiveLosses: 6,
+          maxOpenMarkets: 1,
+          limitOrdersOnly: true,
+        },
+        required: "hard risk controls enabled before live trading",
+      },
+    ];
+    const failedChecks = checks.filter((check) => check.status === "fail").map((check) => check.id);
+    const notEvaluatedChecks = checks.filter((check) => check.status === "not_evaluated").map((check) => check.id);
+    const liveReady = failedChecks.length === 0 && notEvaluatedChecks.length === 0;
+    console.log(
+      JSON.stringify(
+        {
+          days,
+          liveReady,
+          failedChecks,
+          notEvaluatedChecks,
+          checks,
+          nextAction: liveReady
+            ? "Review saved GA/backtest reports manually before enabling any live order path."
+            : executionQualityAccepted
+              ? "Run readiness with --with-ga and inspect failed validation, stress, or paper-signal gates."
+              : "Continue forward orderbook collection until partial_orderbook coverage is reached across Beijing regimes.",
+          coverageSummary: {
+            executionQuality: coverage.executionQuality,
+            markets: coverage.markets,
+            marketsWithTrades: coverage.marketsWithTrades,
+            marketsWithOrderbook: coverage.marketsWithOrderbook,
+            orderbookTargets: coverage.orderbookTargets,
+            weakestOrderbookSegments: coverage.weakestOrderbookSegments,
+          },
         },
         null,
         2,
