@@ -28,6 +28,18 @@ Observed:
 - Genetic search result: `0` trades, `0` PnL.
 - Genetic search now reports train and holdout validation separately; a candidate is not accepted unless validation has enough trades, positive PnL, and acceptable drawdown.
 
+Additional forward collection run:
+
+- Live collector: 120 seconds, `228` snapshots, `0` errors.
+- Live collector: 300 seconds, `586` snapshots, `0` errors.
+- Coverage after collection: `820` executable points, still below the current threshold of `7452`.
+- Latest GA on recent data used `1477` points from markets with data:
+  - train: `4` markets, `1201` points, `1` trade, positive PnL in-sample.
+  - validation: `1` market, `276` points, `0` trades.
+  - accepted: `false`.
+
+The in-sample trade is not considered a strategy candidate because validation produced no trades and the sample is too small.
+
 ## Interpretation
 
 No trade was selected because the historical price path was too sparse to verify limit-order entry and limit-order exit rules. The backtester correctly refused to infer fills from missing data.

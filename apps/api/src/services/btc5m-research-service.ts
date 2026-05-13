@@ -421,10 +421,14 @@ async function readMarketsForBacktest(days = 7, limit = 2500): Promise<Btc5mMark
     raw_json: JsonRecord;
   }>(
     `select slug, event_id, market_id, condition_id, question, start_time, end_time, up_token_id, down_token_id, closed, resolved, winning_outcome, raw_json
-     from polymarket_btc5m_markets
-     where start_time >= now() - ($1::text)::interval
-     order by start_time asc
-     limit $2`,
+     from (
+       select slug, event_id, market_id, condition_id, question, start_time, end_time, up_token_id, down_token_id, closed, resolved, winning_outcome, raw_json
+       from polymarket_btc5m_markets
+       where start_time >= now() - ($1::text)::interval
+       order by start_time desc
+       limit $2
+     ) recent
+     order by start_time asc`,
     [`${Math.max(1, days)} days`, Math.max(1, limit)],
   );
   return (result?.rows ?? []).map((row) => ({
@@ -1106,8 +1110,10 @@ function scoreReport(report: BacktestReport) {
   return report.totalPnl - report.maxDrawdown * 0.35 + report.winRate * 2;
 }
 
-function splitMarketsForValidation(markets: Btc5mMarket[], validationFraction: number) {
-  const sorted = [...markets].sort((a, b) => a.startTime - b.startTime);
+function splitMarketsForValidation(markets: Btc5mMarket[], validationFraction: number, points: PricePoint[] = []) {
+  const pointSlugs = new Set(points.map((point) => point.marketSlug));
+  const marketsWithPoints = markets.filter((market) => pointSlugs.has(market.slug));
+  const sorted = (marketsWithPoints.length >= 2 ? marketsWithPoints : markets).sort((a, b) => a.startTime - b.startTime);
   const validationCount = Math.max(1, Math.floor(sorted.length * Math.max(0.05, Math.min(0.5, validationFraction))));
   const splitIndex = Math.max(1, sorted.length - validationCount);
   return {
@@ -1125,7 +1131,7 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
   const generations = Math.max(1, Math.min(50, input.generations ?? 6));
   const populationSize = Math.max(4, Math.min(60, input.population ?? 12));
   const dataset = await readPricePoints(input.days ?? 7, input.limitMarkets ?? 2500);
-  const { trainMarkets, validationMarkets } = splitMarketsForValidation(dataset.markets, input.validationFraction ?? 2 / 7);
+  const { trainMarkets, validationMarkets } = splitMarketsForValidation(dataset.markets, input.validationFraction ?? 2 / 7, dataset.points);
   const trainPoints = filterPointsForMarkets(dataset.points, trainMarkets);
   const validationPoints = filterPointsForMarkets(dataset.points, validationMarkets);
   let population = Array.from({ length: populationSize }, (_, index): BacktestParams => ({
