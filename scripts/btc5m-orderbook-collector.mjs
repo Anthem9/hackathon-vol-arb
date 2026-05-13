@@ -33,6 +33,33 @@ function readLastLogLines(limit = 12) {
   return readFileSync(logFile, "utf8").trimEnd().split("\n").slice(-limit);
 }
 
+function parseProgressLine(line) {
+  const match = line.match(
+    /collect-orderbook-sessions session=(\d+)\/(\d+) iterations=(\d+) snapshots=(\d+) errors=(\d+) elapsed=([\d.]+)s/,
+  );
+  if (!match) return null;
+  return {
+    session: Number(match[1]),
+    totalSessions: Number(match[2]),
+    iterations: Number(match[3]),
+    snapshots: Number(match[4]),
+    errors: Number(match[5]),
+    elapsedSeconds: Number(match[6]),
+  };
+}
+
+function logHealth(lines) {
+  const progress = lines.map(parseProgressLine).filter(Boolean);
+  const latestProgress = progress.at(-1) ?? null;
+  const recentErrorLines = progress.filter((line) => line.errors > 0).length;
+  return {
+    health: recentErrorLines > 0 ? "warning" : "healthy",
+    latestProgress,
+    recentProgressLines: progress.length,
+    recentErrorLines,
+  };
+}
+
 function logSizeBytes() {
   if (!existsSync(logFile)) return 0;
   return statSync(logFile).size;
@@ -147,6 +174,7 @@ function stop() {
 function status() {
   const pid = readPid();
   const meta = readMeta();
+  const lastLogLines = readLastLogLines();
   console.log(
     JSON.stringify(
       {
@@ -159,7 +187,8 @@ function status() {
         launchCaffeinate: meta?.pid === pid ? meta.caffeinate : null,
         meta,
         logSizeBytes: logSizeBytes(),
-        lastLogLines: readLastLogLines(),
+        logHealth: logHealth(lastLogLines),
+        lastLogLines,
       },
       null,
       2,
