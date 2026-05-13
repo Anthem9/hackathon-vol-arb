@@ -251,6 +251,7 @@ const candidateRiskBlockers = buildBtc5mAcceptanceBlockers({
     ...acceptanceReadyReport,
     parameters: {
       ...DEFAULT_BACKTEST_PARAMS,
+      maxDailyTrades: 48,
       maxLiquidityParticipation: 0.4,
     },
   },
@@ -271,6 +272,7 @@ const candidateRiskBlockers = buildBtc5mAcceptanceBlockers({
   partialOrderbookSegments: ["weekday_beijing_day", "weekday_beijing_night", "weekend_beijing_day"],
 });
 
+assert.ok(candidateRiskBlockers.some((blocker) => blocker.code === "candidate_daily_trades_above_limit"));
 assert.ok(candidateRiskBlockers.some((blocker) => blocker.code === "candidate_liquidity_participation_above_limit"));
 
 console.log("btc5m-research-service tests passed");

@@ -1988,7 +1988,7 @@ function mutateParams(parent: BacktestParams, random: RandomSource): BacktestPar
     decisionDelaySeconds: Math.max(0, Math.min(5, Math.round(parent.decisionDelaySeconds + randomBetween(-1, 1, random)))),
     maxSignalStalenessSeconds: Math.max(5, Math.min(90, Math.round(parent.maxSignalStalenessSeconds + randomBetween(-8, 8, random)))),
     entryMaxWaitSeconds: Math.max(1, Math.min(60, Math.round(parent.entryMaxWaitSeconds + randomBetween(-5, 5, random)))),
-    maxDailyTrades: Math.max(3, Math.min(96, Math.round(parent.maxDailyTrades + randomBetween(-6, 6, random)))),
+    maxDailyTrades: Math.max(3, Math.min(DEFAULT_BACKTEST_PARAMS.maxDailyTrades, Math.round(parent.maxDailyTrades + randomBetween(-6, 6, random)))),
     maxLiquidityParticipation: Math.max(0.05, Math.min(DEFAULT_BACKTEST_PARAMS.maxLiquidityParticipation, parent.maxLiquidityParticipation + randomBetween(-0.05, 0.05, random))),
     kellyFraction: Math.max(0.05, Math.min(0.5, parent.kellyFraction + randomBetween(-0.05, 0.05, random))),
     coneVolatilityMultiplier: Math.max(0.25, Math.min(4, parent.coneVolatilityMultiplier + randomBetween(-0.25, 0.25, random))),
@@ -2249,6 +2249,14 @@ export function buildBtc5mAcceptanceBlockers(input: {
       required: DEFAULT_BACKTEST_PARAMS.maxOpenMarkets,
     });
   }
+  if (candidateParams.maxDailyTrades > DEFAULT_BACKTEST_PARAMS.maxDailyTrades) {
+    blockers.push({
+      code: "candidate_daily_trades_above_limit",
+      message: "Accepted candidates must not exceed the daily trade-count limit.",
+      observed: candidateParams.maxDailyTrades,
+      required: DEFAULT_BACKTEST_PARAMS.maxDailyTrades,
+    });
+  }
   if (candidateParams.maxLiquidityParticipation > DEFAULT_BACKTEST_PARAMS.maxLiquidityParticipation) {
     blockers.push({
       code: "candidate_liquidity_participation_above_limit",
@@ -2391,7 +2399,7 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
     decisionDelaySeconds: Math.round(randomBetween(0, 5, random)),
     maxSignalStalenessSeconds: Math.round(randomBetween(10, 60, random)),
     entryMaxWaitSeconds: Math.round(randomBetween(3, 30, random)),
-    maxDailyTrades: Math.round(randomBetween(6, 48, random)),
+    maxDailyTrades: Math.round(randomBetween(6, DEFAULT_BACKTEST_PARAMS.maxDailyTrades, random)),
     maxLiquidityParticipation: randomBetween(0.1, DEFAULT_BACKTEST_PARAMS.maxLiquidityParticipation, random),
     useKellySizing: index % 3 === 0,
     kellyFraction: randomBetween(0.1, 0.35, random),
