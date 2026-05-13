@@ -28,6 +28,9 @@ export type PricePoint = {
   price: number;
   time: number;
   source: "clob_prices_history" | "orderbook_snapshot" | "trade_proxy";
+  btcOpenPrice?: number;
+  btcCurrentPrice?: number;
+  btcVolatilityPerSqrtSecond?: number;
 };
 
 export type BacktestParams = {
@@ -53,6 +56,7 @@ export type BacktestParams = {
   maxOpenMarkets: number;
   useKellySizing: boolean;
   kellyFraction: number;
+  coneVolatilityMultiplier: number;
 };
 
 export type BacktestTrade = {
@@ -131,6 +135,7 @@ export const DEFAULT_BACKTEST_PARAMS: BacktestParams = {
   maxOpenMarkets: 1,
   useKellySizing: false,
   kellyFraction: 0.25,
+  coneVolatilityMultiplier: 1,
 };
 
 function envValue(name: string) {
@@ -879,7 +884,7 @@ export async function evaluateLatestBtc5mPaperSignal(input: { params?: Partial<B
   const points = data.points.filter((point) => point.marketSlug === activeMarket.slug);
   const up = bestBookPrice(points, "up");
   const down = bestBookPrice(points, "down");
-  const candidate = chooseOutcome(params, up, down);
+  const candidate = chooseOutcome(params, up, down, activeMarket.endTime);
   const secondsRemaining = (activeMarket.endTime - now) / 1000;
   let report: PaperSignalReport;
   if (!candidate || secondsRemaining < params.minSecondsRemaining || secondsRemaining > params.maxSecondsRemaining) {
@@ -1237,7 +1242,75 @@ async function readPricePoints(days: number, limitMarkets: number): Promise<{ ma
     if (row.bid !== null) points.push({ marketSlug: row.market_slug, tokenId: row.token_id, outcome: row.outcome, price: Number(row.bid), time: row.snapshot_time.getTime(), source: "orderbook_snapshot" });
     return points;
   });
-  return { markets, points: [...pricePoints, ...bookPoints].sort((a, b) => a.time - b.time) };
+  const points = [...pricePoints, ...bookPoints].sort((a, b) => a.time - b.time);
+  await enrichPointsWithAuxiliaryBtcBaseline(markets, points);
+  return { markets, points };
+}
+
+async function enrichPointsWithAuxiliaryBtcBaseline(markets: Btc5mMarket[], points: PricePoint[]) {
+  if (markets.length === 0 || points.length === 0) return;
+  const start = Math.min(...markets.map((market) => market.startTime)) - 60 * 60 * 1000;
+  const end = Math.max(...markets.map((market) => market.endTime)) + 60 * 1000;
+  const rows = await runDatabaseQuery<{
+    price: string;
+    source_timestamp: Date;
+  }>(
+    `select price, source_timestamp
+     from btc_price_ticks
+     where source_timestamp between to_timestamp($1 / 1000.0) and to_timestamp($2 / 1000.0)
+     order by source_timestamp asc`,
+    [start, end],
+  );
+  const ticks = (rows?.rows ?? [])
+    .map((row) => ({ price: Number(row.price), time: row.source_timestamp.getTime() }))
+    .filter((tick) => Number.isFinite(tick.price) && Number.isFinite(tick.time))
+    .sort((a, b) => a.time - b.time);
+  if (ticks.length < 10) return;
+
+  const returns = ticks.slice(1).map((tick, index) => ({
+    time: tick.time,
+    value: Math.log(tick.price / Math.max(0.000001, ticks[index]?.price ?? tick.price)),
+  }));
+  const volatilityAt = (time: number) => {
+    const windowStart = time - 60 * 60 * 1000;
+    const values = returns.filter((item) => item.time >= windowStart && item.time <= time).map((item) => item.value);
+    if (values.length < 5) return undefined;
+    const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+    const variance = values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / Math.max(1, values.length - 1);
+    return Math.sqrt(variance / 60);
+  };
+  const tickAtOrBefore = (time: number) => {
+    let low = 0;
+    let high = ticks.length - 1;
+    let best: { price: number; time: number } | undefined;
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      const tick = ticks[mid];
+      if (!tick) break;
+      if (tick.time <= time) {
+        best = tick;
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+    return best;
+  };
+  const marketsBySlug = new Map(markets.map((market) => [market.slug, market]));
+  const openPriceBySlug = new Map<string, number>();
+  for (const market of markets) {
+    const openTick = tickAtOrBefore(market.startTime);
+    if (openTick) openPriceBySlug.set(market.slug, openTick.price);
+  }
+  for (const point of points) {
+    const market = marketsBySlug.get(point.marketSlug);
+    const currentTick = tickAtOrBefore(point.time);
+    const openPrice = openPriceBySlug.get(point.marketSlug);
+    if (!market || !currentTick || openPrice === undefined) continue;
+    point.btcOpenPrice = openPrice;
+    point.btcCurrentPrice = currentTick.price;
+    point.btcVolatilityPerSqrtSecond = volatilityAt(point.time);
+  }
 }
 
 function priceToAsk(price: number, params: BacktestParams, source: PricePoint["source"]) {
@@ -1277,10 +1350,33 @@ function estimatedKellyFraction(entryPrice: number, exitTarget: number, winRateE
   return Math.max(0, Math.min(1, (b * winRateEstimate - q) / b));
 }
 
-function chooseOutcome(params: BacktestParams, up: PricePoint | undefined, down: PricePoint | undefined) {
+function normalCdf(value: number) {
+  const sign = value < 0 ? -1 : 1;
+  const x = Math.abs(value) / Math.sqrt(2);
+  const t = 1 / (1 + 0.3275911 * x);
+  const a1 = 0.254829592;
+  const a2 = -0.284496736;
+  const a3 = 1.421413741;
+  const a4 = -1.453152027;
+  const a5 = 1.061405429;
+  const erf = 1 - (((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t * Math.exp(-x * x));
+  return 0.5 * (1 + sign * erf);
+}
+
+function probabilityConeUp(point: PricePoint, marketEndTime: number, params: BacktestParams) {
+  if (point.btcOpenPrice === undefined || point.btcCurrentPrice === undefined || point.btcVolatilityPerSqrtSecond === undefined) return null;
+  const secondsRemaining = Math.max(1, (marketEndTime - point.time) / 1000);
+  const sigma = Math.max(0.0000001, point.btcVolatilityPerSqrtSecond * params.coneVolatilityMultiplier);
+  const logDistance = Math.log(point.btcCurrentPrice / Math.max(0.000001, point.btcOpenPrice));
+  const z = logDistance / (sigma * Math.sqrt(secondsRemaining));
+  return Math.min(0.99, Math.max(0.01, normalCdf(z)));
+}
+
+function chooseOutcome(params: BacktestParams, up: PricePoint | undefined, down: PricePoint | undefined, marketEndTime?: number) {
   if (!up || !down) return null;
   if (params.strategy === "lottery_reprice") return up.price <= down.price ? up : down;
-  const probabilityUp = Math.min(0.99, Math.max(0.01, 1 - up.price));
+  const coneProbabilityUp = marketEndTime === undefined ? null : probabilityConeUp(up, marketEndTime, params) ?? probabilityConeUp(down, marketEndTime, params);
+  const probabilityUp = coneProbabilityUp ?? Math.min(0.99, Math.max(0.01, 1 - up.price));
   const upEdge = probabilityUp - up.price;
   const downEdge = (1 - probabilityUp) - down.price;
   if (upEdge >= params.probabilityEdge && upEdge >= downEdge) return up;
@@ -1334,7 +1430,7 @@ export function runBtc5mBacktestFromData(input: { markets: Btc5mMarket[]; points
       const delayedTime = time + params.decisionDelaySeconds * 1000;
       const up = upPoints.filter((point) => point.time <= delayedTime).at(-1);
       const down = downPoints.filter((point) => point.time <= delayedTime).at(-1);
-      const candidate = chooseOutcome(params, up, down);
+      const candidate = chooseOutcome(params, up, down, market.endTime);
       if (!candidate) continue;
       const ask = priceToAsk(candidate.price, params, candidate.source);
       const entryLimit = Math.max(0.01, Math.min(0.99, ask - params.entryLimitOffset));
@@ -1522,6 +1618,7 @@ function mutateParams(parent: BacktestParams): BacktestParams {
     assumedSpread: Math.max(0, Math.min(0.08, parent.assumedSpread + randomBetween(-0.005, 0.005))),
     decisionDelaySeconds: Math.max(0, Math.min(5, Math.round(parent.decisionDelaySeconds + randomBetween(-1, 1)))),
     kellyFraction: Math.max(0.05, Math.min(0.5, parent.kellyFraction + randomBetween(-0.05, 0.05))),
+    coneVolatilityMultiplier: Math.max(0.25, Math.min(4, parent.coneVolatilityMultiplier + randomBetween(-0.25, 0.25))),
     useKellySizing: Math.random() > 0.7 ? !parent.useKellySizing : parent.useKellySizing,
   };
 }
@@ -1573,6 +1670,7 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
     decisionDelaySeconds: Math.round(randomBetween(0, 5)),
     useKellySizing: index % 3 === 0,
     kellyFraction: randomBetween(0.1, 0.35),
+    coneVolatilityMultiplier: randomBetween(0.5, 2.5),
   }));
   const history: Array<{ generation: number; bestScore: number; best: BacktestReport }> = [];
   for (let generation = 0; generation < generations; generation += 1) {

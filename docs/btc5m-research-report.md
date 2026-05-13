@@ -56,10 +56,21 @@ Additional forward collection run:
   - `lottery_reprice` is blocked by `251` settled signals, `-1219.97765` PnL, `0.007968` win rate.
 - GA now includes paper-signal summary in its output, cannot accept a strategy blocked by
   settled paper evidence, and excludes blocked strategies from the search pool.
+- Auxiliary BTC 1m data was collected for baseline volatility:
+  - Binance was unavailable from the current network.
+  - Coinbase stored `9645` 1m close ticks.
+  - these ticks are used only as auxiliary baseline inputs, not as Polymarket settlement truth.
+- `probability_cone` now uses BTC open price, current price, remaining time, and rolling
+  volatility to estimate baseline UP probability before comparing against contract prices.
 - Latest small GA run:
-  - best train candidate: `probability_cone`, `2` trades, `13.3572` PnL.
-  - validation: `1` trade, `-3.3327` PnL.
+  - best train candidate: `probability_cone`, `2` trades, `9.4326` PnL.
+  - validation: `1` trade, `0` PnL.
   - accepted: `false`.
+- Latest coverage:
+  - markets: `1239`; resolved markets: `78`.
+  - price points: `25`; orderbook snapshots: `1998`; trades: `0`; BTC ticks: `9643`.
+  - executable points: `1998` vs required `7434`.
+  - segment coverage is still only `weekday_beijing_night`.
 - GA after live observer used `3585` points:
   - train: `7` markets, `2307` points, `0` selected trades for the best train candidate.
   - validation: `2` markets, `1278` points, `0` trades.

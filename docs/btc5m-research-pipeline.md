@@ -134,7 +134,9 @@ Increase limits only after the first reports are inspected.
 The first implemented strategies are:
 
 - `lottery_reprice`: looks for cheap UP/DOWN contracts and exits with limit sells when the market reprices.
-- `probability_cone`: compares modeled probability against contract price and only enters when edge exceeds a threshold.
+- `probability_cone`: builds a baseline UP probability from auxiliary BTC open price,
+  current price, remaining time, and rolling volatility, then compares that baseline
+  against the UP/DOWN contract prices.
 
 Both strategies support:
 
@@ -165,6 +167,7 @@ The genetic search mutates these parameters:
 - `assumedSpread`
 - `decisionDelaySeconds`
 - `kellyFraction`
+- `coneVolatilityMultiplier`
 - `useKellySizing`
 
 Fitness is:
