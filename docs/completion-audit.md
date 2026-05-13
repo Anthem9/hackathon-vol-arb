@@ -174,6 +174,10 @@ collection, and a hard readiness gate before any live trading.
 - Latest checkpoint smoke command: `pnpm btc5m:checkpoint` with reduced GA smoke
   parameters. It wrote an ignored report under `.local/reports` and returned
   `recommendedAction=keep_current_collector_running`.
+- Latest direct GA CLI smoke command:
+  `pnpm --filter @vol-arb/api btc5m:research genetic --days 7 --limit-markets 80 --generations 1 --population 4 --seed 7`.
+  It returned `accepted=false`, proving the GA execution path still runs while acceptance
+  blockers prevent small-sample or weak-validation runs from being treated as live-ready.
 - Low-cost checkpoint command: `pnpm btc5m:checkpoint:status`, equivalent to
   `node scripts/btc5m-checkpoint.mjs --no-ga`; use it for frequent coverage checks while
   waiting for orderbook data, but keep GA enabled for final acceptance.
