@@ -35,6 +35,7 @@ export type PricePoint = {
 
 export type BacktestParams = {
   strategy: "lottery_reprice" | "probability_cone";
+  targetSegment: "all" | "weekday_beijing_day" | "weekday_beijing_night" | "weekend_beijing_day" | "weekend_beijing_night";
   initialCapital: number;
   maxRiskFraction: number;
   entryMinPrice: number;
@@ -116,6 +117,7 @@ const FIVE_MINUTES_SECONDS = 300;
 
 export const DEFAULT_BACKTEST_PARAMS: BacktestParams = {
   strategy: "lottery_reprice",
+  targetSegment: "all",
   initialCapital: 100,
   maxRiskFraction: 0.1,
   entryMinPrice: 0.01,
@@ -1448,6 +1450,8 @@ function chooseOutcome(params: BacktestParams, up: PricePoint | undefined, down:
   return null;
 }
 
+const TARGET_SEGMENTS: BacktestParams["targetSegment"][] = ["all", "weekday_beijing_day", "weekday_beijing_night", "weekend_beijing_day", "weekend_beijing_night"];
+
 function findLimitBuyFill(points: PricePoint[], submittedAt: number, limitPrice: number, params: BacktestParams) {
   const deadline = submittedAt + params.entryMaxWaitSeconds * 1000;
   return points.find((point) => {
@@ -1497,6 +1501,7 @@ export function runBtc5mBacktestFromData(input: { markets: Btc5mMarket[]; points
     if (timeline.length === 0) continue;
 
     for (const time of timeline) {
+      if (params.targetSegment !== "all" && beijingSegment(time) !== params.targetSegment) continue;
       const secondsRemaining = (market.endTime - time) / 1000;
       if (secondsRemaining < params.minSecondsRemaining || secondsRemaining > params.maxSecondsRemaining) continue;
       const delayedTime = time + params.decisionDelaySeconds * 1000;
@@ -1683,6 +1688,7 @@ function randomBetween(min: number, max: number) {
 function mutateParams(parent: BacktestParams): BacktestParams {
   return {
     ...parent,
+    targetSegment: Math.random() > 0.85 ? TARGET_SEGMENTS[Math.floor(Math.random() * TARGET_SEGMENTS.length)] ?? parent.targetSegment : parent.targetSegment,
     entryMaxPrice: Math.max(0.03, Math.min(0.35, parent.entryMaxPrice + randomBetween(-0.03, 0.03))),
     takeProfitMultiple: Math.max(1.2, Math.min(8, parent.takeProfitMultiple + randomBetween(-0.5, 0.5))),
     stopLossFraction: Math.max(0.1, Math.min(0.95, parent.stopLossFraction + randomBetween(-0.08, 0.08))),
@@ -1736,6 +1742,7 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
   let population = Array.from({ length: populationSize }, (_, index): BacktestParams => ({
     ...DEFAULT_BACKTEST_PARAMS,
     strategy: strategyPool[index % strategyPool.length],
+    targetSegment: TARGET_SEGMENTS[index % TARGET_SEGMENTS.length] ?? "all",
     entryMaxPrice: randomBetween(0.05, 0.25),
     takeProfitMultiple: randomBetween(1.4, 5),
     stopLossFraction: randomBetween(0.25, 0.8),

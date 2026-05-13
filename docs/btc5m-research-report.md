@@ -102,6 +102,19 @@ Additional forward collection run:
   - accepted: `false`.
   - interpretation: wider trade coverage increases validation sample size, but the current
     probability-cone/low-price rebound family still fails out-of-sample.
+- GA now includes `targetSegment` in the search space so candidates can choose `all`,
+  `weekday_beijing_day`, `weekday_beijing_night`, `weekend_beijing_day`, or
+  `weekend_beijing_night`.
+- Latest segmented GA run:
+  - dataset: `81725` points.
+  - best train candidate: `probability_cone` targeting `weekday_beijing_night`.
+  - train: `5` trades, `2.2608` PnL.
+  - validation: `6` trades, `-16.6145` PnL.
+  - accepted: `false`.
+  - interpretation: time-segment gating alone did not fix the overfitting problem. The
+    optimizer still found weak in-sample behavior that failed validation, and several
+    non-night segment candidates produced no selected trades under the current strategy
+    family.
 - Latest coverage:
   - markets: `1236`; resolved markets: `78`.
   - price points: `25`; orderbook snapshots: `1998`; trades: `78116`; BTC ticks: `9624`.
@@ -129,6 +142,7 @@ The `coverage` command should be used before larger GA runs. It reports executab
 - Early exit uses limit sells only.
 - Optional hold-to-settlement fallback.
 - Beijing weekday/day, weekday/night, weekend/day, weekend/night segmentation.
+- Optional strategy targeting of one Beijing segment during GA search.
 - Hard risk controls:
   - max daily loss,
   - max drawdown stop,

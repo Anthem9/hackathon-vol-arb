@@ -174,6 +174,8 @@ The genetic search mutates these parameters:
 - `kellyFraction`
 - `coneVolatilityMultiplier`
 - `useKellySizing`
+- `targetSegment`: `all`, `weekday_beijing_day`, `weekday_beijing_night`,
+  `weekend_beijing_day`, or `weekend_beijing_night`
 
 Fitness is:
 
@@ -222,6 +224,11 @@ Every report includes `segmentBreakdown` where trades are grouped by:
 - `weekend_beijing_night`
 
 This is required because Beijing daytime/nighttime and weekday/weekend liquidity can differ materially.
+
+The genetic search can also restrict candidate entries to one Beijing segment through
+`targetSegment`. This lets the optimizer test whether a parameter set only works in a
+specific liquidity regime instead of averaging across weekday daytime, weekday nighttime,
+weekend daytime, and weekend nighttime markets.
 
 ## Interpretation Rules
 
