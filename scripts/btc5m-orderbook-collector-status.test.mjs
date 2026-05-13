@@ -17,9 +17,10 @@ try {
   writeFileSync(pidFile, "999999\n");
   writeFileSync(metaFile, `${JSON.stringify({ pid: 999999, caffeinate: true, command: "test" })}\n`);
 
-  function runCollector(command, lines) {
+  function runCollector(command, lines, expectedStatus = 0) {
     writeFileSync(logFile, `${lines.join("\n")}\n`);
-    const result = spawnSync("node", ["scripts/btc5m-orderbook-collector.mjs", command], {
+    const args = ["scripts/btc5m-orderbook-collector.mjs", ...command.split(" ")];
+    const result = spawnSync("node", args, {
       encoding: "utf8",
       env: {
         ...process.env,
@@ -28,7 +29,7 @@ try {
         BTC5M_ORDERBOOK_LOG_FILE: logFile,
       },
     });
-    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.equal(result.status, expectedStatus, result.stderr || result.stdout);
     return JSON.parse(result.stdout);
   }
 
@@ -56,6 +57,9 @@ try {
   const health = runCollector("health", recoveringLines);
   assert.equal(health.logHealth.health, "recovering");
   assert.equal(health.lastLogLines, undefined);
+  writeFileSync(pidFile, `${process.pid}\n`);
+  writeFileSync(metaFile, `${JSON.stringify({ pid: process.pid, caffeinate: true, command: "test" })}\n`);
+  assert.equal(runCollector("health --require-ok", recoveringLines).logHealth.health, "recovering");
 
   const healthyStatus = runCollector("status", [
     "collect-orderbook-sessions session=2/3 iterations=60 snapshots=120 errors=0 elapsed=60.1s",
@@ -70,6 +74,15 @@ try {
   ]);
   assert.equal(warningStatus.logHealth.health, "warning");
   assert.equal(warningStatus.logHealth.latestProgress.errors, 1);
+  const warningHealth = runCollector(
+    "health --require-ok",
+    [
+      "collect-orderbook-sessions session=2/3 iterations=60 snapshots=120 errors=0 elapsed=60.1s",
+      "collect-orderbook-sessions session=2/3 iterations=120 snapshots=239 errors=1 elapsed=125.3s",
+    ],
+    4,
+  );
+  assert.equal(warningHealth.logHealth.health, "warning");
 } finally {
   rmSync(tempDir, { recursive: true, force: true });
 }

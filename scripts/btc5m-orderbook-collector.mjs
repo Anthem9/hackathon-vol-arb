@@ -224,6 +224,11 @@ function health() {
       2,
     ),
   );
+  if (process.argv.includes("--require-ok")) {
+    if (!running) process.exitCode = 2;
+    else if (!health.latestProgress) process.exitCode = 3;
+    else if (health.health === "warning") process.exitCode = 4;
+  }
 }
 
 function plan() {

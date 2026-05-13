@@ -179,12 +179,14 @@ Check the managed orderbook collector before changing it:
 
 ```bash
 pnpm btc5m:orderbook:health
+pnpm btc5m:orderbook:health:ok
 pnpm btc5m:orderbook:status
 pnpm btc5m:orderbook:plan
 ```
 
 `orderbook:health` only reads local pid/meta/log files and prints a compact `logHealth`
-summary. `orderbook:status` includes the same `logHealth` plus recent log lines.
+summary. `orderbook:health:ok` exits non-zero unless the collector is running with
+recent non-warning progress. `orderbook:status` includes the same `logHealth` plus recent log lines.
 `healthy` means recent progress lines have no errors, `recovering` means older recent
 lines had errors but the latest progress line is clean, and `warning` means the latest
 progress line still has errors. Treat non-healthy states as a reason to inspect

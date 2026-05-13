@@ -143,6 +143,7 @@ BTC 5m strategy research is separate from live trading. Use the checkpoint tools
 
 ```bash
 pnpm btc5m:orderbook:health
+pnpm btc5m:orderbook:health:ok
 pnpm btc5m:orderbook:status
 pnpm btc5m:orderbook:plan
 pnpm btc5m:checkpoint:last
@@ -151,7 +152,7 @@ pnpm btc5m:checkpoint:last:live
 pnpm btc5m:checkpoint:status
 ```
 
-`orderbook:health` only reads the local collector pid/log files and prints a compact progress/error summary. `checkpoint:last` only reads the latest local `.local/reports` checkpoint JSON and does not run network checks, readiness, GA, or collectors. It prints `reportMatchesCurrentHead`; when that is `false`, rerun `checkpoint:status` before treating the report as current. `checkpoint:last:current` exits non-zero when the saved report does not match the current clean HEAD. `checkpoint:last:live` also exits non-zero unless the saved current report is `liveReady=true`; use it only as a saved-report guard, not as a replacement for the full gate. `checkpoint:status` is the low-cost no-GA status check while waiting for data. Final acceptance must use the full checkpoint gate:
+`orderbook:health` only reads the local collector pid/log files and prints a compact progress/error summary. `orderbook:health:ok` exits non-zero unless the collector is running with recent non-warning progress. `checkpoint:last` only reads the latest local `.local/reports` checkpoint JSON and does not run network checks, readiness, GA, or collectors. It prints `reportMatchesCurrentHead`; when that is `false`, rerun `checkpoint:status` before treating the report as current. `checkpoint:last:current` exits non-zero when the saved report does not match the current clean HEAD. `checkpoint:last:live` also exits non-zero unless the saved current report is `liveReady=true`; use it only as a saved-report guard, not as a replacement for the full gate. `checkpoint:status` is the low-cost no-GA status check while waiting for data. Final acceptance must use the full checkpoint gate:
 
 ```bash
 pnpm btc5m:checkpoint
