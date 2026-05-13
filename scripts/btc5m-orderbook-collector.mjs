@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, openSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
 const root = resolve(new URL("..", import.meta.url).pathname);
@@ -25,6 +25,16 @@ function readPid() {
   if (!existsSync(pidFile)) return null;
   const pid = Number(readFileSync(pidFile, "utf8").trim());
   return Number.isInteger(pid) && pid > 0 ? pid : null;
+}
+
+function readLastLogLines(limit = 12) {
+  if (!existsSync(logFile)) return [];
+  return readFileSync(logFile, "utf8").trimEnd().split("\n").slice(-limit);
+}
+
+function logSizeBytes() {
+  if (!existsSync(logFile)) return 0;
+  return statSync(logFile).size;
 }
 
 function start() {
@@ -76,7 +86,20 @@ function stop() {
 
 function status() {
   const pid = readPid();
-  console.log(JSON.stringify({ status: pid && isRunning(pid) ? "running" : "not_running", pid, pidFile, logFile }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        status: pid && isRunning(pid) ? "running" : "not_running",
+        pid,
+        pidFile,
+        logFile,
+        logSizeBytes: logSizeBytes(),
+        lastLogLines: readLastLogLines(),
+      },
+      null,
+      2,
+    ),
+  );
 }
 
 const command = process.argv[2] ?? "status";
