@@ -139,23 +139,23 @@ collection, and a hard readiness gate before any live trading.
 
 ### BTC 5m Current Evidence
 
-- Latest plan command: `pnpm btc5m:orderbook:plan`.
+- Latest low-cost checkpoint: `pnpm btc5m:checkpoint:status`, generated
+  `2026-05-13T20:37:13.093Z`.
 - Background collector: running, PID `38702`, launched through `caffeinate`.
 - Current execution quality: `trade_proxy_only`.
-- Markets with orderbook snapshots: `30/2007`.
-- Current orderbook market coverage: `0.014947683109118086`.
+- Markets with orderbook snapshots: `35/2007`.
+- Current orderbook market coverage: `0.017438963627304436`.
 - Global `partial_orderbook` target: `201` markets.
-- Remaining markets until `partial_orderbook`: `171`.
-- Estimated continuous collection time until `partial_orderbook`: `14.25` hours.
+- Remaining markets until `partial_orderbook`: `166`.
+- Estimated continuous collection time until `partial_orderbook`: `13.83` hours.
 - Weakest Beijing regimes: `weekday_beijing_day` and `weekend_beijing_night`, both
   still at `0` orderbook markets.
 - Current collection recommendation: keep the running untargeted collector active because
   it can enter the next weak `weekday_beijing_day` window without a restart.
-- Latest readiness smoke with GA returned `liveReady=false`. The selected GA strategy
-  was `longshot_cone`, and settled paper evidence passed because only the unselected
-  `lottery_reprice` strategy is currently blocked. Remaining failed checks:
-  `orderbook_market_coverage`, `balanced_beijing_orderbook_segments`,
-  `execution_quality`, and `genetic_acceptance`.
+- Latest low-cost checkpoint returned `liveReady=false`; failed checks were
+  `orderbook_market_coverage`, `balanced_beijing_orderbook_segments`, and
+  `execution_quality`. GA acceptance and paper signal evidence were intentionally not
+  evaluated by this no-GA status command.
 - Latest checkpoint smoke command: `pnpm btc5m:checkpoint` with reduced GA smoke
   parameters. It wrote an ignored report under `.local/reports` and returned
   `recommendedAction=keep_current_collector_running`.
