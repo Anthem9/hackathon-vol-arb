@@ -1698,29 +1698,42 @@ export async function persistBacktestReport(report: BacktestReport) {
   }
 }
 
-function randomBetween(min: number, max: number) {
-  return min + Math.random() * (max - min);
+type RandomSource = () => number;
+
+function createSeededRandom(seed: number): RandomSource {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
-function mutateParams(parent: BacktestParams): BacktestParams {
+function randomBetween(min: number, max: number, random: RandomSource) {
+  return min + random() * (max - min);
+}
+
+function mutateParams(parent: BacktestParams, random: RandomSource): BacktestParams {
   return {
     ...parent,
-    targetSegment: Math.random() > 0.85 ? TARGET_SEGMENTS[Math.floor(Math.random() * TARGET_SEGMENTS.length)] ?? parent.targetSegment : parent.targetSegment,
-    entryMaxPrice: Math.max(0.03, Math.min(0.35, parent.entryMaxPrice + randomBetween(-0.03, 0.03))),
-    takeProfitMultiple: Math.max(1.2, Math.min(8, parent.takeProfitMultiple + randomBetween(-0.5, 0.5))),
-    stopLossFraction: Math.max(0.1, Math.min(0.95, parent.stopLossFraction + randomBetween(-0.08, 0.08))),
-    maxHoldSeconds: Math.max(10, Math.min(240, Math.round(parent.maxHoldSeconds + randomBetween(-20, 20)))),
-    minSecondsRemaining: Math.max(5, Math.min(120, Math.round(parent.minSecondsRemaining + randomBetween(-10, 10)))),
-    maxSecondsRemaining: Math.max(30, Math.min(290, Math.round(parent.maxSecondsRemaining + randomBetween(-20, 20)))),
-    probabilityEdge: Math.max(0, Math.min(0.4, parent.probabilityEdge + randomBetween(-0.03, 0.03))),
-    assumedSpread: Math.max(0, Math.min(0.08, parent.assumedSpread + randomBetween(-0.005, 0.005))),
-    decisionDelaySeconds: Math.max(0, Math.min(5, Math.round(parent.decisionDelaySeconds + randomBetween(-1, 1)))),
-    entryMaxWaitSeconds: Math.max(1, Math.min(60, Math.round(parent.entryMaxWaitSeconds + randomBetween(-5, 5)))),
-    kellyFraction: Math.max(0.05, Math.min(0.5, parent.kellyFraction + randomBetween(-0.05, 0.05))),
-    coneVolatilityMultiplier: Math.max(0.25, Math.min(4, parent.coneVolatilityMultiplier + randomBetween(-0.25, 0.25))),
-    minRecentTradeVolume: Math.max(0, Math.min(5000, parent.minRecentTradeVolume + randomBetween(-150, 150))),
-    tradeVolumeLookbackSeconds: Math.max(5, Math.min(120, Math.round(parent.tradeVolumeLookbackSeconds + randomBetween(-10, 10)))),
-    useKellySizing: Math.random() > 0.7 ? !parent.useKellySizing : parent.useKellySizing,
+    targetSegment: random() > 0.85 ? TARGET_SEGMENTS[Math.floor(random() * TARGET_SEGMENTS.length)] ?? parent.targetSegment : parent.targetSegment,
+    entryMaxPrice: Math.max(0.03, Math.min(0.35, parent.entryMaxPrice + randomBetween(-0.03, 0.03, random))),
+    takeProfitMultiple: Math.max(1.2, Math.min(8, parent.takeProfitMultiple + randomBetween(-0.5, 0.5, random))),
+    stopLossFraction: Math.max(0.1, Math.min(0.95, parent.stopLossFraction + randomBetween(-0.08, 0.08, random))),
+    maxHoldSeconds: Math.max(10, Math.min(240, Math.round(parent.maxHoldSeconds + randomBetween(-20, 20, random)))),
+    minSecondsRemaining: Math.max(5, Math.min(120, Math.round(parent.minSecondsRemaining + randomBetween(-10, 10, random)))),
+    maxSecondsRemaining: Math.max(30, Math.min(290, Math.round(parent.maxSecondsRemaining + randomBetween(-20, 20, random)))),
+    probabilityEdge: Math.max(0, Math.min(0.4, parent.probabilityEdge + randomBetween(-0.03, 0.03, random))),
+    assumedSpread: Math.max(0, Math.min(0.08, parent.assumedSpread + randomBetween(-0.005, 0.005, random))),
+    decisionDelaySeconds: Math.max(0, Math.min(5, Math.round(parent.decisionDelaySeconds + randomBetween(-1, 1, random)))),
+    entryMaxWaitSeconds: Math.max(1, Math.min(60, Math.round(parent.entryMaxWaitSeconds + randomBetween(-5, 5, random)))),
+    kellyFraction: Math.max(0.05, Math.min(0.5, parent.kellyFraction + randomBetween(-0.05, 0.05, random))),
+    coneVolatilityMultiplier: Math.max(0.25, Math.min(4, parent.coneVolatilityMultiplier + randomBetween(-0.25, 0.25, random))),
+    minRecentTradeVolume: Math.max(0, Math.min(5000, parent.minRecentTradeVolume + randomBetween(-150, 150, random))),
+    tradeVolumeLookbackSeconds: Math.max(5, Math.min(120, Math.round(parent.tradeVolumeLookbackSeconds + randomBetween(-10, 10, random)))),
+    useKellySizing: random() > 0.7 ? !parent.useKellySizing : parent.useKellySizing,
   };
 }
 
@@ -1780,9 +1793,11 @@ function filterPointsForMarkets(points: PricePoint[], markets: Btc5mMarket[]) {
   return points.filter((point) => slugs.has(point.marketSlug));
 }
 
-export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets?: number; generations?: number; population?: number; validationFraction?: number; persistBest?: boolean } = {}) {
+export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets?: number; generations?: number; population?: number; validationFraction?: number; persistBest?: boolean; seed?: number } = {}) {
   const generations = Math.max(1, Math.min(50, input.generations ?? 6));
   const populationSize = Math.max(4, Math.min(60, input.population ?? 12));
+  const seed = input.seed !== undefined && Number.isFinite(input.seed) ? Math.floor(input.seed) : undefined;
+  const random = seed === undefined ? Math.random : createSeededRandom(seed);
   const dataset = await readPricePoints(input.days ?? 7, input.limitMarkets ?? 2500);
   const { trainMarkets, validationMarkets } = splitMarketsForValidation(dataset.markets, input.validationFraction ?? 2 / 7, dataset.points);
   const trainPoints = filterPointsForMarkets(dataset.points, trainMarkets);
@@ -1795,20 +1810,20 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
     ...DEFAULT_BACKTEST_PARAMS,
     strategy: strategyPool[index % strategyPool.length],
     targetSegment: TARGET_SEGMENTS[index % TARGET_SEGMENTS.length] ?? "all",
-    entryMaxPrice: randomBetween(0.05, 0.25),
-    takeProfitMultiple: randomBetween(1.4, 5),
-    stopLossFraction: randomBetween(0.25, 0.8),
-    maxHoldSeconds: Math.round(randomBetween(20, 160)),
-    minSecondsRemaining: Math.round(randomBetween(10, 80)),
-    maxSecondsRemaining: Math.round(randomBetween(120, 280)),
-    probabilityEdge: randomBetween(0.02, 0.2),
-    decisionDelaySeconds: Math.round(randomBetween(0, 5)),
-    entryMaxWaitSeconds: Math.round(randomBetween(3, 30)),
+    entryMaxPrice: randomBetween(0.05, 0.25, random),
+    takeProfitMultiple: randomBetween(1.4, 5, random),
+    stopLossFraction: randomBetween(0.25, 0.8, random),
+    maxHoldSeconds: Math.round(randomBetween(20, 160, random)),
+    minSecondsRemaining: Math.round(randomBetween(10, 80, random)),
+    maxSecondsRemaining: Math.round(randomBetween(120, 280, random)),
+    probabilityEdge: randomBetween(0.02, 0.2, random),
+    decisionDelaySeconds: Math.round(randomBetween(0, 5, random)),
+    entryMaxWaitSeconds: Math.round(randomBetween(3, 30, random)),
     useKellySizing: index % 3 === 0,
-    kellyFraction: randomBetween(0.1, 0.35),
-    coneVolatilityMultiplier: randomBetween(0.5, 2.5),
-    minRecentTradeVolume: index % 4 === 0 ? 0 : randomBetween(10, 1000),
-    tradeVolumeLookbackSeconds: Math.round(randomBetween(10, 90)),
+    kellyFraction: randomBetween(0.1, 0.35, random),
+    coneVolatilityMultiplier: randomBetween(0.5, 2.5, random),
+    minRecentTradeVolume: index % 4 === 0 ? 0 : randomBetween(10, 1000, random),
+    tradeVolumeLookbackSeconds: Math.round(randomBetween(10, 90, random)),
   }));
   const history: Array<{ generation: number; bestScore: number; best: BacktestReport }> = [];
   for (let generation = 0; generation < generations; generation += 1) {
@@ -1823,7 +1838,7 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
     population = [];
     while (population.length < populationSize) {
       const parent = survivors[population.length % survivors.length] ?? DEFAULT_BACKTEST_PARAMS;
-      population.push(mutateParams(parent));
+      population.push(mutateParams(parent, random));
     }
   }
   const bestTrain = history.map((item) => item.best).sort((a, b) => scoreReport(b, blockedStrategies) - scoreReport(a, blockedStrategies))[0] ?? runBtc5mBacktestFromData({ markets: trainMarkets, points: trainPoints });
@@ -1837,6 +1852,7 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
   return {
     generations,
     population: populationSize,
+    seed,
     validationFraction: input.validationFraction ?? 2 / 7,
     dataset: {
       markets: dataset.markets.length,

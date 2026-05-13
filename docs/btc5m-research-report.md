@@ -167,6 +167,14 @@ Additional forward collection run:
   - interpretation: the earlier positive validation is a research lead, not a robust
     strategy. The current search space still needs stricter executable-liquidity modeling
     and repeated walk-forward confirmation before any live/paper trading integration.
+- Genetic search now supports `--seed <integer>` and returns `seed` in the result. Seeded
+  runs use a deterministic internal random generator, which makes GA experiments
+  reproducible when the underlying database snapshot is unchanged.
+- Reproducibility check:
+  - command: `genetic --days 7 --limit-markets 2016 --generations 3 --population 8 --validation-fraction 0.2857 --seed 123`.
+  - two runs matched exactly after ignoring timestamp-derived `runId` fields.
+  - result: train `14` trades / `-0.0548` PnL; validation `3` trades / `-2.6093` PnL;
+    stress validation `3` trades / `-3.2767` PnL; accepted `false`.
 - Latest coverage:
   - markets: `2012`; resolved markets: `2012`.
   - price points: `25`; orderbook snapshots: `1998`; trades: `78116`; BTC ticks: `9598`.

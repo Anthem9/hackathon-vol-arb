@@ -117,7 +117,7 @@ pnpm --filter @vol-arb/api btc5m:research backtest --days 7 --limit-markets 2016
 Run genetic strategy search:
 
 ```bash
-pnpm --filter @vol-arb/api btc5m:research genetic --days 7 --limit-markets 2016 --generations 6 --population 12 --validation-fraction 0.2857 --persist-best
+pnpm --filter @vol-arb/api btc5m:research genetic --days 7 --limit-markets 2016 --generations 6 --population 12 --validation-fraction 0.2857 --seed 42 --persist-best
 ```
 
 ## Resource Controls
@@ -129,6 +129,7 @@ Defaults are intentionally conservative:
 - Backtests read data in market batches.
 - Genetic search defaults to 6 generations and 12 candidates.
 - Search scoring penalizes drawdown and ignores tiny-sample candidates.
+- Pass `--seed` for reproducible genetic search experiments.
 
 Increase limits only after the first reports are inspected.
 
@@ -162,6 +163,10 @@ The genetic search reads the dataset once, then performs a time-ordered train/va
 split inside each Beijing segment. This keeps weekday daytime, weekday nighttime,
 weekend daytime, and weekend nighttime markets represented in validation when enough
 markets exist. With the default 7-day window, the validation fraction is `2/7`.
+
+Use `--seed <integer>` when comparing strategy changes. Seeded runs use a deterministic
+internal random generator, so the same dataset and same search settings produce the same
+candidate sequence.
 
 The genetic search mutates these parameters:
 
@@ -203,6 +208,7 @@ Stress validation reruns the best train parameters on the validation slice with:
 
 The final result includes:
 
+- `seed`
 - `bestTrain`
 - `validation`
 - `stressValidation`
