@@ -166,6 +166,13 @@ Additional forward collection run:
   - latest orderbook market coverage: `0.65%`.
   - interpretation: collection is stable, but at 5-minute market cadence reaching
     `partial_orderbook` (`10%`) requires many hours across different Beijing sessions.
+- Coverage now includes orderbook target estimates:
+  - `partial_orderbook` target: `201` markets.
+  - current markets with orderbook: `13`.
+  - remaining markets until `partial_orderbook`: `188`.
+  - estimated continuous collection time until `partial_orderbook`: `15.7` hours.
+  - `orderbook_backtest_ready` target: `1003` markets.
+  - estimated continuous collection time until `orderbook_backtest_ready`: `82.5` hours.
 - Trade coverage was expanded with additional Data API collection:
   - `collect-trades --days 7 --limit-markets 400 --pages-per-market 1 --stride 3`
     stored `200000` fetched trade rows with `0` errors.

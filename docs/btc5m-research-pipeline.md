@@ -101,6 +101,10 @@ treated as robust unless `executionQuality` is at least `partial_orderbook`, bec
 `trade_proxy_only`, `thin_trade_proxy`, and `insufficient` indicate sparse historical
 orderbook evidence.
 
+Coverage also reports `orderbookTargets`, including how many additional 5-minute markets
+must be forward-collected to reach `partial_orderbook` (`10%`) and
+`orderbook_backtest_ready` (`50%`), plus an approximate continuous collection time.
+
 Run a compact research status report:
 
 ```bash

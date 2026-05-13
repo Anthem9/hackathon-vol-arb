@@ -899,6 +899,12 @@ export async function getBtc5mResearchCoverage(input: { days?: number } = {}) {
   const minimumExecutablePoints = Math.max(500, markets * 6);
   const tradeMarketCoverage = markets ? marketsWithTrades / markets : 0;
   const orderbookMarketCoverage = markets ? marketsWithOrderbook / markets : 0;
+  const partialOrderbookTargetMarkets = Math.ceil(markets * 0.1);
+  const readyOrderbookTargetMarkets = Math.ceil(markets * 0.5);
+  const marketsUntilPartialOrderbook = Math.max(0, partialOrderbookTargetMarkets - marketsWithOrderbook);
+  const marketsUntilReadyOrderbook = Math.max(0, readyOrderbookTargetMarkets - marketsWithOrderbook);
+  const estimatedContinuousHoursUntilPartialOrderbook = (marketsUntilPartialOrderbook * FIVE_MINUTES_SECONDS) / 3600;
+  const estimatedContinuousHoursUntilReadyOrderbook = (marketsUntilReadyOrderbook * FIVE_MINUTES_SECONDS) / 3600;
   const executionQuality =
     orderbookMarketCoverage >= 0.5
       ? "orderbook_backtest_ready"
@@ -921,6 +927,14 @@ export async function getBtc5mResearchCoverage(input: { days?: number } = {}) {
     marketsWithOrderbook,
     tradeMarketCoverage,
     orderbookMarketCoverage,
+    orderbookTargets: {
+      partialOrderbookTargetMarkets,
+      readyOrderbookTargetMarkets,
+      marketsUntilPartialOrderbook,
+      marketsUntilReadyOrderbook,
+      estimatedContinuousHoursUntilPartialOrderbook,
+      estimatedContinuousHoursUntilReadyOrderbook,
+    },
     pricePoints,
     orderbookSnapshots: snapshots,
     trades,
