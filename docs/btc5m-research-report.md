@@ -100,6 +100,9 @@ Additional forward collection run:
 - Backtest fills now enforce observed size for `trade_proxy` and `orderbook_snapshot`
   points when size data is present, so a strategy cannot assume a larger fill than visible
   liquidity.
+- `orderbook_snapshot` points now keep bid/ask side information. Candidate selection and
+  entries use asks, while exits use bids, preventing bid prices from being treated as
+  executable entry asks.
 - GA acceptance now checks orderbook coverage by Beijing regime. Targeted strategies need
   `partial_orderbook` coverage in their selected segment, and `targetSegment=all`
   strategies need at least 3 Beijing regimes with `partial_orderbook` coverage.

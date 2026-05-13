@@ -29,6 +29,7 @@ export type PricePoint = {
   size?: number;
   time: number;
   source: "clob_prices_history" | "orderbook_snapshot" | "trade_proxy";
+  side?: "ask" | "bid" | "trade" | "proxy";
   btcOpenPrice?: number;
   btcCurrentPrice?: number;
   btcVolatilityPerSqrtSecond?: number;
@@ -1074,8 +1075,8 @@ export async function evaluateLatestBtc5mPaperSignal(input: { params?: Partial<B
 
   const data = await readPricePoints(1, 12);
   const points = data.points.filter((point) => point.marketSlug === activeMarket.slug);
-  const up = bestBookPrice(points, "up");
-  const down = bestBookPrice(points, "down");
+  const up = latestAskPrice(points, "up");
+  const down = latestAskPrice(points, "down");
   const candidate = chooseOutcome(params, up, down, activeMarket.endTime);
   const secondsRemaining = (activeMarket.endTime - now) / 1000;
   let report: PaperSignalReport;
@@ -1095,7 +1096,7 @@ export async function evaluateLatestBtc5mPaperSignal(input: { params?: Partial<B
       payload: { secondsRemaining, up, down, params },
     };
   } else {
-    const ask = priceToAsk(candidate.price, params, candidate.source);
+    const ask = priceToAsk(candidate, params);
     const limitPrice = Math.max(0.01, Math.min(0.99, ask - params.entryLimitOffset));
     const riskBudget = params.initialCapital * params.maxRiskFraction;
     const size = Math.floor((riskBudget / limitPrice) * 100) / 100;
@@ -1455,6 +1456,7 @@ async function readPricePoints(days: number, limitMarkets: number): Promise<{ ma
         size: row.ask_size === null ? undefined : Number(row.ask_size),
         time: row.snapshot_time.getTime(),
         source: "orderbook_snapshot",
+        side: "ask",
       });
     }
     if (row.bid !== null) {
@@ -1466,6 +1468,7 @@ async function readPricePoints(days: number, limitMarkets: number): Promise<{ ma
         size: row.bid_size === null ? undefined : Number(row.bid_size),
         time: row.snapshot_time.getTime(),
         source: "orderbook_snapshot",
+        side: "bid",
       });
     }
     return points;
@@ -1550,19 +1553,27 @@ async function enrichPointsWithAuxiliaryBtcBaseline(markets: Btc5mMarket[], poin
   }
 }
 
-function priceToAsk(price: number, params: BacktestParams, source: PricePoint["source"]) {
-  if (source === "orderbook_snapshot") return price;
-  return Math.min(0.99, price + params.assumedSpread / 2);
+function canUseAsAsk(point: PricePoint) {
+  return point.source !== "orderbook_snapshot" || point.side === "ask";
 }
 
-function priceToBid(price: number, params: BacktestParams, source: PricePoint["source"]) {
-  if (source === "orderbook_snapshot") return price;
-  return Math.max(0.01, price - params.assumedSpread / 2);
+function canUseAsBid(point: PricePoint) {
+  return point.source !== "orderbook_snapshot" || point.side === "bid";
 }
 
-function bestBookPrice(points: PricePoint[], outcome: "up" | "down") {
+function priceToAsk(point: PricePoint, params: BacktestParams) {
+  if (point.source === "orderbook_snapshot") return point.side === "ask" ? point.price : Number.POSITIVE_INFINITY;
+  return Math.min(0.99, point.price + params.assumedSpread / 2);
+}
+
+function priceToBid(point: PricePoint, params: BacktestParams) {
+  if (point.source === "orderbook_snapshot") return point.side === "bid" ? point.price : Number.NEGATIVE_INFINITY;
+  return Math.max(0.01, point.price - params.assumedSpread / 2);
+}
+
+function latestAskPrice(points: PricePoint[], outcome: "up" | "down", atTime = Number.POSITIVE_INFINITY) {
   return points
-    .filter((point) => point.outcome === outcome)
+    .filter((point) => point.outcome === outcome && point.time <= atTime && canUseAsAsk(point))
     .sort((a, b) => b.time - a.time)[0];
 }
 
@@ -1680,7 +1691,7 @@ function findLimitBuyFill(points: PricePoint[], submittedAt: number, limitPrice:
   const deadline = submittedAt + params.entryMaxWaitSeconds * 1000;
   return points.find((point) => {
     if (point.time < submittedAt || point.time > deadline) return false;
-    return priceToAsk(point.price, params, point.source) <= limitPrice && hasEnoughObservedLiquidity(point, requestedSize);
+    return priceToAsk(point, params) <= limitPrice && hasEnoughObservedLiquidity(point, requestedSize);
   });
 }
 
@@ -1738,13 +1749,13 @@ export function runBtc5mBacktestFromData(input: { markets: Btc5mMarket[]; points
       const secondsRemaining = (market.endTime - time) / 1000;
       if (secondsRemaining < params.minSecondsRemaining || secondsRemaining > params.maxSecondsRemaining) continue;
       const delayedTime = time + params.decisionDelaySeconds * 1000;
-      const up = upPoints.filter((point) => point.time <= delayedTime).at(-1);
-      const down = downPoints.filter((point) => point.time <= delayedTime).at(-1);
+      const up = latestAskPrice(upPoints, "up", delayedTime);
+      const down = latestAskPrice(downPoints, "down", delayedTime);
       const candidate = chooseOutcome(params, up, down, market.endTime);
       if (!candidate) continue;
       const candidatePoints = candidate.outcome === "up" ? upPoints : downPoints;
       if (params.minRecentTradeVolume > 0 && recentTradeVolume(candidatePoints, delayedTime, params.tradeVolumeLookbackSeconds) < params.minRecentTradeVolume) continue;
-      const ask = priceToAsk(candidate.price, params, candidate.source);
+      const ask = priceToAsk(candidate, params);
       const entryLimit = Math.max(0.01, Math.min(0.99, ask - params.entryLimitOffset));
       if (entryLimit < params.entryMinPrice || entryLimit > params.entryMaxPrice) continue;
       const risk = capital * params.maxRiskFraction;
@@ -1770,7 +1781,7 @@ export function runBtc5mBacktestFromData(input: { markets: Btc5mMarket[]; points
       for (const point of exitPoints) {
         const heldSeconds = (point.time - entryFill.time) / 1000;
         const remaining = (market.endTime - point.time) / 1000;
-        const bid = priceToBid(point.price, params, point.source);
+        const bid = priceToBid(point, params);
         if (bid >= target && hasEnoughObservedLiquidity(point, size)) {
           exitTime = point.time;
           exitPrice = target;

@@ -259,6 +259,8 @@ Both strategies support:
 - limit-entry fill verification from subsequent market data within `entryMaxWaitSeconds`,
 - observed size checks for `trade_proxy` and `orderbook_snapshot` fills when size data is
   available,
+- bid/ask side separation for `orderbook_snapshot`: entries and candidate prices use asks,
+  exits use bids,
 - optional recent same-outcome trade-volume filtering before entry,
 - take-profit limit exit,
 - stop-loss limit exit,

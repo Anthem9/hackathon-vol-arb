@@ -115,10 +115,10 @@ assert.ok(stopLossReport.totalPnl < 0);
 const thinLiquidityReport = runBtc5mBacktestFromData({
   markets: [market],
   points: [
-    { marketSlug: market.slug, tokenId: "up-token", outcome: "up", price: 0.05, size: 50, time: start + 60_000, source: "orderbook_snapshot" },
-    { marketSlug: market.slug, tokenId: "down-token", outcome: "down", price: 0.95, size: 500, time: start + 60_000, source: "orderbook_snapshot" },
-    { marketSlug: market.slug, tokenId: "up-token", outcome: "up", price: 0.05, size: 50, time: start + 61_000, source: "orderbook_snapshot" },
-    { marketSlug: market.slug, tokenId: "up-token", outcome: "up", price: 0.16, size: 500, time: start + 90_000, source: "orderbook_snapshot" },
+    { marketSlug: market.slug, tokenId: "up-token", outcome: "up", price: 0.05, size: 50, time: start + 60_000, source: "orderbook_snapshot", side: "ask" },
+    { marketSlug: market.slug, tokenId: "down-token", outcome: "down", price: 0.95, size: 500, time: start + 60_000, source: "orderbook_snapshot", side: "ask" },
+    { marketSlug: market.slug, tokenId: "up-token", outcome: "up", price: 0.05, size: 50, time: start + 61_000, source: "orderbook_snapshot", side: "ask" },
+    { marketSlug: market.slug, tokenId: "up-token", outcome: "up", price: 0.16, size: 500, time: start + 90_000, source: "orderbook_snapshot", side: "bid" },
   ],
   params: {
     ...DEFAULT_BACKTEST_PARAMS,
@@ -135,5 +135,29 @@ const thinLiquidityReport = runBtc5mBacktestFromData({
 });
 
 assert.equal(thinLiquidityReport.tradeCount, 0);
+
+const bidAskSeparationReport = runBtc5mBacktestFromData({
+  markets: [market],
+  points: [
+    { marketSlug: market.slug, tokenId: "up-token", outcome: "up", price: 0.2, size: 500, time: start + 60_000, source: "orderbook_snapshot", side: "ask" },
+    { marketSlug: market.slug, tokenId: "up-token", outcome: "up", price: 0.05, size: 500, time: start + 60_000, source: "orderbook_snapshot", side: "bid" },
+    { marketSlug: market.slug, tokenId: "down-token", outcome: "down", price: 0.8, size: 500, time: start + 60_000, source: "orderbook_snapshot", side: "ask" },
+    { marketSlug: market.slug, tokenId: "up-token", outcome: "up", price: 0.2, size: 500, time: start + 61_000, source: "orderbook_snapshot", side: "ask" },
+  ],
+  params: {
+    ...DEFAULT_BACKTEST_PARAMS,
+    initialCapital: 100,
+    maxRiskFraction: 0.1,
+    entryMinPrice: 0.01,
+    entryMaxPrice: 0.08,
+    assumedSpread: 0,
+    decisionDelaySeconds: 0,
+    entryMaxWaitSeconds: 5,
+    minSecondsRemaining: 1,
+    maxSecondsRemaining: 300,
+  },
+});
+
+assert.equal(bidAskSeparationReport.tradeCount, 0);
 
 console.log("btc5m-research-service tests passed");
