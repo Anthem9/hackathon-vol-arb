@@ -103,7 +103,13 @@ function stop() {
     console.log(JSON.stringify({ status: "not_running", pidFile }, null, 2));
     return;
   }
-  if (isRunning(pid)) process.kill(pid, "SIGTERM");
+  if (isRunning(pid)) {
+    try {
+      process.kill(-pid, "SIGTERM");
+    } catch {
+      process.kill(pid, "SIGTERM");
+    }
+  }
   rmSync(pidFile, { force: true });
   rmSync(metaFile, { force: true });
   console.log(JSON.stringify({ status: "stopped", pid, pidFile, metaFile, logFile }, null, 2));
