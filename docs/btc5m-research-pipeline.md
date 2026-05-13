@@ -212,6 +212,10 @@ Run a multi-seed GA sweep:
 pnpm --filter @vol-arb/api btc5m:research genetic-sweep --days 7 --seeds 5 --seed-start 1 --generations 6 --population 12
 ```
 
+The sweep output includes aggregate `blockerCounts`, `strategyCounts`,
+`targetSegmentCounts`, `bestValidationRun`, and `bestWalkForwardRun` so repeated seeds can
+be compared without manually reading every full run.
+
 ## Resource Controls
 
 Defaults are intentionally conservative:

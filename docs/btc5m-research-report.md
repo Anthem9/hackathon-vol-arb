@@ -84,6 +84,8 @@ Additional forward collection run:
 - GA search space now includes `allowHoldToSettlement` and `forceExitBeforeEndSeconds`,
   so it can compare candidates that allow settlement against candidates that require an
   earlier limit-order exit.
+- `genetic-sweep` now reports aggregate blocker counts, strategy counts, target segment
+  counts, best validation run, and best walk-forward run across seeds.
 - Auxiliary BTC 1m data was collected for baseline volatility:
   - Binance was unavailable from the current network.
   - Coinbase stored `9645` 1m close ticks.

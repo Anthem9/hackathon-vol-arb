@@ -466,6 +466,31 @@ async function main() {
         },
       });
     }
+    const blockerCounts: Record<string, number> = {};
+    const strategyCounts: Record<string, number> = {};
+    const targetSegmentCounts: Record<string, number> = {};
+    for (const run of runs) {
+      strategyCounts[run.bestTrain.strategy] = (strategyCounts[run.bestTrain.strategy] ?? 0) + 1;
+      const targetSegment = String(run.bestTrain.parameters.targetSegment);
+      targetSegmentCounts[targetSegment] = (targetSegmentCounts[targetSegment] ?? 0) + 1;
+      for (const blocker of run.acceptanceBlockers) {
+        blockerCounts[blocker.code] = (blockerCounts[blocker.code] ?? 0) + 1;
+      }
+    }
+    const bestValidationRun = runs
+      .map((run) => ({ seed: run.seed, totalPnl: run.validation.totalPnl, tradeCount: run.validation.tradeCount, winRate: run.validation.winRate, strategy: run.bestTrain.strategy, targetSegment: run.bestTrain.parameters.targetSegment }))
+      .sort((a, b) => b.totalPnl - a.totalPnl || b.tradeCount - a.tradeCount)[0];
+    const bestWalkForwardRun = runs
+      .map((run) => ({
+        seed: run.seed,
+        totalPnl: run.walkForwardValidation.totalPnl,
+        totalTrades: run.walkForwardValidation.totalTrades,
+        profitableWindows: run.walkForwardValidation.profitableWindows,
+        losingWindows: run.walkForwardValidation.losingWindows,
+        strategy: run.bestTrain.strategy,
+        targetSegment: run.bestTrain.parameters.targetSegment,
+      }))
+      .sort((a, b) => b.totalPnl - a.totalPnl || b.profitableWindows - a.profitableWindows)[0];
     console.log(
       JSON.stringify(
         {
@@ -474,6 +499,11 @@ async function main() {
           seeds: seedCount,
           acceptedCount: runs.filter((run) => run.accepted).length,
           executionQualities: [...new Set(runs.map((run) => run.executionQuality))],
+          blockerCounts,
+          strategyCounts,
+          targetSegmentCounts,
+          bestValidationRun,
+          bestWalkForwardRun,
           runs,
         },
         null,
