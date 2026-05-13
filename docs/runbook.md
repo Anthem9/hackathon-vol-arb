@@ -178,16 +178,19 @@ Expected result:
 Check the managed orderbook collector before changing it:
 
 ```bash
+pnpm btc5m:orderbook:health
 pnpm btc5m:orderbook:status
 pnpm btc5m:orderbook:plan
 ```
 
-`orderbook:status` includes `logHealth`. `healthy` means recent progress lines have no
-errors, `recovering` means older recent lines had errors but the latest progress line is
-clean, and `warning` means the latest progress line still has errors. Treat non-healthy
-states as a reason to inspect `latestProgress` and `lastLogLines`, not as an automatic
-restart signal. If `latestProgress.snapshots` keeps increasing and latest-session errors
-are zero, let the collector continue unless `orderbook:plan` recommends switching.
+`orderbook:health` only reads local pid/meta/log files and prints a compact `logHealth`
+summary. `orderbook:status` includes the same `logHealth` plus recent log lines.
+`healthy` means recent progress lines have no errors, `recovering` means older recent
+lines had errors but the latest progress line is clean, and `warning` means the latest
+progress line still has errors. Treat non-healthy states as a reason to inspect
+`latestProgress` and `lastLogLines`, not as an automatic restart signal. If
+`latestProgress.snapshots` keeps increasing and latest-session errors are zero, let the
+collector continue unless `orderbook:plan` recommends switching.
 
 Do not restart a healthy untargeted collector if `plan.recommendedAction` says
 `keep_current_collector_running`; let it continue through the next weak Beijing segment.

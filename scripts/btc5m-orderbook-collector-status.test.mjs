@@ -17,9 +17,9 @@ try {
   writeFileSync(pidFile, "999999\n");
   writeFileSync(metaFile, `${JSON.stringify({ pid: 999999, caffeinate: true, command: "test" })}\n`);
 
-  function runStatus(lines) {
+  function runCollector(command, lines) {
     writeFileSync(logFile, `${lines.join("\n")}\n`);
-    const result = spawnSync("node", ["scripts/btc5m-orderbook-collector.mjs", "status"], {
+    const result = spawnSync("node", ["scripts/btc5m-orderbook-collector.mjs", command], {
       encoding: "utf8",
       env: {
         ...process.env,
@@ -32,12 +32,13 @@ try {
     return JSON.parse(result.stdout);
   }
 
-  const status = runStatus([
+  const recoveringLines = [
     "collect-orderbook-sessions session=1/3 starting",
     "collect-orderbook-sessions session=1/3 iterations=60 snapshots=120 errors=0 elapsed=60.1s",
     "collect-orderbook-sessions session=1/3 iterations=120 snapshots=239 errors=1 elapsed=125.3s",
     "collect-orderbook-sessions session=2/3 iterations=1 snapshots=2 errors=0 elapsed=1.4s",
-  ]);
+  ];
+  const status = runCollector("status", recoveringLines);
   assert.equal(status.status, "not_running");
   assert.equal(status.logHealth.health, "recovering");
   assert.equal(status.logHealth.recentProgressLines, 3);
@@ -50,15 +51,20 @@ try {
     errors: 0,
     elapsedSeconds: 1.4,
   });
+  assert.ok(Array.isArray(status.lastLogLines));
 
-  const healthyStatus = runStatus([
+  const health = runCollector("health", recoveringLines);
+  assert.equal(health.logHealth.health, "recovering");
+  assert.equal(health.lastLogLines, undefined);
+
+  const healthyStatus = runCollector("status", [
     "collect-orderbook-sessions session=2/3 iterations=60 snapshots=120 errors=0 elapsed=60.1s",
     "collect-orderbook-sessions session=2/3 iterations=120 snapshots=240 errors=0 elapsed=120.1s",
   ]);
   assert.equal(healthyStatus.logHealth.health, "healthy");
   assert.equal(healthyStatus.logHealth.recentErrorLines, 0);
 
-  const warningStatus = runStatus([
+  const warningStatus = runCollector("status", [
     "collect-orderbook-sessions session=2/3 iterations=60 snapshots=120 errors=0 elapsed=60.1s",
     "collect-orderbook-sessions session=2/3 iterations=120 snapshots=239 errors=1 elapsed=125.3s",
   ]);

@@ -182,10 +182,12 @@ function status() {
   const pid = readPid();
   const meta = readMeta();
   const lastLogLines = readLastLogLines();
+  const running = Boolean(pid && isRunning(pid));
+  const health = logHealth(lastLogLines);
   console.log(
     JSON.stringify(
       {
-        status: pid && isRunning(pid) ? "running" : "not_running",
+        status: running ? "running" : "not_running",
         pid,
         pidFile,
         metaFile,
@@ -194,8 +196,29 @@ function status() {
         launchCaffeinate: meta?.pid === pid ? meta.caffeinate : null,
         meta,
         logSizeBytes: logSizeBytes(),
-        logHealth: logHealth(lastLogLines),
+        logHealth: health,
         lastLogLines,
+      },
+      null,
+      2,
+    ),
+  );
+}
+
+function health() {
+  const pid = readPid();
+  const meta = readMeta();
+  const lastLogLines = readLastLogLines();
+  const running = Boolean(pid && isRunning(pid));
+  const health = logHealth(lastLogLines);
+  console.log(
+    JSON.stringify(
+      {
+        status: running ? "running" : "not_running",
+        pid,
+        logFile,
+        launchCaffeinate: meta?.pid === pid ? meta.caffeinate : null,
+        logHealth: health,
       },
       null,
       2,
@@ -269,8 +292,9 @@ if (command === "start") start();
 else if (command === "start-auto") start({ autoTarget: true });
 else if (command === "stop") stop();
 else if (command === "status") status();
+else if (command === "health") health();
 else if (command === "plan") plan();
 else {
-  console.error("Usage: node scripts/btc5m-orderbook-collector.mjs <start|start-auto|stop|status|plan>");
+  console.error("Usage: node scripts/btc5m-orderbook-collector.mjs <start|start-auto|stop|status|health|plan>");
   process.exit(1);
 }
