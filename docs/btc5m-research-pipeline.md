@@ -216,6 +216,13 @@ Run a backtest:
 pnpm --filter @vol-arb/api btc5m:research backtest --days 7 --limit-markets 2016 --persist
 ```
 
+Add `--save-report` to persist the full backtest JSON under `.local/reports`, or pass
+`--report-file <path>` for an explicit local artifact:
+
+```bash
+pnpm --filter @vol-arb/api btc5m:research backtest --days 7 --limit-markets 2016 --save-report
+```
+
 Run genetic strategy search:
 
 ```bash

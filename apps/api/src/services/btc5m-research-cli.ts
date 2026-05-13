@@ -67,7 +67,7 @@ function usage() {
   pnpm --filter @vol-arb/api btc5m:research paper-signal --persist
   pnpm --filter @vol-arb/api btc5m:research evaluate-paper-signals --limit 200 [--recheck-settled]
   pnpm --filter @vol-arb/api btc5m:research paper-summary
-  pnpm --filter @vol-arb/api btc5m:research backtest --days 7 --limit-markets 2016 --persist
+  pnpm --filter @vol-arb/api btc5m:research backtest --days 7 --limit-markets 2016 --persist [--save-report] [--report-file .local/reports/backtest.json]
   pnpm --filter @vol-arb/api btc5m:research genetic --days 7 --generations 6 --population 12 --validation-fraction 0.2857 [--seed 42] [--persist-best] [--save-report] [--report-file .local/reports/genetic.json]
   pnpm --filter @vol-arb/api btc5m:research genetic-sweep --days 7 --seeds 5 --seed-start 1 --generations 6 --population 12 [--save-report] [--report-file .local/reports/sweep.json]
 
@@ -105,6 +105,10 @@ function defaultSweepReportFile() {
 
 function defaultGeneticReportFile() {
   return resolve(workspaceRoot, ".local/reports", `btc5m-genetic-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
+}
+
+function defaultBacktestReportFile() {
+  return resolve(workspaceRoot, ".local/reports", `btc5m-backtest-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
 }
 
 function resolveWorkspacePath(path: string) {
@@ -355,17 +359,15 @@ async function main() {
     return;
   }
   if (command === "backtest") {
-    console.log(
-      JSON.stringify(
-        await runBtc5mBacktest({
-          days: numberArg(args, "days", 7),
-          limitMarkets: numberArg(args, "limit-markets", 2016),
-          persist: boolArg(args, "persist"),
-        }),
-        null,
-        2,
-      ),
-    );
+    const result = await runBtc5mBacktest({
+      days: numberArg(args, "days", 7),
+      limitMarkets: numberArg(args, "limit-markets", 2016),
+      persist: boolArg(args, "persist"),
+    });
+    const reportFile = boolArg(args, "save-report") || args["report-file"] ? resolveWorkspacePath(stringArg(args, "report-file", defaultBacktestReportFile())) : null;
+    const output = reportFile ? { ...result, reportFile } : result;
+    if (reportFile) saveJsonReport(reportFile, output);
+    console.log(JSON.stringify(output, null, 2));
     return;
   }
   if (command === "coverage") {
