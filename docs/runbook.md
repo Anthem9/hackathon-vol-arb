@@ -152,6 +152,46 @@ pnpm --filter @vol-arb/api polymarket:credentials \
 
 The command writes `POLYMARKET_API_KEY`, `POLYMARKET_API_SECRET`, and `POLYMARKET_API_PASSPHRASE` to an ignored local env file and does not print secret values. Use `--write-env .env.polymarket.local` instead if you want a staging file before updating the runtime `.env`. Keep `POLYMARKET_ENABLE_LIVE_TRADING=false` until authenticated account reads, order preview, risk review, and manual confirmation controls have been completed.
 
+## BTC 5m Research Checkpoints
+
+This workflow is research-only. It does not sign, submit, or cancel Polymarket orders.
+
+Use the low-cost checkpoint while waiting for forward orderbook coverage:
+
+```bash
+pnpm btc5m:checkpoint:status
+```
+
+Expected result:
+
+- `summary.liveReady=false` until real orderbook coverage and GA acceptance pass.
+- `summary.recommendedAction=keep_current_collector_running` when the active collector can cover the next weak Beijing segment.
+- `summary.failedChecks` usually includes `orderbook_market_coverage`, `balanced_beijing_orderbook_segments`, and `execution_quality` while coverage is sparse.
+- A full ignored JSON report is written under `.local/reports`.
+
+Check the managed orderbook collector before changing it:
+
+```bash
+pnpm btc5m:orderbook:status
+pnpm btc5m:orderbook:plan
+```
+
+Do not restart a healthy untargeted collector if `plan.recommendedAction` says
+`keep_current_collector_running`; let it continue through the next weak Beijing segment.
+Use `pnpm btc5m:orderbook:start:auto` only when no collector is running or when the plan
+explicitly says to switch.
+
+After orderbook coverage reaches the documented threshold, run the full checkpoint and
+final gate:
+
+```bash
+pnpm btc5m:checkpoint
+pnpm btc5m:checkpoint:gate
+```
+
+`btc5m:checkpoint:gate` exits non-zero unless `liveReady=true`. Treat a passing gate as a
+research acceptance signal only; it is still not an order-submission command.
+
 ## Polymarket Small-Capital Gate
 
 Use this section only after legal/risk approval and after the operator has intentionally funded the configured Polymarket wallet on Polygon mainnet. There is no Polymarket test trading sandbox in this repo.
