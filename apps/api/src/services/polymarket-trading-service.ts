@@ -215,6 +215,7 @@ async function getAuthenticatedOpenOrders() {
 
 async function getAuthenticatedBalanceAllowance() {
   const walletAddress = envValue("POLYMARKET_WALLET_ADDRESS") || envValue("POLYGON_TEST_ADDRESS");
+  const funderAddress = envValue("POLYMARKET_FUNDER_ADDRESS");
   const apiKey = envValue("POLYMARKET_API_KEY");
   const apiSecret = envValue("POLYMARKET_API_SECRET");
   const apiPassphrase = envValue("POLYMARKET_API_PASSPHRASE");
@@ -224,7 +225,7 @@ async function getAuthenticatedBalanceAllowance() {
   }
 
   const endpoint = "/balance-allowance";
-  const url = queryUrl(clobUrl(), endpoint, { asset_type: "COLLATERAL" });
+  const url = queryUrl(clobUrl(), endpoint, { asset_type: "COLLATERAL", ...(funderAddress ? { funder: funderAddress } : {}) });
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 7000);
   try {
