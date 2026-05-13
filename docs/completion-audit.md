@@ -110,6 +110,67 @@ Objective: DeepBook Predict is testnet-only, so do not migrate to mainnet; compl
 2. BTC free price sources can hit public rate limits. The app supports an optional configured paid or higher-quota BTC price endpoint while keeping CoinGecko, Coinbase, and Kraken redundancy; an operator still needs to choose and fund a production provider for sustained use.
 3. DeepBook Predict mainnet migration remains impossible until official mainnet package IDs, objects, and operational guidance exist.
 
-## Completion Decision
+## BTC 5m Strategy Research Addendum
+
+Date: 2026-05-14
+
+Objective: Build a real-usable BTC 5-minute Polymarket research and strategy pipeline,
+including probability-cone baselines, limit-order-only backtests, strict risk controls,
+genetic search, Beijing day/night and weekday/weekend segmentation, historical/live data
+collection, and a hard readiness gate before any live trading.
+
+### BTC 5m Prompt-To-Artifact Checklist
+
+| Requirement from objective/thread | Artifact or command checked | Current result |
+| --- | --- | --- |
+| Use recent 7-day BTC 5m markets as the initial research window | `pnpm --filter @vol-arb/api btc5m:research collect-markets --days 7`, `coverage --days 7` | `2007` markets currently tracked |
+| Use Polymarket BTC 5m market data, not only external exchange BTC prices | Gamma metadata, CLOB book snapshots, CLOB price history, Data API trades in `btc5m-research-service.ts` | Implemented; external BTC ticks are auxiliary probability-cone inputs only |
+| Collect forward orderbook data for executable limit-order evidence | `collect-orderbook-live`, `collect-orderbook-sessions`, `pnpm btc5m:orderbook:*` | Background collector is running under `caffeinate`; current orderbook coverage is still sparse |
+| Respect Beijing daytime/nighttime and weekday/weekend differences | `segmentMarketCoverage`, `targetSegment`, `weakestOrderbookSegments`, `nextWeakSegmentWindows` | Implemented; weakest segments are surfaced for targeted collection |
+| Use only limit orders in simulation | Backtest entry/exit logic, docs, readiness checks | Implemented for entry, take-profit, stop-loss, time exit, and settlement fallback gates |
+| Simulate with `100 USDC` initial capital and `10%` max single-trade loss | `DEFAULT_BACKTEST_PARAMS`, CLI usage, `docs/btc5m-research-pipeline.md` | Implemented as defaults |
+| Add trader-style risk controls | Max daily loss, max drawdown, max consecutive losses, max open markets, max daily trades | Implemented and exposed in reports/search space |
+| Optionally use Kelly sizing | `useKellySizing`, `kellyFraction`, GA mutation space | Implemented, clipped by hard risk limits |
+| Add probability-cone baseline strategy | `probability_cone`, `longshot_cone` | Implemented |
+| Add genetic algorithm strategy search | `genetic`, `genetic-sweep`, seeded runs, report saving | Implemented with train/validation, stress validation, walk-forward validation, and multi-seed sweeps |
+| Prevent stale or non-executable signals | `maxSignalStalenessSeconds`, bid/ask side separation, visible liquidity participation, observed-size checks | Implemented and tested |
+| Preserve experiment evidence | `--save-report` for backtest, genetic, genetic-sweep, readiness | Implemented; reports write under ignored `.local/reports` |
+| Gate live use on real evidence instead of in-sample PnL | `btc5m:research readiness --with-ga`, `acceptanceBlockers`, orderbook coverage gates | Implemented; current result is correctly not live-ready |
+
+### BTC 5m Current Evidence
+
+- Latest plan command: `pnpm btc5m:orderbook:plan`.
+- Background collector: running, PID `38702`, launched through `caffeinate`.
+- Current execution quality: `trade_proxy_only`.
+- Markets with orderbook snapshots: `29/2007`.
+- Current orderbook market coverage: `0.014449427005480818`.
+- Global `partial_orderbook` target: `201` markets.
+- Remaining markets until `partial_orderbook`: `172`.
+- Estimated continuous collection time until `partial_orderbook`: `14.33` hours.
+- Weakest Beijing regimes: `weekday_beijing_day` and `weekend_beijing_night`, both
+  still at `0` orderbook markets.
+- Current collection recommendation: keep the running untargeted collector active because
+  it can enter the next weak `weekday_beijing_day` window without a restart.
+- Latest readiness smoke with GA returned `liveReady=false` with failed checks:
+  `orderbook_market_coverage`, `balanced_beijing_orderbook_segments`,
+  `execution_quality`, `paper_signal_evidence`, and `genetic_acceptance`.
+
+### BTC 5m Completion Decision
+
+Do not mark the BTC 5m strategy objective complete yet.
+
+Engineering infrastructure is materially complete for the current research stage: data
+collection, probability-cone modeling, strict limit-order backtesting, risk controls,
+genetic search, report persistence, and readiness gates exist and have been smoke tested.
+However, the strategy itself is not proven real-usable because execution evidence is still
+`trade_proxy_only`, orderbook coverage is far below `partial_orderbook`, Beijing segment
+coverage is unbalanced, and the readiness audit correctly returns `liveReady=false`.
+
+The next required action is continued forward orderbook collection through weak Beijing
+segments, then rerun saved backtest, seeded GA, multi-seed sweep, and readiness reports.
+Only a readiness result with `liveReady=true` and no acceptance blockers should be treated
+as evidence for moving toward controlled live operation.
+
+## DeepBook Completion Decision
 
 Mark the objective complete for the current codebase scope: DeepBook Predict remains testnet-only, all implementable non-mainnet stages are covered by code, docs, tests, production-like smoke evidence, and GitHub CI. The remaining items above are external operator/protocol preconditions, not missing implementation in this repository.
