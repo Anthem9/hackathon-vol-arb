@@ -60,7 +60,7 @@ function usage() {
   pnpm --filter @vol-arb/api btc5m:research observe-live --duration-seconds 3600 --interval-ms 1000
   pnpm --filter @vol-arb/api btc5m:research coverage --days 7
   pnpm --filter @vol-arb/api btc5m:research paper-signal --persist
-  pnpm --filter @vol-arb/api btc5m:research evaluate-paper-signals --limit 200
+  pnpm --filter @vol-arb/api btc5m:research evaluate-paper-signals --limit 200 [--recheck-settled]
   pnpm --filter @vol-arb/api btc5m:research paper-summary
   pnpm --filter @vol-arb/api btc5m:research backtest --days 7 --limit-markets 2016 --persist
   pnpm --filter @vol-arb/api btc5m:research genetic --days 7 --generations 6 --population 12 --validation-fraction 0.2857 --persist-best
@@ -248,7 +248,7 @@ async function main() {
     return;
   }
   if (command === "evaluate-paper-signals") {
-    console.log(JSON.stringify(await evaluateResolvedPaperSignals({ limit: numberArg(args, "limit", 200) }), null, 2));
+    console.log(JSON.stringify(await evaluateResolvedPaperSignals({ limit: numberArg(args, "limit", 200), recheckSettled: boolArg(args, "recheck-settled") }), null, 2));
     return;
   }
   if (command === "paper-summary") {

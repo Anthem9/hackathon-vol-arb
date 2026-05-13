@@ -251,6 +251,10 @@ create table if not exists btc5m_paper_signals (
   winning_outcome text check (winning_outcome in ('up', 'down')),
   settlement_value numeric(20, 8),
   realized_pnl numeric(20, 8),
+  evaluation_method text,
+  exit_reason text,
+  exit_price numeric(20, 8),
+  exit_time timestamptz,
   evaluated_at timestamptz,
   payload jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
@@ -270,6 +274,18 @@ alter table btc5m_paper_signals
 
 alter table btc5m_paper_signals
   add column if not exists evaluated_at timestamptz;
+
+alter table btc5m_paper_signals
+  add column if not exists evaluation_method text;
+
+alter table btc5m_paper_signals
+  add column if not exists exit_reason text;
+
+alter table btc5m_paper_signals
+  add column if not exists exit_price numeric(20, 8);
+
+alter table btc5m_paper_signals
+  add column if not exists exit_time timestamptz;
 
 create index if not exists dashboard_snapshots_created_at_idx
   on dashboard_snapshots (created_at desc);

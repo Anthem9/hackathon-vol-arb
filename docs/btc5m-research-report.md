@@ -39,17 +39,26 @@ Additional forward collection run:
   - accepted: `false`.
 - Live observer: 600 seconds, `1170` snapshots, `586` paper signals, `312` would-enter paper signals, `0` errors.
 - Coverage after live observer: `1998` executable points, still below the threshold of `7452`.
-- Paper signal settlement evaluation after refreshing recent results:
+- Paper signal evaluation after refreshing recent results:
   - evaluated: `133` would-enter signals.
   - total PnL if held to settlement: `-1329.9854`.
   - win rate: `0`.
   - interpretation: the default paper signal parameters are not acceptable and should not be traded.
+- Paper signal attribution now supports rechecking the same signals with limit-only exits from
+  subsequent orderbook snapshots before falling back to settlement.
+- Rechecking with limit-only exits did not rescue the default strategy:
+  - evaluated: `251` would-enter signals.
+  - limit exits: `235`; settlement exits: `16`.
+  - total PnL: `-1219.97765`.
+  - win rate: `0.007968`.
+  - exit attribution: `233` stop-loss exits, `2` take-profit exits, `16` settlement exits.
 - Paper signal summary now blocks strategies with enough settled negative paper evidence:
-  - `lottery_reprice` is blocked by `133` settled signals, `-1329.9854` PnL, `0` win rate.
-- GA now includes paper-signal summary in its output and cannot accept a strategy blocked by settled paper evidence.
+  - `lottery_reprice` is blocked by `251` settled signals, `-1219.97765` PnL, `0.007968` win rate.
+- GA now includes paper-signal summary in its output, cannot accept a strategy blocked by
+  settled paper evidence, and excludes blocked strategies from the search pool.
 - Latest small GA run:
-  - best train candidate: `probability_cone`, `3` trades, `-5.0588` PnL.
-  - validation: `0` trades.
+  - best train candidate: `probability_cone`, `2` trades, `13.3572` PnL.
+  - validation: `1` trade, `-3.3327` PnL.
   - accepted: `false`.
 - GA after live observer used `3585` points:
   - train: `7` markets, `2307` points, `0` selected trades for the best train candidate.

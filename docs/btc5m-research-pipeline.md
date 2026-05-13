@@ -85,10 +85,18 @@ Record a real-time paper signal without submitting any order:
 pnpm --filter @vol-arb/api btc5m:research paper-signal --persist
 ```
 
-Evaluate settled paper signals after market resolution:
+Evaluate paper signals. This first checks subsequent orderbook snapshots for limit-only exits
+(`take_profit_limit`, `stop_loss_limit`, `time_exit_limit`), then falls back to settlement
+when no earlier exit is observed:
 
 ```bash
 pnpm --filter @vol-arb/api btc5m:research evaluate-paper-signals --limit 200
+```
+
+Re-attribute previously evaluated signals with the same limit-exit rules:
+
+```bash
+pnpm --filter @vol-arb/api btc5m:research evaluate-paper-signals --limit 200 --recheck-settled
 ```
 
 Summarize settled paper signals by strategy and Beijing segment:

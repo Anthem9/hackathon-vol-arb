@@ -945,31 +945,160 @@ export async function persistPaperSignal(report: PaperSignalReport) {
   );
 }
 
-export async function evaluateResolvedPaperSignals(input: { limit?: number } = {}) {
+function paramsFromPaperPayload(payload: unknown): BacktestParams {
+  if (!payload || typeof payload !== "object") return DEFAULT_BACKTEST_PARAMS;
+  const rawParams = (payload as JsonRecord).params;
+  if (!rawParams || typeof rawParams !== "object") return DEFAULT_BACKTEST_PARAMS;
+  return { ...DEFAULT_BACKTEST_PARAMS, ...(rawParams as Partial<BacktestParams>) };
+}
+
+function evaluatePaperLimitExit(input: {
+  snapshots: Array<{ bid: string | null; snapshot_time: Date }>;
+  signalTime: number;
+  marketEndTime: number | null;
+  limitPrice: number;
+  size: number;
+  expectedRisk: number;
+  params: BacktestParams;
+}) {
+  const target = Math.min(0.99, input.limitPrice * input.params.takeProfitMultiple);
+  const stop = Math.max(0.01, input.limitPrice * input.params.stopLossFraction);
+  for (const snapshot of input.snapshots) {
+    if (snapshot.bid === null) continue;
+    const bid = Number(snapshot.bid);
+    if (!Number.isFinite(bid)) continue;
+    const snapshotTime = snapshot.snapshot_time.getTime();
+    const heldSeconds = (snapshotTime - input.signalTime) / 1000;
+    const remaining = input.marketEndTime === null ? Number.POSITIVE_INFINITY : (input.marketEndTime - snapshotTime) / 1000;
+    if (bid >= target) {
+      return {
+        reason: "take_profit_limit",
+        exitPrice: target,
+        exitTime: snapshot.snapshot_time,
+        value: target * input.size,
+        pnl: target * input.size - input.expectedRisk,
+      };
+    }
+    if (bid <= stop && heldSeconds >= 5) {
+      return {
+        reason: "stop_loss_limit",
+        exitPrice: stop,
+        exitTime: snapshot.snapshot_time,
+        value: stop * input.size,
+        pnl: stop * input.size - input.expectedRisk,
+      };
+    }
+    if (heldSeconds >= input.params.maxHoldSeconds || remaining <= input.params.forceExitBeforeEndSeconds) {
+      return {
+        reason: "time_exit_limit",
+        exitPrice: bid,
+        exitTime: snapshot.snapshot_time,
+        value: bid * input.size,
+        pnl: bid * input.size - input.expectedRisk,
+      };
+    }
+  }
+  return null;
+}
+
+export async function evaluateResolvedPaperSignals(input: { limit?: number; recheckSettled?: boolean } = {}) {
   const limit = Math.max(1, Math.min(1000, Math.trunc(input.limit ?? 200)));
   const rows = await runDatabaseQuery<{
     signal_id: string;
     market_slug: string;
+    token_id: string | null;
     outcome: "up" | "down" | null;
+    limit_price: string | null;
     size: string | null;
     expected_risk: string | null;
-    winning_outcome: "up" | "down";
+    payload: JsonRecord | null;
+    created_at: Date;
+    end_time: Date | null;
+    winning_outcome: "up" | "down" | null;
   }>(
-    `select s.signal_id, s.market_slug, s.outcome, s.size, s.expected_risk, m.winning_outcome
+    `select s.signal_id,
+            s.market_slug,
+            s.token_id,
+            s.outcome,
+            s.limit_price,
+            s.size,
+            s.expected_risk,
+            s.payload,
+            s.created_at,
+            m.end_time,
+            m.winning_outcome
      from btc5m_paper_signals s
      join polymarket_btc5m_markets m on m.slug = s.market_slug
-     where s.evaluation_status = 'pending'
+     where (s.evaluation_status = 'pending' or $2::boolean)
        and s.decision = 'would_enter'
-       and m.winning_outcome is not null
      order by s.created_at asc
      limit $1`,
-    [limit],
+    [limit, Boolean(input.recheckSettled)],
   );
-  let settled = 0;
+  let evaluated = 0;
+  let limitExits = 0;
+  let settlementExits = 0;
+  let skipped = 0;
   let totalPnl = 0;
   for (const row of rows?.rows ?? []) {
+    if (!row.token_id || !row.outcome || row.limit_price === null || row.size === null || row.expected_risk === null) {
+      skipped += 1;
+      continue;
+    }
+    const limitPrice = Number(row.limit_price);
     const size = Number(row.size ?? 0);
     const expectedRisk = Number(row.expected_risk ?? 0);
+    if (!Number.isFinite(limitPrice) || !Number.isFinite(size) || !Number.isFinite(expectedRisk) || size <= 0 || expectedRisk <= 0) {
+      skipped += 1;
+      continue;
+    }
+    const snapshots = await runDatabaseQuery<{
+      bid: string | null;
+      snapshot_time: Date;
+    }>(
+      `select bid, snapshot_time
+       from polymarket_btc5m_orderbook_snapshots
+       where market_slug = $1
+         and token_id = $2
+         and outcome = $3
+         and snapshot_time > $4
+       order by snapshot_time asc`,
+      [row.market_slug, row.token_id, row.outcome, row.created_at],
+    );
+    const params = paramsFromPaperPayload(row.payload);
+    const limitExit = evaluatePaperLimitExit({
+      snapshots: snapshots?.rows ?? [],
+      signalTime: row.created_at.getTime(),
+      marketEndTime: row.end_time ? row.end_time.getTime() : null,
+      limitPrice,
+      size,
+      expectedRisk,
+      params,
+    });
+    if (limitExit) {
+      await runDatabaseQuery(
+        `update btc5m_paper_signals
+         set evaluation_status = 'settled',
+             winning_outcome = $2,
+             settlement_value = $3,
+             realized_pnl = $4,
+             evaluation_method = 'limit_exit',
+             exit_reason = $5,
+             exit_price = $6,
+             exit_time = $7,
+             evaluated_at = now()
+         where signal_id = $1`,
+        [row.signal_id, row.winning_outcome, limitExit.value, limitExit.pnl, limitExit.reason, limitExit.exitPrice, limitExit.exitTime],
+      );
+      evaluated += 1;
+      limitExits += 1;
+      totalPnl += limitExit.pnl;
+      continue;
+    }
+    if (!row.winning_outcome) {
+      skipped += 1;
+      continue;
+    }
     const settlementValue = row.outcome === row.winning_outcome ? size : 0;
     const pnl = settlementValue - expectedRisk;
     await runDatabaseQuery(
@@ -978,31 +1107,45 @@ export async function evaluateResolvedPaperSignals(input: { limit?: number } = {
            winning_outcome = $2,
            settlement_value = $3,
            realized_pnl = $4,
+           evaluation_method = 'settlement',
+           exit_reason = 'settlement',
+           exit_price = $5,
+           exit_time = $6,
            evaluated_at = now()
        where signal_id = $1`,
-      [row.signal_id, row.winning_outcome, settlementValue, pnl],
+      [row.signal_id, row.winning_outcome, settlementValue, pnl, row.outcome === row.winning_outcome ? 1 : 0, row.end_time],
     );
-    settled += 1;
+    evaluated += 1;
+    settlementExits += 1;
     totalPnl += pnl;
   }
   const summary = await runDatabaseQuery<{
     settled: string;
     total_pnl: string | null;
     wins: string;
+    limit_exits: string;
+    settlement_exits: string;
   }>(
     `select count(*) as settled,
             coalesce(sum(realized_pnl), 0) as total_pnl,
-            count(*) filter (where realized_pnl > 0) as wins
+            count(*) filter (where realized_pnl > 0) as wins,
+            count(*) filter (where evaluation_method = 'limit_exit') as limit_exits,
+            count(*) filter (where evaluation_method = 'settlement') as settlement_exits
      from btc5m_paper_signals
      where evaluation_status = 'settled'`,
   );
   const allSettled = Number(summary?.rows[0]?.settled ?? 0);
   const wins = Number(summary?.rows[0]?.wins ?? 0);
   return {
-    evaluatedNow: settled,
+    evaluatedNow: evaluated,
+    skippedNow: skipped,
+    limitExitsNow: limitExits,
+    settlementExitsNow: settlementExits,
     pnlNow: totalPnl,
     settledSignals: allSettled,
     totalPnl: Number(summary?.rows[0]?.total_pnl ?? 0),
+    limitExits: Number(summary?.rows[0]?.limit_exits ?? 0),
+    settlementExits: Number(summary?.rows[0]?.settlement_exits ?? 0),
     winRate: allSettled ? wins / allSettled : 0,
   };
 }
@@ -1383,7 +1526,8 @@ function mutateParams(parent: BacktestParams): BacktestParams {
   };
 }
 
-function scoreReport(report: BacktestReport) {
+function scoreReport(report: BacktestReport, blockedStrategies: Set<string> = new Set()) {
+  if (blockedStrategies.has(report.strategy)) return -2_000_000 + report.totalPnl;
   if (report.tradeCount < 5) return -1_000_000 + report.totalPnl;
   return report.totalPnl - report.maxDrawdown * 0.35 + report.winRate * 2;
 }
@@ -1412,9 +1556,13 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
   const { trainMarkets, validationMarkets } = splitMarketsForValidation(dataset.markets, input.validationFraction ?? 2 / 7, dataset.points);
   const trainPoints = filterPointsForMarkets(dataset.points, trainMarkets);
   const validationPoints = filterPointsForMarkets(dataset.points, validationMarkets);
+  const paperSummary = await summarizePaperSignals();
+  const blockedStrategies = new Set(paperSummary.blockedStrategies);
+  const allowedStrategies: BacktestParams["strategy"][] = (["lottery_reprice", "probability_cone"] as const).filter((strategy) => !blockedStrategies.has(strategy));
+  const strategyPool = allowedStrategies.length > 0 ? allowedStrategies : (["probability_cone"] as const);
   let population = Array.from({ length: populationSize }, (_, index): BacktestParams => ({
     ...DEFAULT_BACKTEST_PARAMS,
-    strategy: index % 2 === 0 ? "lottery_reprice" : "probability_cone",
+    strategy: strategyPool[index % strategyPool.length],
     entryMaxPrice: randomBetween(0.05, 0.25),
     takeProfitMultiple: randomBetween(1.4, 5),
     stopLossFraction: randomBetween(0.25, 0.8),
@@ -1432,7 +1580,7 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
     for (const params of population) {
       reports.push(runBtc5mBacktestFromData({ markets: trainMarkets, points: trainPoints, params }));
     }
-    const ranked = reports.map((report) => ({ report, score: scoreReport(report) })).sort((a, b) => b.score - a.score);
+    const ranked = reports.map((report) => ({ report, score: scoreReport(report, blockedStrategies) })).sort((a, b) => b.score - a.score);
     const best = ranked[0];
     if (best) history.push({ generation, bestScore: best.score, best: best.report });
     const survivors = ranked.slice(0, Math.max(2, Math.ceil(populationSize / 4))).map((item) => item.report.parameters);
@@ -1442,9 +1590,8 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
       population.push(mutateParams(parent));
     }
   }
-  const bestTrain = history.map((item) => item.best).sort((a, b) => scoreReport(b) - scoreReport(a))[0] ?? runBtc5mBacktestFromData({ markets: trainMarkets, points: trainPoints });
+  const bestTrain = history.map((item) => item.best).sort((a, b) => scoreReport(b, blockedStrategies) - scoreReport(a, blockedStrategies))[0] ?? runBtc5mBacktestFromData({ markets: trainMarkets, points: trainPoints });
   const validation = runBtc5mBacktestFromData({ markets: validationMarkets, points: validationPoints, params: bestTrain.parameters });
-  const paperSummary = await summarizePaperSignals();
   const strategyPaper = paperSummary.byStrategy[validation.strategy];
   const paperBlocked = Boolean(strategyPaper && strategyPaper.settled >= 20 && strategyPaper.totalPnl < 0);
   if (input.persistBest) await persistBacktestReport({ ...validation, runId: `${validation.runId}-validation`, strategy: `${validation.strategy}_validation` });
