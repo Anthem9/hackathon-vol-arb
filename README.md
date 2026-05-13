@@ -139,6 +139,23 @@ Live Polymarket submission endpoints exist at `/api/polymarket/order-execute` an
 
 The BTC 5m monitor is not a trading endpoint. It scans the current `btc-updown-5m-{window}` Gamma event, reads the public CLOB books for Up/Down, subscribes to `crypto_prices_chainlink` `btc/usd` on Polymarket RTDS, and displays probability/edge diagnostics on the dashboard. It requires no Polymarket API key.
 
+BTC 5m strategy research is separate from live trading. Use the checkpoint tools to monitor forward-collected orderbook coverage and readiness:
+
+```bash
+pnpm btc5m:orderbook:status
+pnpm btc5m:orderbook:plan
+pnpm btc5m:checkpoint:status
+```
+
+`checkpoint:status` is the low-cost no-GA status check while waiting for data. Final acceptance must use the full checkpoint gate:
+
+```bash
+pnpm btc5m:checkpoint
+pnpm btc5m:checkpoint:gate
+```
+
+`checkpoint:gate` exits non-zero unless `liveReady=true`; it is a research acceptance gate, not an order-submission command.
+
 Environment profiles:
 
 ```bash
