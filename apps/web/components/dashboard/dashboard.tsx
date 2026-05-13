@@ -654,6 +654,11 @@ function BtcFiveMinuteMonitorPanel() {
         : "cyan";
   const decisionLabel = monitor?.model.decision.replace("_", " ").toUpperCase() ?? "LOADING";
   const secondsRemaining = monitor?.model.secondsRemaining;
+  const openPriceLabel = monitor?.model.openPriceSource === "chainlink_window_start"
+    ? "window start"
+    : monitor?.model.openPriceSource === "chainlink_window_observed"
+      ? "observed"
+      : "fallback";
 
   return (
     <section id="btc-5m-monitor" className="scroll-mt-32 rounded-lg border border-cyan-300/20 bg-terminal-panel/90 p-5 shadow-glow">
@@ -671,7 +676,7 @@ function BtcFiveMinuteMonitorPanel() {
         <MetricCard
           label="Open Price"
           value={formatMonitorUsd(monitor?.model.openPrice)}
-          detail={`${monitor?.model.openPriceSource === "chainlink_window_start" ? "window start" : "fallback"} · ${secondsRemaining === null || secondsRemaining === undefined ? "--" : `${Math.max(0, Math.floor(secondsRemaining))}s left`}`}
+          detail={`${openPriceLabel} · ${secondsRemaining === null || secondsRemaining === undefined ? "--" : `${Math.max(0, Math.floor(secondsRemaining))}s left`}`}
           icon={<Gauge className="h-5 w-5" />}
           tone={monitor?.model.openPriceSource === "chainlink_window_start" ? "green" : "amber"}
         />

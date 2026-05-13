@@ -240,6 +240,26 @@ globalThis.fetch = async (input) => {
       },
     ]);
   }
+  if (url === "https://gamma.polymarket.test/events?slug=btc-updown-5m-1778663100") {
+    return Response.json([
+      {
+        id: "event-future",
+        slug: "btc-updown-5m-1778663100",
+        markets: [
+          {
+            id: "market-future",
+            conditionId: `0x${"d".repeat(64)}`,
+            question: "Bitcoin Up or Down - May 13, 5:05AM-5:10AM ET",
+            slug: "btc-updown-5m-1778663100",
+            endDate: new Date(1778663400000).toISOString(),
+            closed: false,
+            outcomes: JSON.stringify(["Up", "Down"]),
+            clobTokenIds: JSON.stringify(["future-up-token", "future-down-token"]),
+          },
+        ],
+      },
+    ]);
+  }
   if (url.startsWith("https://gamma.polymarket.test/events?slug=btc-updown-5m-")) {
     return Response.json([]);
   }

@@ -60,7 +60,7 @@ export type BtcFiveMinuteMonitor = {
   model: {
     spot: number | null;
     openPrice: number | null;
-    openPriceSource: "chainlink_window_start" | "current_tick_fallback" | "unavailable";
+    openPriceSource: "chainlink_window_start" | "chainlink_window_observed" | "current_tick_fallback" | "unavailable";
     secondsRemaining: number | null;
     annualizedVol: number | null;
     sampleCount: number;
@@ -180,7 +180,7 @@ function normalizeMarket(event: JsonRecord, now: number): MarketWindow | null {
 
 async function discoverBtcFiveMinuteMarket(gammaUrl: string, now: number): Promise<MarketWindow | null> {
   const base = Math.floor(now / 1000 / 300) * 300;
-  const candidates = Array.from({ length: 9 }, (_, index) => base + (index - 2) * 300);
+  const candidates = Array.from({ length: 7 }, (_, index) => base + (index - 3) * 300);
   const windows = await Promise.all(
     candidates.map(async (epoch) => {
       try {
@@ -192,9 +192,14 @@ async function discoverBtcFiveMinuteMarket(gammaUrl: string, now: number): Promi
       }
     }),
   );
-  return windows
-    .filter((market): market is MarketWindow => market !== null)
-    .sort((a, b) => Math.abs(a.startTime - now) - Math.abs(b.startTime - now))[0] ?? null;
+  const valid = windows.filter((market): market is MarketWindow => market !== null);
+  const active = valid
+    .filter((market) => market.startTime <= now && now < market.endTime)
+    .sort((a, b) => b.startTime - a.startTime)[0];
+  if (active) return active;
+  return valid
+    .filter((market) => market.startTime > now)
+    .sort((a, b) => a.startTime - b.startTime)[0] ?? null;
 }
 
 function extractTicksFromMessage(raw: string): ChainlinkTick[] {
@@ -244,7 +249,7 @@ async function fetchChainlinkTicksFromRtds(rtdsUrl: string): Promise<{ ticks: Ch
       resolve({ ticks, connected, error });
     };
 
-    const timeout = setTimeout(() => finish(ticks.length > 0 ? null : "Timed out waiting for Chainlink RTDS BTC tick."), 7000);
+    const timeout = setTimeout(() => finish(ticks.length > 0 ? null : "Timed out waiting for Chainlink RTDS BTC tick."), 3500);
 
     ws.addEventListener("open", () => {
       connected = true;
@@ -321,6 +326,8 @@ function resolveStrike(market: MarketWindow | null, spot: number | null) {
   const windowTicks = chainlinkTicks.filter((tick) => tick.timestamp >= market.startTime && tick.timestamp <= market.startTime + 10_000);
   const first = windowTicks[0];
   if (first) return { strike: first.price, source: "chainlink_window_start" as const };
+  const earliestObserved = chainlinkTicks.find((tick) => tick.timestamp >= market.startTime && tick.timestamp <= market.endTime);
+  if (earliestObserved) return { strike: earliestObserved.price, source: "chainlink_window_observed" as const };
   if (spot) return { strike: spot, source: "current_tick_fallback" as const };
   return { strike: null, source: "unavailable" as const };
 }
@@ -439,9 +446,11 @@ export async function getBtcFiveMinuteMonitor(options: MonitorOptions = {}): Pro
   ]);
   rememberTicks(rtds.ticks, now);
   const tick = latestTick();
-  const [upBook, downBook] = await Promise.all([
+  const spot = tick?.price ?? null;
+  const [upBook, downBook, fastReference] = await Promise.all([
     fetchOrderbook(clobUrl, market?.upTokenId),
     fetchOrderbook(clobUrl, market?.downTokenId),
+    options.fetchFastReference ? options.fetchFastReference() : fetchFastReferencePrice(spot, now),
   ]);
 
   const blockers: string[] = [];
@@ -460,14 +469,14 @@ export async function getBtcFiveMinuteMonitor(options: MonitorOptions = {}): Pro
   const secondsRemaining = market ? Math.max(0, (market.endTime - now) / 1000) : null;
   if (secondsRemaining !== null && secondsRemaining < 15) blockers.push("Current 5m market is inside the final 15 seconds.");
   else if (secondsRemaining !== null && secondsRemaining < 30) warnings.push("Current 5m market is inside the final 30 seconds.");
-  const spot = tick?.price ?? null;
   const openPrice = resolveStrike(market, spot);
+  if (market && now < market.startTime) blockers.push("Selected BTC 5m market has not opened yet.");
+  if (openPrice.source === "chainlink_window_observed") warnings.push("Exact window-start Chainlink tick is not cached; using earliest observed tick inside this window.");
   if (openPrice.source === "current_tick_fallback") warnings.push("Window-start Chainlink tick is not cached yet; using current tick as neutral fallback.");
   if (openPrice.source === "unavailable") blockers.push("No usable opening price is available.");
   const vol = estimateVariancePerSecond();
   if (vol.fallback) warnings.push("Using fallback BTC annualized volatility until enough RTDS samples are cached.");
 
-  const fastReference = options.fetchFastReference ? await options.fetchFastReference() : await fetchFastReferencePrice(spot, now);
   if (fastReference.price !== null && spot !== null && Math.abs(fastReference.price - spot) > 20) {
     warnings.push(`Fast reference differs from Chainlink by $${Math.abs(fastReference.price - spot).toFixed(2)}; settlement feed may be lagging.`);
   }

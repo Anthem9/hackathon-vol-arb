@@ -321,7 +321,7 @@ export type BtcFiveMinuteMonitor = {
   model: {
     spot: number | null;
     openPrice: number | null;
-    openPriceSource: "chainlink_window_start" | "current_tick_fallback" | "unavailable";
+    openPriceSource: "chainlink_window_start" | "chainlink_window_observed" | "current_tick_fallback" | "unavailable";
     secondsRemaining: number | null;
     annualizedVol: number | null;
     sampleCount: number;
