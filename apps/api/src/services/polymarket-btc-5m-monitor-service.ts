@@ -99,6 +99,7 @@ const DEFAULT_LEAN_EDGE = 0;
 const DEFAULT_ANNUAL_VOL = 0.65;
 const SECONDS_PER_YEAR = 365 * 24 * 60 * 60;
 const chainlinkTicks: ChainlinkTick[] = [];
+let lastMonitor: BtcFiveMinuteMonitor | null = null;
 
 function envValue(name: string): string | undefined {
   const maybeProcess = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process;
@@ -180,17 +181,21 @@ function normalizeMarket(event: JsonRecord, now: number): MarketWindow | null {
 
 async function discoverBtcFiveMinuteMarket(gammaUrl: string, now: number): Promise<MarketWindow | null> {
   const base = Math.floor(now / 1000 / 300) * 300;
-  const candidates = Array.from({ length: 7 }, (_, index) => base + (index - 3) * 300);
+  const fetchWindow = async (epoch: number) => {
+    try {
+      const payload = await fetchJson<unknown[]>(`${gammaUrl}/events?slug=btc-updown-5m-${epoch}`, 2500);
+      const event = Array.isArray(payload) && isRecord(payload[0]) ? payload[0] : null;
+      return event ? normalizeMarket(event, now) : null;
+    } catch {
+      return null;
+    }
+  };
+  const current = await fetchWindow(base);
+  if (current && current.startTime <= now && now < current.endTime) return current;
+
+  const candidates = [base - 300, base + 300, base - 600, base + 600, base - 900, base + 900];
   const windows = await Promise.all(
-    candidates.map(async (epoch) => {
-      try {
-        const payload = await fetchJson<unknown[]>(`${gammaUrl}/events?slug=btc-updown-5m-${epoch}`, 5000);
-        const event = Array.isArray(payload) && isRecord(payload[0]) ? payload[0] : null;
-        return event ? normalizeMarket(event, now) : null;
-      } catch {
-        return null;
-      }
-    }),
+    candidates.map((epoch) => fetchWindow(epoch)),
   );
   const valid = windows.filter((market): market is MarketWindow => market !== null);
   const active = valid
@@ -362,7 +367,7 @@ function parseBestBookSide(book: JsonRecord): OrderbookSide {
 async function fetchOrderbook(clobUrl: string, tokenId: string | undefined): Promise<OrderbookSide> {
   if (!tokenId) return { bid: null, ask: null, mid: null, spread: null, bidSize: null, askSize: null };
   try {
-    const payload = await fetchJson<unknown>(`${clobUrl}/book?token_id=${encodeURIComponent(tokenId)}`, 5000);
+    const payload = await fetchJson<unknown>(`${clobUrl}/book?token_id=${encodeURIComponent(tokenId)}`, 2500);
     return parseBestBookSide(isRecord(payload) ? payload : {});
   } catch {
     return { bid: null, ask: null, mid: null, spread: null, bidSize: null, askSize: null };
@@ -433,7 +438,70 @@ function buildCone(spot: number | null, variancePerSecond: number, secondsRemain
   };
 }
 
-export async function getBtcFiveMinuteMonitor(options: MonitorOptions = {}): Promise<BtcFiveMinuteMonitor> {
+function timeoutMonitor(now: number, detail: string): BtcFiveMinuteMonitor {
+  if (lastMonitor) {
+    return {
+      ...lastMonitor,
+      status: lastMonitor.status === "critical" ? "critical" : "warning",
+      updatedAt: now,
+      model: {
+        ...lastMonitor.model,
+        warnings: [...lastMonitor.model.warnings, detail],
+      },
+    };
+  }
+  return {
+    mode: "read_only",
+    status: "critical",
+    updatedAt: now,
+    rtds: {
+      connected: false,
+      topic: "crypto_prices_chainlink",
+      symbol: "btc/usd",
+      price: null,
+      timestamp: null,
+      ageSeconds: null,
+      tickCount: chainlinkTicks.length,
+      error: detail,
+    },
+    market: null,
+    orderbook: {
+      up: { bid: null, ask: null, mid: null, spread: null, bidSize: null, askSize: null },
+      down: { bid: null, ask: null, mid: null, spread: null, bidSize: null, askSize: null },
+    },
+    fastReference: {
+      source: "unavailable",
+      price: null,
+      timestamp: null,
+      ageSeconds: null,
+      basisToChainlink: null,
+      error: detail,
+    },
+    model: {
+      spot: null,
+      openPrice: null,
+      openPriceSource: "unavailable",
+      secondsRemaining: null,
+      annualizedVol: null,
+      sampleCount: 0,
+      probabilityUp: null,
+      probabilityDown: null,
+      edgeUp: null,
+      edgeDown: null,
+      cone: { lower68: null, upper68: null, lower95: null, upper95: null, expectedMove68: null, expectedMove95: null },
+      minEdge: DEFAULT_MIN_EDGE,
+      decision: "blocked",
+      reasons: [detail],
+      warnings: [],
+    },
+    notes: [
+      "Polymarket BTC 5m settlement source is Chainlink BTC/USD data stream via public RTDS.",
+      "This monitor is read-only and never signs or submits Polymarket orders.",
+    ],
+  };
+}
+
+async function buildBtcFiveMinuteMonitor(options: MonitorOptions = {}): Promise<BtcFiveMinuteMonitor> {
   const now = options.now?.() ?? Date.now();
   const gammaUrl = options.gammaUrl ?? envValue("POLYMARKET_GAMMA_API_BASE") ?? "https://gamma-api.polymarket.com";
   const clobUrl = options.clobUrl ?? envValue("POLYMARKET_API_BASE") ?? "https://clob.polymarket.com";
@@ -506,7 +574,7 @@ export async function getBtcFiveMinuteMonitor(options: MonitorOptions = {}): Pro
   }
 
   const status: BtcFiveMinuteMonitor["status"] = blockers.length > 0 ? "critical" : warnings.length > 0 ? "warning" : "healthy";
-  return {
+  const monitor: BtcFiveMinuteMonitor = {
     mode: "read_only",
     status,
     updatedAt: now,
@@ -545,4 +613,22 @@ export async function getBtcFiveMinuteMonitor(options: MonitorOptions = {}): Pro
     },
     notes,
   };
+  lastMonitor = monitor;
+  return monitor;
+}
+
+export async function getBtcFiveMinuteMonitor(options: MonitorOptions = {}): Promise<BtcFiveMinuteMonitor> {
+  const now = options.now?.() ?? Date.now();
+  let timeout: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race([
+      buildBtcFiveMinuteMonitor(options),
+      new Promise<BtcFiveMinuteMonitor>((resolve) => {
+        timeout = setTimeout(() => resolve(timeoutMonitor(now, "BTC 5m monitor refresh timed out; showing last available snapshot.")), 8000);
+        timeout.unref();
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
 }
