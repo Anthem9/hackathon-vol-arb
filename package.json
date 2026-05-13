@@ -20,6 +20,7 @@
     "btc5m:checkpoint": "node scripts/btc5m-checkpoint.mjs",
     "btc5m:checkpoint:status": "node scripts/btc5m-checkpoint.mjs --no-ga --summary-only",
     "btc5m:checkpoint:last": "node scripts/btc5m-checkpoint-last.mjs",
+    "btc5m:checkpoint:last:current": "node scripts/btc5m-checkpoint-last.mjs --require-current",
     "btc5m:checkpoint:gate": "node scripts/btc5m-checkpoint.mjs --require-live-ready",
     "build": "turbo build",
     "lint": "turbo lint",

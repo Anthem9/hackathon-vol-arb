@@ -7,7 +7,7 @@ const root = resolve(new URL("..", import.meta.url).pathname);
 
 function usage() {
   return `Usage:
-  pnpm btc5m:checkpoint:last [--full]
+  pnpm btc5m:checkpoint:last [--full] [--require-current]
 
 Reads the most recent local BTC 5m checkpoint report from .local/reports without
 running coverage, readiness, GA, network calls, or orderbook collection.
@@ -23,6 +23,7 @@ if (process.argv.includes("--help") || process.argv.includes("-h")) {
 }
 
 const full = process.argv.includes("--full");
+const requireCurrent = process.argv.includes("--require-current");
 const reportsDir = process.env.BTC5M_CHECKPOINT_REPORT_DIR
   ? resolve(root, process.env.BTC5M_CHECKPOINT_REPORT_DIR)
   : resolve(root, ".local/reports");
@@ -62,18 +63,19 @@ const currentGit = {
   shortHead: runText("git", ["rev-parse", "--short", "HEAD"]),
   dirty: Boolean(runText("git", ["status", "--short"])),
 };
+const reportMatchesCurrentHead = Boolean(latest.parsed.git?.head && latest.parsed.git.head === currentGit.head && !currentGit.dirty);
 const output = full
   ? {
       ...latest.parsed,
       currentGit,
-      reportMatchesCurrentHead: Boolean(latest.parsed.git?.head && latest.parsed.git.head === currentGit.head && !currentGit.dirty),
+      reportMatchesCurrentHead,
     }
   : {
       generatedAt: latest.parsed.generatedAt,
       reportFile: latest.path,
       git: latest.parsed.git,
       currentGit,
-      reportMatchesCurrentHead: Boolean(latest.parsed.git?.head && latest.parsed.git.head === currentGit.head && !currentGit.dirty),
+      reportMatchesCurrentHead,
       runtime: latest.parsed.runtime,
       inputs: latest.parsed.inputs,
       summary: latest.parsed.summary,
@@ -84,3 +86,6 @@ const output = full
     };
 
 console.log(JSON.stringify(output, null, 2));
+if (requireCurrent && !reportMatchesCurrentHead) {
+  process.exitCode = 2;
+}

@@ -17,7 +17,7 @@ assert.match(result.stdout, /pnpm btc5m:checkpoint:status/);
 assert.match(result.stdout, /pnpm btc5m:checkpoint:gate/);
 assert.match(result.stdout, /BTC5M_CHECKPOINT_REPORT_FILE/);
 assert.equal(lastResult.status, 0, lastResult.stderr || lastResult.stdout);
-assert.match(lastResult.stdout, /pnpm btc5m:checkpoint:last \[--full\]/);
+assert.match(lastResult.stdout, /pnpm btc5m:checkpoint:last \[--full\] \[--require-current\]/);
 assert.match(lastResult.stdout, /without\s+running coverage, readiness, GA, network calls, or orderbook collection/);
 assert.match(lastResult.stdout, /BTC5M_CHECKPOINT_REPORT_DIR/);
 
@@ -57,6 +57,14 @@ try {
   assert.equal(lastSummary.liveReady, true);
   assert.ok(lastSummary.currentGit?.head);
   assert.equal(typeof lastSummary.reportMatchesCurrentHead, "boolean");
+
+  const staleResult = spawnSync("node", ["scripts/btc5m-checkpoint-last.mjs", "--require-current"], {
+    encoding: "utf8",
+    env: { ...process.env, BTC5M_CHECKPOINT_REPORT_DIR: tempReports },
+  });
+  assert.equal(staleResult.status, 2, staleResult.stderr || staleResult.stdout);
+  const staleSummary = JSON.parse(staleResult.stdout);
+  assert.equal(staleSummary.reportMatchesCurrentHead, false);
 } finally {
   rmSync(tempReports, { recursive: true, force: true });
 }
