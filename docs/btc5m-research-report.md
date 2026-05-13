@@ -37,6 +37,12 @@ Additional forward collection run:
   - train: `4` markets, `1201` points, `1` trade, positive PnL in-sample.
   - validation: `1` market, `276` points, `0` trades.
   - accepted: `false`.
+- Live observer: 600 seconds, `1170` snapshots, `586` paper signals, `312` would-enter paper signals, `0` errors.
+- Coverage after live observer: `1998` executable points, still below the threshold of `7452`.
+- GA after live observer used `3585` points:
+  - train: `7` markets, `2307` points, `0` selected trades for the best train candidate.
+  - validation: `2` markets, `1278` points, `0` trades.
+  - accepted: `false`.
 
 The in-sample trade is not considered a strategy candidate because validation produced no trades and the sample is too small.
 
