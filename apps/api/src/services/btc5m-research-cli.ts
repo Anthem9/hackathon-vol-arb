@@ -68,7 +68,7 @@ function usage() {
   pnpm --filter @vol-arb/api btc5m:research evaluate-paper-signals --limit 200 [--recheck-settled]
   pnpm --filter @vol-arb/api btc5m:research paper-summary
   pnpm --filter @vol-arb/api btc5m:research backtest --days 7 --limit-markets 2016 --persist
-  pnpm --filter @vol-arb/api btc5m:research genetic --days 7 --generations 6 --population 12 --validation-fraction 0.2857 [--seed 42] [--persist-best]
+  pnpm --filter @vol-arb/api btc5m:research genetic --days 7 --generations 6 --population 12 --validation-fraction 0.2857 [--seed 42] [--persist-best] [--save-report] [--report-file .local/reports/genetic.json]
   pnpm --filter @vol-arb/api btc5m:research genetic-sweep --days 7 --seeds 5 --seed-start 1 --generations 6 --population 12 [--save-report] [--report-file .local/reports/sweep.json]
 
 All simulated orders are limit orders. The default initial capital is 100 USDC and max risk per trade is 10% of current equity.`;
@@ -101,6 +101,10 @@ function parseTargetSegments(args: Args) {
 
 function defaultSweepReportFile() {
   return resolve(workspaceRoot, ".local/reports", `btc5m-genetic-sweep-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
+}
+
+function defaultGeneticReportFile() {
+  return resolve(workspaceRoot, ".local/reports", `btc5m-genetic-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
 }
 
 function resolveWorkspacePath(path: string) {
@@ -414,21 +418,19 @@ async function main() {
     return;
   }
   if (command === "genetic") {
-    console.log(
-      JSON.stringify(
-        await runBtc5mGeneticSearch({
-          days: numberArg(args, "days", 7),
-          limitMarkets: numberArg(args, "limit-markets", 2016),
-          generations: numberArg(args, "generations", 6),
-          population: numberArg(args, "population", 12),
-          validationFraction: numberArg(args, "validation-fraction", 2 / 7),
-          seed: args.seed === undefined ? undefined : numberArg(args, "seed", 0),
-          persistBest: boolArg(args, "persist-best"),
-        }),
-        null,
-        2,
-      ),
-    );
+    const result = await runBtc5mGeneticSearch({
+      days: numberArg(args, "days", 7),
+      limitMarkets: numberArg(args, "limit-markets", 2016),
+      generations: numberArg(args, "generations", 6),
+      population: numberArg(args, "population", 12),
+      validationFraction: numberArg(args, "validation-fraction", 2 / 7),
+      seed: args.seed === undefined ? undefined : numberArg(args, "seed", 0),
+      persistBest: boolArg(args, "persist-best"),
+    });
+    const reportFile = boolArg(args, "save-report") || args["report-file"] ? resolveWorkspacePath(stringArg(args, "report-file", defaultGeneticReportFile())) : null;
+    const output = reportFile ? { ...result, reportFile } : result;
+    if (reportFile) saveJsonReport(reportFile, output);
+    console.log(JSON.stringify(output, null, 2));
     return;
   }
   if (command === "genetic-sweep") {

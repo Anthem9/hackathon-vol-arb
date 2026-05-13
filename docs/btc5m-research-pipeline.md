@@ -222,6 +222,13 @@ Run genetic strategy search:
 pnpm --filter @vol-arb/api btc5m:research genetic --days 7 --limit-markets 2016 --generations 6 --population 12 --validation-fraction 0.2857 --seed 42 --persist-best
 ```
 
+Add `--save-report` to persist the full single-run GA JSON under `.local/reports`, or
+pass `--report-file <path>` for an explicit local artifact:
+
+```bash
+pnpm --filter @vol-arb/api btc5m:research genetic --days 7 --limit-markets 2016 --generations 6 --population 12 --seed 42 --save-report
+```
+
 Run a multi-seed GA sweep:
 
 ```bash
