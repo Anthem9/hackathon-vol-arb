@@ -142,6 +142,7 @@ Both strategies support:
 
 - dynamic position sizing from current equity,
 - limit-only entry,
+- limit-entry fill verification from subsequent market data within `entryMaxWaitSeconds`,
 - take-profit limit exit,
 - stop-loss limit exit,
 - time-based limit exit,
@@ -166,6 +167,7 @@ The genetic search mutates these parameters:
 - `probabilityEdge`
 - `assumedSpread`
 - `decisionDelaySeconds`
+- `entryMaxWaitSeconds`
 - `kellyFraction`
 - `coneVolatilityMultiplier`
 - `useKellySizing`

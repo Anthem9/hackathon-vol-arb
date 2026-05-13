@@ -49,6 +49,7 @@ export type BacktestParams = {
   probabilityEdge: number;
   assumedSpread: number;
   decisionDelaySeconds: number;
+  entryMaxWaitSeconds: number;
   allowHoldToSettlement: boolean;
   maxDailyLossFraction: number;
   maxDrawdownFraction: number;
@@ -129,6 +130,7 @@ export const DEFAULT_BACKTEST_PARAMS: BacktestParams = {
   probabilityEdge: 0.08,
   assumedSpread: 0.01,
   decisionDelaySeconds: 1,
+  entryMaxWaitSeconds: 10,
   allowHoldToSettlement: true,
   maxDailyLossFraction: 0.2,
   maxDrawdownFraction: 0.25,
@@ -1425,6 +1427,14 @@ function chooseOutcome(params: BacktestParams, up: PricePoint | undefined, down:
   return null;
 }
 
+function findLimitBuyFill(points: PricePoint[], submittedAt: number, limitPrice: number, params: BacktestParams) {
+  const deadline = submittedAt + params.entryMaxWaitSeconds * 1000;
+  return points.find((point) => {
+    if (point.time < submittedAt || point.time > deadline) return false;
+    return priceToAsk(point.price, params, point.source) <= limitPrice;
+  });
+}
+
 export async function runBtc5mBacktest(input: { days?: number; limitMarkets?: number; params?: Partial<BacktestParams>; persist?: boolean } = {}): Promise<BacktestReport> {
   const params = { ...DEFAULT_BACKTEST_PARAMS, ...(input.params ?? {}) };
   const { markets, points } = await readPricePoints(input.days ?? 7, input.limitMarkets ?? 2500);
@@ -1476,6 +1486,9 @@ export function runBtc5mBacktestFromData(input: { markets: Btc5mMarket[]; points
       const ask = priceToAsk(candidate.price, params, candidate.source);
       const entryLimit = Math.max(0.01, Math.min(0.99, ask - params.entryLimitOffset));
       if (entryLimit < params.entryMinPrice || entryLimit > params.entryMaxPrice) continue;
+      const candidatePoints = candidate.outcome === "up" ? upPoints : downPoints;
+      const entryFill = findLimitBuyFill(candidatePoints, delayedTime, entryLimit, params);
+      if (!entryFill) continue;
       const risk = capital * params.maxRiskFraction;
       const target = Math.min(0.99, entryLimit * params.takeProfitMultiple);
       const kellyRisk = params.useKellySizing
@@ -1487,7 +1500,7 @@ export function runBtc5mBacktestFromData(input: { markets: Btc5mMarket[]; points
       const entryCost = entryLimit * size;
       capital -= entryCost;
 
-      const exitPoints = (candidate.outcome === "up" ? upPoints : downPoints).filter((point) => point.time > delayedTime);
+      const exitPoints = candidatePoints.filter((point) => point.time > entryFill.time);
       const stop = Math.max(0.01, entryLimit * params.stopLossFraction);
       let exitTime = market.endTime;
       let exitPrice = market.winningOutcome === candidate.outcome ? 1 : 0;
@@ -1495,7 +1508,7 @@ export function runBtc5mBacktestFromData(input: { markets: Btc5mMarket[]; points
       let reason = "settlement";
       let status: BacktestTrade["status"] = "settled";
       for (const point of exitPoints) {
-        const heldSeconds = (point.time - delayedTime) / 1000;
+        const heldSeconds = (point.time - entryFill.time) / 1000;
         const remaining = (market.endTime - point.time) / 1000;
         const bid = priceToBid(point.price, params, point.source);
         if (bid >= target) {
@@ -1536,7 +1549,7 @@ export function runBtc5mBacktestFromData(input: { markets: Btc5mMarket[]; points
         marketSlug: market.slug,
         tokenId: candidate.tokenId,
         outcome: candidate.outcome,
-        entryTime: delayedTime,
+        entryTime: entryFill.time,
         entryLimit,
         entryPrice: entryLimit,
         size,
@@ -1658,6 +1671,7 @@ function mutateParams(parent: BacktestParams): BacktestParams {
     probabilityEdge: Math.max(0, Math.min(0.4, parent.probabilityEdge + randomBetween(-0.03, 0.03))),
     assumedSpread: Math.max(0, Math.min(0.08, parent.assumedSpread + randomBetween(-0.005, 0.005))),
     decisionDelaySeconds: Math.max(0, Math.min(5, Math.round(parent.decisionDelaySeconds + randomBetween(-1, 1)))),
+    entryMaxWaitSeconds: Math.max(1, Math.min(60, Math.round(parent.entryMaxWaitSeconds + randomBetween(-5, 5)))),
     kellyFraction: Math.max(0.05, Math.min(0.5, parent.kellyFraction + randomBetween(-0.05, 0.05))),
     coneVolatilityMultiplier: Math.max(0.25, Math.min(4, parent.coneVolatilityMultiplier + randomBetween(-0.25, 0.25))),
     useKellySizing: Math.random() > 0.7 ? !parent.useKellySizing : parent.useKellySizing,
@@ -1709,6 +1723,7 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
     maxSecondsRemaining: Math.round(randomBetween(120, 280)),
     probabilityEdge: randomBetween(0.02, 0.2),
     decisionDelaySeconds: Math.round(randomBetween(0, 5)),
+    entryMaxWaitSeconds: Math.round(randomBetween(3, 30)),
     useKellySizing: index % 3 === 0,
     kellyFraction: randomBetween(0.1, 0.35),
     coneVolatilityMultiplier: randomBetween(0.5, 2.5),

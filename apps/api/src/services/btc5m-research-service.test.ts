@@ -21,6 +21,7 @@ const market: Btc5mMarket = {
 const points: PricePoint[] = [
   { marketSlug: market.slug, tokenId: "up-token", outcome: "up", price: 0.05, time: start + 60_000, source: "clob_prices_history" },
   { marketSlug: market.slug, tokenId: "down-token", outcome: "down", price: 0.95, time: start + 60_000, source: "clob_prices_history" },
+  { marketSlug: market.slug, tokenId: "up-token", outcome: "up", price: 0.05, time: start + 61_000, source: "clob_prices_history" },
   { marketSlug: market.slug, tokenId: "up-token", outcome: "up", price: 0.16, time: start + 90_000, source: "clob_prices_history" },
   { marketSlug: market.slug, tokenId: "down-token", outcome: "down", price: 0.84, time: start + 90_000, source: "clob_prices_history" },
 ];
@@ -37,6 +38,7 @@ const report = runBtc5mBacktestFromData({
     assumedSpread: 0,
     takeProfitMultiple: 2,
     decisionDelaySeconds: 0,
+    entryMaxWaitSeconds: 5,
     minSecondsRemaining: 1,
     maxSecondsRemaining: 300,
   },
@@ -62,6 +64,7 @@ const settleReport = runBtc5mBacktestFromData({
     entryMaxPrice: 0.08,
     assumedSpread: 0,
     decisionDelaySeconds: 0,
+    entryMaxWaitSeconds: 5,
     minSecondsRemaining: 1,
     maxSecondsRemaining: 300,
     allowHoldToSettlement: true,

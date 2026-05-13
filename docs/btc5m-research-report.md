@@ -74,6 +74,12 @@ Additional forward collection run:
   - best train candidate: `probability_cone`, `8` trades, `27.1715` PnL.
   - validation: `6` trades, `-14.3451` PnL.
   - accepted: `false`.
+- Limit-entry fill modeling was tightened after the Data API trade integration:
+  - a paper/backtest buy now requires subsequent market data to touch the entry limit
+    within `entryMaxWaitSeconds`; otherwise the entry is treated as unfilled.
+  - after this stricter fill model, the best small GA run no longer showed in-sample profit:
+    train `6` trades, `-0.5164` PnL; validation `4` trades, `-0.1357` PnL.
+  - accepted: `false`.
 - Latest coverage:
   - markets: `1238`; resolved markets: `78`.
   - price points: `25`; orderbook snapshots: `1998`; trades: `8136`; BTC ticks: `9634`.
