@@ -146,8 +146,8 @@ collection, and a hard readiness gate before any live trading.
     current clean HEAD.
   - `pnpm btc5m:checkpoint:status` to generate a fresh no-GA checkpoint when the saved
     report is stale or when coverage has materially changed.
-- Last committed low-cost checkpoint snapshot: generated `2026-05-13T21:16:16.911Z`
-  on git `02b139e`.
+- Latest local low-cost checkpoint snapshot: generated `2026-05-13T21:27:29.220Z`
+  on git `3ae5b19`.
 - Local last-report command: `pnpm btc5m:checkpoint:last`; use it to inspect the latest
   saved checkpoint without running network checks, readiness, GA, or collectors. If it
   reports `reportMatchesCurrentHead=false`, rerun `pnpm btc5m:checkpoint:status` before
@@ -157,12 +157,12 @@ collection, and a hard readiness gate before any live trading.
   before a saved report is treated as live-ready evidence.
 - Background collector: running, PID `38702`, launched through `caffeinate`.
 - Current execution quality: `trade_proxy_only`.
-- Last committed snapshot markets with orderbook: `43/2007`.
-- Last committed snapshot orderbook market coverage: `0.02142501245640259`.
+- Latest local snapshot markets with orderbook: `45/2007`.
+- Latest local snapshot orderbook market coverage: `0.02242152466367713`.
 - Global `partial_orderbook` target: `201` markets.
-- Last committed snapshot remaining markets until `partial_orderbook`: `158`.
-- Last committed snapshot estimated continuous collection time until `partial_orderbook`:
-  `13.17` hours.
+- Latest local snapshot remaining markets until `partial_orderbook`: `156`.
+- Latest local snapshot estimated continuous collection time until `partial_orderbook`:
+  `13` hours.
 - Weakest Beijing regimes: `weekday_beijing_day` and `weekend_beijing_night`, both
   still at `0` orderbook markets.
 - Current collection recommendation: keep the running untargeted collector active because
