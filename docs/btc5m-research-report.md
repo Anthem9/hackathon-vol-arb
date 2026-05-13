@@ -173,6 +173,12 @@ Additional forward collection run:
   - estimated continuous collection time until `partial_orderbook`: `15.7` hours.
   - `orderbook_backtest_ready` target: `1003` markets.
   - estimated continuous collection time until `orderbook_backtest_ready`: `82.5` hours.
+- Added background orderbook collector helpers:
+  - `pnpm btc5m:orderbook:start`
+  - `pnpm btc5m:orderbook:collector`
+  - `pnpm btc5m:orderbook:stop`
+  - status check verified `not_running`, with PID file under `.local/run` and logs under
+    `.local/logs`.
 - Trade coverage was expanded with additional Data API collection:
   - `collect-trades --days 7 --limit-markets 400 --pages-per-market 1 --stride 3`
     stored `200000` fetched trade rows with `0` errors.

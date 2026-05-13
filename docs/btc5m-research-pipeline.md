@@ -83,6 +83,21 @@ Run repeated short collector sessions with a coverage report at the end:
 pnpm --filter @vol-arb/api btc5m:research collect-orderbook-sessions --sessions 12 --duration-seconds 300 --interval-ms 1000 --pause-seconds 5 --progress-every 60
 ```
 
+Run the segmented collector in the background:
+
+```bash
+pnpm btc5m:orderbook:start
+pnpm btc5m:orderbook:collector
+pnpm btc5m:orderbook:stop
+```
+
+The background collector writes its PID to `.local/run/btc5m-orderbook-collector.pid`
+and logs to `.local/logs/btc5m-orderbook-collector.log`. Defaults are intentionally long
+enough to target roughly 16 hours of forward collection; override them with
+`BTC5M_ORDERBOOK_SESSIONS`, `BTC5M_ORDERBOOK_DURATION_SECONDS`,
+`BTC5M_ORDERBOOK_INTERVAL_MS`, `BTC5M_ORDERBOOK_PAUSE_SECONDS`, and
+`BTC5M_ORDERBOOK_PROGRESS_EVERY`.
+
 Run live observation, which captures orderbook snapshots and persists paper signals after each iteration:
 
 ```bash
