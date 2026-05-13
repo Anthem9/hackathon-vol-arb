@@ -178,7 +178,8 @@ Fitness is:
 totalPnl - maxDrawdown * 0.35 + winRate * 2
 ```
 
-Candidates with fewer than 5 trades are heavily penalized.
+Candidates with fewer than 8 train trades are heavily penalized, and validation acceptance
+requires at least 8 validation trades, positive PnL, and acceptable drawdown.
 
 The final result includes:
 

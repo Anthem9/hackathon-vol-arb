@@ -1680,7 +1680,7 @@ function mutateParams(parent: BacktestParams): BacktestParams {
 
 function scoreReport(report: BacktestReport, blockedStrategies: Set<string> = new Set()) {
   if (blockedStrategies.has(report.strategy)) return -2_000_000 + report.totalPnl;
-  if (report.tradeCount < 5) return -1_000_000 + report.totalPnl;
+  if (report.tradeCount < 8) return -1_000_000 + report.totalPnl;
   return report.totalPnl - report.maxDrawdown * 0.35 + report.winRate * 2;
 }
 
@@ -1764,7 +1764,7 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
     bestTrain,
     validation,
     paperSummary,
-    accepted: !paperBlocked && validation.tradeCount >= 5 && validation.totalPnl > 0 && validation.maxDrawdown <= validation.initialCapital * validation.parameters.maxDrawdownFraction,
+    accepted: !paperBlocked && validation.tradeCount >= 8 && validation.totalPnl > 0 && validation.maxDrawdown <= validation.initialCapital * validation.parameters.maxDrawdownFraction,
     history: history.map((item) => ({
       generation: item.generation,
       bestScore: item.bestScore,

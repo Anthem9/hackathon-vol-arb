@@ -80,6 +80,14 @@ Additional forward collection run:
   - after this stricter fill model, the best small GA run no longer showed in-sample profit:
     train `6` trades, `-0.5164` PnL; validation `4` trades, `-0.1357` PnL.
   - accepted: `false`.
+- Larger GA search after stricter limit-entry fills (`20` generations, `32` population):
+  - train: `9` trades, `21.1613` PnL.
+  - validation: `4` trades, `-1.9850` PnL.
+  - accepted: `false`.
+  - interpretation: the search can overfit rare low-price rebounds in train data; validation
+    still rejects the candidate.
+- The acceptance gate now requires at least `8` validation trades, positive validation PnL,
+  acceptable drawdown, and no paper-signal block.
 - Latest coverage:
   - markets: `1238`; resolved markets: `78`.
   - price points: `25`; orderbook snapshots: `1998`; trades: `8136`; BTC ticks: `9634`.
