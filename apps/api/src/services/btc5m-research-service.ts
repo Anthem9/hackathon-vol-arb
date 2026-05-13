@@ -87,7 +87,13 @@ export type BacktestReport = {
   initialCapital: number;
   finalCapital: number;
   totalPnl: number;
+  returnOnCapital: number;
   maxDrawdown: number;
+  maxDrawdownFraction: number;
+  grossProfit: number;
+  grossLoss: number;
+  profitFactor: number | null;
+  averageTradePnl: number;
   winRate: number;
   tradeCount: number;
   filledEntryCount: number;
@@ -1796,6 +1802,9 @@ export function runBtc5mBacktestFromData(input: { markets: Btc5mMarket[]; points
   }
 
   const wins = trades.filter((trade) => trade.pnl > 0).length;
+  const grossProfit = trades.filter((trade) => trade.pnl > 0).reduce((sum, trade) => sum + trade.pnl, 0);
+  const grossLoss = Math.abs(trades.filter((trade) => trade.pnl < 0).reduce((sum, trade) => sum + trade.pnl, 0));
+  const totalPnl = capital - params.initialCapital;
   const segments = new Map<string, { trades: number; wins: number; pnl: number }>();
   for (const trade of trades) {
     const key = beijingSegment(trade.entryTime);
@@ -1822,8 +1831,14 @@ export function runBtc5mBacktestFromData(input: { markets: Btc5mMarket[]; points
     parameters: params,
     initialCapital: params.initialCapital,
     finalCapital: capital,
-    totalPnl: capital - params.initialCapital,
+    totalPnl,
+    returnOnCapital: params.initialCapital ? totalPnl / params.initialCapital : 0,
     maxDrawdown,
+    maxDrawdownFraction: params.initialCapital ? maxDrawdown / params.initialCapital : 0,
+    grossProfit,
+    grossLoss,
+    profitFactor: grossLoss > 0 ? grossProfit / grossLoss : grossProfit > 0 ? null : 0,
+    averageTradePnl: trades.length ? totalPnl / trades.length : 0,
     winRate: trades.length ? wins / trades.length : 0,
     tradeCount: trades.length,
     filledEntryCount: trades.length,

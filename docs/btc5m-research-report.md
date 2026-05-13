@@ -89,6 +89,9 @@ Additional forward collection run:
 - Added `longshot_cone`, a convex payout strategy family that uses probability-cone
   estimates but selects by relative expected return (`probability / price - 1`) instead
   of absolute probability edge.
+- Backtest and GA reports now include additional risk/performance metrics: return on
+  capital, drawdown fraction, gross profit, gross loss, profit factor, and average trade
+  PnL.
 - Latest 3-seed full-window sweep after adding `longshot_cone`:
   - command: `genetic-sweep --days 7 --limit-markets 2016 --seeds 3 --seed-start 41 --generations 2 --population 9`.
   - accepted count: `0`.

@@ -255,6 +255,9 @@ Both strategies support:
 - Beijing day/night and weekday/weekend segment reporting.
 - trader-style risk stops before new entries.
 
+Backtest reports include gross profit, gross loss, profit factor, average trade PnL,
+return on capital, and drawdown fraction in addition to total PnL and win rate.
+
 ## Genetic Algorithm
 
 The genetic search reads the dataset once, then performs a time-ordered train/validation

@@ -52,6 +52,11 @@ assert.equal(report.trades[0]?.entryLimit, 0.05);
 assert.equal(report.trades[0]?.exitLimit, 0.1);
 assert.ok((report.trades[0]?.size ?? 0) <= 200);
 assert.ok(report.finalCapital > report.initialCapital);
+assert.ok(report.returnOnCapital > 0);
+assert.equal(report.grossLoss, 0);
+assert.ok(report.grossProfit > 0);
+assert.equal(report.profitFactor, null);
+assert.ok(report.averageTradePnl > 0);
 
 const settleReport = runBtc5mBacktestFromData({
   markets: [market],
