@@ -1733,12 +1733,34 @@ function scoreReport(report: BacktestReport, blockedStrategies: Set<string> = ne
 function splitMarketsForValidation(markets: Btc5mMarket[], validationFraction: number, points: PricePoint[] = []) {
   const pointSlugs = new Set(points.map((point) => point.marketSlug));
   const marketsWithPoints = markets.filter((market) => pointSlugs.has(market.slug));
-  const sorted = (marketsWithPoints.length >= 2 ? marketsWithPoints : markets).sort((a, b) => a.startTime - b.startTime);
-  const validationCount = Math.max(1, Math.floor(sorted.length * Math.max(0.05, Math.min(0.5, validationFraction))));
-  const splitIndex = Math.max(1, sorted.length - validationCount);
+  const sorted = [...(marketsWithPoints.length >= 2 ? marketsWithPoints : markets)].sort((a, b) => a.startTime - b.startTime);
+  const fraction = Math.max(0.05, Math.min(0.5, validationFraction));
+  if (sorted.length < 4) {
+    const validationCount = Math.max(1, Math.floor(sorted.length * fraction));
+    const splitIndex = Math.max(1, sorted.length - validationCount);
+    return {
+      trainMarkets: sorted.slice(0, splitIndex),
+      validationMarkets: sorted.slice(splitIndex),
+    };
+  }
+  const groups = new Map<string, Btc5mMarket[]>();
+  for (const market of sorted) {
+    const key = beijingSegment(market.startTime);
+    const group = groups.get(key) ?? [];
+    group.push(market);
+    groups.set(key, group);
+  }
+  const trainMarkets: Btc5mMarket[] = [];
+  const validationMarkets: Btc5mMarket[] = [];
+  for (const group of groups.values()) {
+    const validationCount = group.length >= 4 ? Math.max(1, Math.floor(group.length * fraction)) : 0;
+    const splitIndex = group.length - validationCount;
+    trainMarkets.push(...group.slice(0, splitIndex));
+    validationMarkets.push(...group.slice(splitIndex));
+  }
   return {
-    trainMarkets: sorted.slice(0, splitIndex),
-    validationMarkets: sorted.slice(splitIndex),
+    trainMarkets: trainMarkets.sort((a, b) => a.startTime - b.startTime),
+    validationMarkets: validationMarkets.sort((a, b) => a.startTime - b.startTime),
   };
 }
 

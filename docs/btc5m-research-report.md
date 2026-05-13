@@ -125,10 +125,38 @@ Additional forward collection run:
   - accepted: `false`.
   - interpretation: the best candidate reverted to `minRecentTradeVolume=0`, so this
     filter did not improve the current probability-cone family by itself.
+- Market metadata was refreshed across the full 7-day window:
+  - requested markets: `2016`.
+  - stored: `2015`.
+  - errors: `1` aborted request.
+  - resolved markets in the 7-day window increased from `78` to `2012`.
+- Coverage after the full metadata refresh:
+  - markets: `2012`; resolved markets: `2012`.
+  - price points: `25`; orderbook snapshots: `1998`; trades: `78116`; BTC ticks: `9598`.
+  - executable points: `80114` vs required `12072`.
+  - `readyForGeneticSearch: true`.
+- Train/validation splitting now uses a time-ordered split inside each Beijing segment,
+  instead of a single global time split. This avoids accepting a candidate that only trades
+  a segment present in train but absent from validation.
+- First GA run after segment-stratified validation:
+  - dataset: `81725` points.
+  - best train candidate: `probability_cone`, `targetSegment=all`.
+  - key parameters: `entryMaxPrice=0.0347`, `takeProfitMultiple=1.8870`,
+    `stopLossFraction=0.95`, `probabilityEdge=0.1234`,
+    `minRecentTradeVolume=133.2102`, `tradeVolumeLookbackSeconds=78`.
+  - train: `24` trades, `23.3239` PnL, `6.0361` max drawdown.
+  - validation: `8` trades, `7.6932` PnL, `2.6812` max drawdown.
+  - validation segment breakdown: `weekend_beijing_day=2` trades / `8.3254` PnL,
+    `weekday_beijing_day=3` trades / `-1.6168` PnL,
+    `weekday_beijing_night=3` trades / `0.9846` PnL.
+  - accepted by the current research gate: `true`.
+  - interpretation: this is the first candidate worth stricter follow-up. It is not yet a
+    live-trading approval because most executable evidence comes from `trade_proxy`
+    market trades rather than full historical orderbook depth.
 - Latest coverage:
-  - markets: `1236`; resolved markets: `78`.
-  - price points: `25`; orderbook snapshots: `1998`; trades: `78116`; BTC ticks: `9624`.
-  - executable points: `80114` vs required `7416`.
+  - markets: `2012`; resolved markets: `2012`.
+  - price points: `25`; orderbook snapshots: `1998`; trades: `78116`; BTC ticks: `9598`.
+  - executable points: `80114` vs required `12072`.
 - GA after live observer used `3585` points:
   - train: `7` markets, `2307` points, `0` selected trades for the best train candidate.
   - validation: `2` markets, `1278` points, `0` trades.
@@ -154,6 +182,7 @@ The `coverage` command should be used before larger GA runs. It reports executab
 - Beijing weekday/day, weekday/night, weekend/day, weekend/night segmentation.
 - Optional strategy targeting of one Beijing segment during GA search.
 - Optional recent same-outcome trade-volume filtering before entry.
+- Segment-stratified train/validation splitting.
 - Hard risk controls:
   - max daily loss,
   - max drawdown stop,

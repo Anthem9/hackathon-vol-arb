@@ -158,7 +158,10 @@ Both strategies support:
 
 ## Genetic Algorithm
 
-The genetic search reads the dataset once, sorts markets by time, searches on the train slice, and evaluates the best candidate on the holdout validation slice. With the default 7-day window, the validation fraction is `2/7`, matching the original 5-day train / 2-day validation plan.
+The genetic search reads the dataset once, then performs a time-ordered train/validation
+split inside each Beijing segment. This keeps weekday daytime, weekday nighttime,
+weekend daytime, and weekend nighttime markets represented in validation when enough
+markets exist. With the default 7-day window, the validation fraction is `2/7`.
 
 The genetic search mutates these parameters:
 
