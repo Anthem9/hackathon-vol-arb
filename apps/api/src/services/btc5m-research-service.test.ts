@@ -163,10 +163,10 @@ assert.equal(bidAskSeparationReport.tradeCount, 0);
 const askOnlyExitReport = runBtc5mBacktestFromData({
   markets: [market],
   points: [
-    { marketSlug: market.slug, tokenId: "up-token", outcome: "up", price: 0.05, size: 500, time: start + 60_000, source: "orderbook_snapshot", side: "ask" },
-    { marketSlug: market.slug, tokenId: "down-token", outcome: "down", price: 0.95, size: 500, time: start + 60_000, source: "orderbook_snapshot", side: "ask" },
-    { marketSlug: market.slug, tokenId: "up-token", outcome: "up", price: 0.05, size: 500, time: start + 61_000, source: "orderbook_snapshot", side: "ask" },
-    { marketSlug: market.slug, tokenId: "up-token", outcome: "up", price: 0.01, size: 500, time: start + 90_000, source: "orderbook_snapshot", side: "ask" },
+    { marketSlug: market.slug, tokenId: "up-token", outcome: "up", price: 0.05, size: 1000, time: start + 60_000, source: "orderbook_snapshot", side: "ask" },
+    { marketSlug: market.slug, tokenId: "down-token", outcome: "down", price: 0.95, size: 1000, time: start + 60_000, source: "orderbook_snapshot", side: "ask" },
+    { marketSlug: market.slug, tokenId: "up-token", outcome: "up", price: 0.05, size: 1000, time: start + 61_000, source: "orderbook_snapshot", side: "ask" },
+    { marketSlug: market.slug, tokenId: "up-token", outcome: "up", price: 0.01, size: 1000, time: start + 90_000, source: "orderbook_snapshot", side: "ask" },
   ],
   params: {
     ...DEFAULT_BACKTEST_PARAMS,

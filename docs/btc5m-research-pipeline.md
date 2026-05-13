@@ -263,6 +263,8 @@ Both strategies support:
 - limit-entry fill verification from subsequent market data within `entryMaxWaitSeconds`,
 - observed size checks for `trade_proxy` and `orderbook_snapshot` fills when size data is
   available,
+- max visible-liquidity participation; the default model only allows using 25% of observed
+  size for a simulated fill,
 - bid/ask side separation for `orderbook_snapshot`: entries and candidate prices use asks,
   exits use bids,
 - optional recent same-outcome trade-volume filtering before entry,
@@ -309,6 +311,7 @@ The genetic search mutates these parameters:
 - `decisionDelaySeconds`
 - `entryMaxWaitSeconds`
 - `maxDailyTrades`
+- `maxLiquidityParticipation`
 - `kellyFraction`
 - `coneVolatilityMultiplier`
 - `minRecentTradeVolume`

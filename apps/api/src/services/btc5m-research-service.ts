@@ -59,6 +59,7 @@ export type BacktestParams = {
   maxConsecutiveLosses: number;
   maxOpenMarkets: number;
   maxDailyTrades: number;
+  maxLiquidityParticipation: number;
   useKellySizing: boolean;
   kellyFraction: number;
   coneVolatilityMultiplier: number;
@@ -150,6 +151,7 @@ export const DEFAULT_BACKTEST_PARAMS: BacktestParams = {
   maxConsecutiveLosses: 6,
   maxOpenMarkets: 1,
   maxDailyTrades: 24,
+  maxLiquidityParticipation: 0.25,
   useKellySizing: false,
   kellyFraction: 0.25,
   coneVolatilityMultiplier: 1,
@@ -1103,7 +1105,7 @@ export async function evaluateLatestBtc5mPaperSignal(input: { params?: Partial<B
     const riskBudget = params.initialCapital * params.maxRiskFraction;
     const size = Math.floor((riskBudget / limitPrice) * 100) / 100;
     const priceInBounds = limitPrice >= params.entryMinPrice && limitPrice <= params.entryMaxPrice;
-    const enoughLiquidity = hasEnoughObservedLiquidity(candidate, size);
+    const enoughLiquidity = hasEnoughObservedLiquidity(candidate, size, params);
     const enter = priceInBounds && enoughLiquidity;
     report = {
       signalId,
@@ -1691,15 +1693,16 @@ const MIN_STRESS_VALIDATION_TRADES = 4;
 const MIN_WALK_FORWARD_WINDOWS = 3;
 const MIN_BALANCED_ORDERBOOK_SEGMENTS = 3;
 
-function hasEnoughObservedLiquidity(point: PricePoint, requestedSize: number) {
-  return point.size === undefined || !Number.isFinite(point.size) || point.size >= requestedSize;
+function hasEnoughObservedLiquidity(point: PricePoint, requestedSize: number, params: BacktestParams) {
+  if (point.size === undefined || !Number.isFinite(point.size)) return true;
+  return point.size * params.maxLiquidityParticipation >= requestedSize;
 }
 
 function findLimitBuyFill(points: PricePoint[], submittedAt: number, limitPrice: number, requestedSize: number, params: BacktestParams) {
   const deadline = submittedAt + params.entryMaxWaitSeconds * 1000;
   return points.find((point) => {
     if (point.time < submittedAt || point.time > deadline) return false;
-    return priceToAsk(point, params) <= limitPrice && hasEnoughObservedLiquidity(point, requestedSize);
+    return priceToAsk(point, params) <= limitPrice && hasEnoughObservedLiquidity(point, requestedSize, params);
   });
 }
 
@@ -1793,7 +1796,7 @@ export function runBtc5mBacktestFromData(input: { markets: Btc5mMarket[]; points
         const remaining = (market.endTime - point.time) / 1000;
         const bid = priceToBid(point, params);
         if (!Number.isFinite(bid)) continue;
-        if (bid >= target && hasEnoughObservedLiquidity(point, size)) {
+        if (bid >= target && hasEnoughObservedLiquidity(point, size, params)) {
           exitTime = point.time;
           exitPrice = target;
           exitLimit = target;
@@ -1801,7 +1804,7 @@ export function runBtc5mBacktestFromData(input: { markets: Btc5mMarket[]; points
           status = "sold";
           break;
         }
-        if (bid <= stop && heldSeconds >= 5 && hasEnoughObservedLiquidity(point, size)) {
+        if (bid <= stop && heldSeconds >= 5 && hasEnoughObservedLiquidity(point, size, params)) {
           exitTime = point.time;
           exitPrice = bid;
           exitLimit = bid;
@@ -1809,7 +1812,7 @@ export function runBtc5mBacktestFromData(input: { markets: Btc5mMarket[]; points
           status = "sold";
           break;
         }
-        if ((heldSeconds >= params.maxHoldSeconds || remaining <= params.forceExitBeforeEndSeconds) && hasEnoughObservedLiquidity(point, size)) {
+        if ((heldSeconds >= params.maxHoldSeconds || remaining <= params.forceExitBeforeEndSeconds) && hasEnoughObservedLiquidity(point, size, params)) {
           exitTime = point.time;
           exitPrice = bid;
           exitLimit = bid;
@@ -1982,6 +1985,7 @@ function mutateParams(parent: BacktestParams, random: RandomSource): BacktestPar
     decisionDelaySeconds: Math.max(0, Math.min(5, Math.round(parent.decisionDelaySeconds + randomBetween(-1, 1, random)))),
     entryMaxWaitSeconds: Math.max(1, Math.min(60, Math.round(parent.entryMaxWaitSeconds + randomBetween(-5, 5, random)))),
     maxDailyTrades: Math.max(3, Math.min(96, Math.round(parent.maxDailyTrades + randomBetween(-6, 6, random)))),
+    maxLiquidityParticipation: Math.max(0.05, Math.min(0.75, parent.maxLiquidityParticipation + randomBetween(-0.05, 0.05, random))),
     kellyFraction: Math.max(0.05, Math.min(0.5, parent.kellyFraction + randomBetween(-0.05, 0.05, random))),
     coneVolatilityMultiplier: Math.max(0.25, Math.min(4, parent.coneVolatilityMultiplier + randomBetween(-0.25, 0.25, random))),
     minRecentTradeVolume: Math.max(0, Math.min(5000, parent.minRecentTradeVolume + randomBetween(-150, 150, random))),
@@ -2326,6 +2330,7 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
     decisionDelaySeconds: Math.round(randomBetween(0, 5, random)),
     entryMaxWaitSeconds: Math.round(randomBetween(3, 30, random)),
     maxDailyTrades: Math.round(randomBetween(6, 48, random)),
+    maxLiquidityParticipation: randomBetween(0.1, 0.5, random),
     useKellySizing: index % 3 === 0,
     kellyFraction: randomBetween(0.1, 0.35, random),
     coneVolatilityMultiplier: randomBetween(0.5, 2.5, random),

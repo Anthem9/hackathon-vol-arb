@@ -108,6 +108,8 @@ Additional forward collection run:
 - Paper signals now apply the same visible-liquidity check as backtests when candidate
   size data is present, so `would_enter` is blocked if visible size is below requested
   paper size.
+- Fill liquidity checks now use `maxLiquidityParticipation`; the default model only lets
+  simulated orders consume up to 25% of visible size, and the GA can search that limit.
 - GA acceptance now checks orderbook coverage by Beijing regime. Targeted strategies need
   `partial_orderbook` coverage in their selected segment, and `targetSegment=all`
   strategies need at least 3 Beijing regimes with `partial_orderbook` coverage.
