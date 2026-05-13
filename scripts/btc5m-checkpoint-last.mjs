@@ -7,7 +7,7 @@ const root = resolve(new URL("..", import.meta.url).pathname);
 
 function usage() {
   return `Usage:
-  pnpm btc5m:checkpoint:last [--full] [--require-current]
+  pnpm btc5m:checkpoint:last [--full] [--require-current] [--require-live-ready]
 
 Reads the most recent local BTC 5m checkpoint report from .local/reports without
 running coverage, readiness, GA, network calls, or orderbook collection.
@@ -24,6 +24,7 @@ if (process.argv.includes("--help") || process.argv.includes("-h")) {
 
 const full = process.argv.includes("--full");
 const requireCurrent = process.argv.includes("--require-current");
+const requireLiveReady = process.argv.includes("--require-live-ready");
 const reportsDir = process.env.BTC5M_CHECKPOINT_REPORT_DIR
   ? resolve(root, process.env.BTC5M_CHECKPOINT_REPORT_DIR)
   : resolve(root, ".local/reports");
@@ -88,4 +89,7 @@ const output = full
 console.log(JSON.stringify(output, null, 2));
 if (requireCurrent && !reportMatchesCurrentHead) {
   process.exitCode = 2;
+}
+if (requireLiveReady && !latest.parsed.liveReady) {
+  process.exitCode = 3;
 }

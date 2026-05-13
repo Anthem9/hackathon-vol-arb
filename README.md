@@ -146,10 +146,11 @@ pnpm btc5m:orderbook:status
 pnpm btc5m:orderbook:plan
 pnpm btc5m:checkpoint:last
 pnpm btc5m:checkpoint:last:current
+pnpm btc5m:checkpoint:last:live
 pnpm btc5m:checkpoint:status
 ```
 
-`checkpoint:last` only reads the latest local `.local/reports` checkpoint JSON and does not run network checks, readiness, GA, or collectors. It prints `reportMatchesCurrentHead`; when that is `false`, rerun `checkpoint:status` before treating the report as current. `checkpoint:last:current` exits non-zero when the saved report does not match the current clean HEAD. `checkpoint:status` is the low-cost no-GA status check while waiting for data. Final acceptance must use the full checkpoint gate:
+`checkpoint:last` only reads the latest local `.local/reports` checkpoint JSON and does not run network checks, readiness, GA, or collectors. It prints `reportMatchesCurrentHead`; when that is `false`, rerun `checkpoint:status` before treating the report as current. `checkpoint:last:current` exits non-zero when the saved report does not match the current clean HEAD. `checkpoint:last:live` also exits non-zero unless the saved current report is `liveReady=true`; use it only as a saved-report guard, not as a replacement for the full gate. `checkpoint:status` is the low-cost no-GA status check while waiting for data. Final acceptance must use the full checkpoint gate:
 
 ```bash
 pnpm btc5m:checkpoint

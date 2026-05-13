@@ -17,7 +17,7 @@ assert.match(result.stdout, /pnpm btc5m:checkpoint:status/);
 assert.match(result.stdout, /pnpm btc5m:checkpoint:gate/);
 assert.match(result.stdout, /BTC5M_CHECKPOINT_REPORT_FILE/);
 assert.equal(lastResult.status, 0, lastResult.stderr || lastResult.stdout);
-assert.match(lastResult.stdout, /pnpm btc5m:checkpoint:last \[--full\] \[--require-current\]/);
+assert.match(lastResult.stdout, /pnpm btc5m:checkpoint:last \[--full\] \[--require-current\] \[--require-live-ready\]/);
 assert.match(lastResult.stdout, /without\s+running coverage, readiness, GA, network calls, or orderbook collection/);
 assert.match(lastResult.stdout, /BTC5M_CHECKPOINT_REPORT_DIR/);
 
@@ -65,6 +65,26 @@ try {
   assert.equal(staleResult.status, 2, staleResult.stderr || staleResult.stdout);
   const staleSummary = JSON.parse(staleResult.stdout);
   assert.equal(staleSummary.reportMatchesCurrentHead, false);
+
+  const notLiveResult = spawnSync("node", ["scripts/btc5m-checkpoint-last.mjs", "--require-live-ready"], {
+    encoding: "utf8",
+    env: { ...process.env, BTC5M_CHECKPOINT_REPORT_DIR: tempReports },
+  });
+  assert.equal(notLiveResult.status, 0, notLiveResult.stderr || notLiveResult.stdout);
+
+  writeFileSync(
+    join(tempReports, "btc5m-checkpoint-newest-not-live.json"),
+    `${JSON.stringify({
+      generatedAt: "2026-05-13T03:00:00.000Z",
+      summary: { liveReady: false, marketsWithOrderbook: 3 },
+      liveReady: false,
+    })}\n`,
+  );
+  const liveGateResult = spawnSync("node", ["scripts/btc5m-checkpoint-last.mjs", "--require-live-ready"], {
+    encoding: "utf8",
+    env: { ...process.env, BTC5M_CHECKPOINT_REPORT_DIR: tempReports },
+  });
+  assert.equal(liveGateResult.status, 3, liveGateResult.stderr || liveGateResult.stdout);
 } finally {
   rmSync(tempReports, { recursive: true, force: true });
 }
