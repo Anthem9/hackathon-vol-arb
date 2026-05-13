@@ -83,6 +83,12 @@ Run repeated short collector sessions with a coverage report at the end:
 pnpm --filter @vol-arb/api btc5m:research collect-orderbook-sessions --sessions 12 --duration-seconds 300 --interval-ms 1000 --pause-seconds 5 --progress-every 60
 ```
 
+Restrict collection to specific Beijing segments when coverage is unbalanced:
+
+```bash
+pnpm --filter @vol-arb/api btc5m:research collect-orderbook-sessions --sessions 12 --duration-seconds 300 --target-segments weekday_beijing_day,weekend_beijing_night --wait-for-target-segment
+```
+
 Run the segmented collector in the background:
 
 ```bash
@@ -97,6 +103,13 @@ enough to target roughly 16 hours of forward collection; override them with
 `BTC5M_ORDERBOOK_SESSIONS`, `BTC5M_ORDERBOOK_DURATION_SECONDS`,
 `BTC5M_ORDERBOOK_INTERVAL_MS`, `BTC5M_ORDERBOOK_PAUSE_SECONDS`, and
 `BTC5M_ORDERBOOK_PROGRESS_EVERY`.
+
+Set `BTC5M_ORDERBOOK_TARGET_SEGMENTS` to a comma-separated list such as
+`weekday_beijing_day,weekend_beijing_night` to start a background collector that only
+captures those regimes. When target segments are configured, the launcher adds
+`--wait-for-target-segment` by default, so it waits instead of exiting if the current
+Beijing segment is not yet in the target list. Set
+`BTC5M_ORDERBOOK_WAIT_FOR_TARGET_SEGMENT=false` to disable waiting.
 
 On macOS, new background collector starts are wrapped with `caffeinate -dimsu` by default
 to reduce sleep risk during long collection. Set `BTC5M_ORDERBOOK_CAFFEINATE=false` to

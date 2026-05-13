@@ -75,6 +75,13 @@ function start() {
     "--progress-every",
     process.env.BTC5M_ORDERBOOK_PROGRESS_EVERY ?? "60",
   ];
+  if (process.env.BTC5M_ORDERBOOK_TARGET_SEGMENTS) {
+    args.push("--target-segments", process.env.BTC5M_ORDERBOOK_TARGET_SEGMENTS);
+    if (process.env.BTC5M_ORDERBOOK_WAIT_FOR_TARGET_SEGMENT !== "false") {
+      args.push("--wait-for-target-segment");
+      args.push("--target-segment-check-seconds", process.env.BTC5M_ORDERBOOK_TARGET_SEGMENT_CHECK_SECONDS ?? "60");
+    }
+  }
   const command = useCaffeinate() ? "caffeinate" : "pnpm";
   const commandArgs = useCaffeinate() ? ["-dimsu", "pnpm", ...args] : args;
   const logFd = openSync(logFile, "a");

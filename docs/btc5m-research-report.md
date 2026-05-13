@@ -195,6 +195,11 @@ Additional forward collection run:
 - Coverage now reports `nextWeakSegmentWindows`; current next priority windows are:
   - `weekday_beijing_day`: Beijing `2026-05-14 08:00:00` to `2026-05-14 18:00:00`.
   - `weekend_beijing_night`: Beijing `2026-05-16 00:00:00` to `2026-05-16 08:00:00`.
+- `collect-orderbook-sessions` now supports `--target-segments` and
+  `--wait-for-target-segment`, and the background collector launcher can pass these via
+  `BTC5M_ORDERBOOK_TARGET_SEGMENTS`. This allows future collection runs to wait for and
+  capture missing Beijing day/night or weekday/weekend regimes instead of over-sampling
+  the current segment.
 - Added background orderbook collector helpers:
   - `pnpm btc5m:orderbook:start`
   - `pnpm btc5m:orderbook:collector`

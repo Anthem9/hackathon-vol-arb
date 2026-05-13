@@ -57,7 +57,7 @@ function usage() {
   pnpm --filter @vol-arb/api btc5m:research collect-btc-price --days 7
   pnpm --filter @vol-arb/api btc5m:research snapshot-orderbook
   pnpm --filter @vol-arb/api btc5m:research collect-orderbook-live --duration-seconds 3600 --interval-ms 1000
-  pnpm --filter @vol-arb/api btc5m:research collect-orderbook-sessions --sessions 12 --duration-seconds 300 --interval-ms 1000 --pause-seconds 5
+  pnpm --filter @vol-arb/api btc5m:research collect-orderbook-sessions --sessions 12 --duration-seconds 300 --interval-ms 1000 --pause-seconds 5 [--target-segments weekday_beijing_day,weekend_beijing_night] [--wait-for-target-segment]
   pnpm --filter @vol-arb/api btc5m:research observe-live --duration-seconds 3600 --interval-ms 1000
   pnpm --filter @vol-arb/api btc5m:research coverage --days 7
   pnpm --filter @vol-arb/api btc5m:research status --days 7 [--with-ga] [--seed 42]
@@ -69,6 +69,42 @@ function usage() {
   pnpm --filter @vol-arb/api btc5m:research genetic-sweep --days 7 --seeds 5 --seed-start 1 --generations 6 --population 12
 
 All simulated orders are limit orders. The default initial capital is 100 USDC and max risk per trade is 10% of current equity.`;
+}
+
+function stringArg(args: Args, key: string, fallback = "") {
+  const value = args[key];
+  return typeof value === "string" ? value : fallback;
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function beijingSegment(timestamp: number) {
+  const date = new Date(timestamp + 8 * 60 * 60 * 1000);
+  const day = date.getUTCDay();
+  const hour = date.getUTCHours();
+  const dayType = day === 0 || day === 6 ? "weekend" : "weekday";
+  const session = hour >= 8 && hour < 18 ? "beijing_day" : "beijing_night";
+  return `${dayType}_${session}`;
+}
+
+function parseTargetSegments(args: Args) {
+  return stringArg(args, "target-segments")
+    .split(",")
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+}
+
+async function waitForTargetSegment(input: { targetSegments: string[]; checkSeconds: number; shouldStop: () => boolean }) {
+  if (input.targetSegments.length === 0) return beijingSegment(Date.now());
+  while (!input.shouldStop()) {
+    const current = beijingSegment(Date.now());
+    if (input.targetSegments.includes(current)) return current;
+    console.error(`collect-orderbook-sessions waiting: currentSegment=${current} targetSegments=${input.targetSegments.join(",")}`);
+    await sleep(Math.max(1, input.checkSeconds) * 1000);
+  }
+  return null;
 }
 
 async function main() {
@@ -215,9 +251,22 @@ async function main() {
     });
     const sessions = Math.max(1, Math.trunc(numberArg(args, "sessions", 12)));
     const pauseSeconds = Math.max(0, numberArg(args, "pause-seconds", 5));
+    const targetSegments = parseTargetSegments(args);
+    const waitForTarget = boolArg(args, "wait-for-target-segment");
+    const segmentCheckSeconds = Math.max(1, numberArg(args, "target-segment-check-seconds", 60));
     const runs = [];
     for (let session = 1; session <= sessions && !stop; session += 1) {
-      console.error(`collect-orderbook-sessions session=${session}/${sessions} starting`);
+      const currentSegment = targetSegments.length
+        ? waitForTarget
+          ? await waitForTargetSegment({ targetSegments, checkSeconds: segmentCheckSeconds, shouldStop: () => stop })
+          : beijingSegment(Date.now())
+        : beijingSegment(Date.now());
+      if (stop || !currentSegment) break;
+      if (targetSegments.length > 0 && !targetSegments.includes(currentSegment)) {
+        console.error(`collect-orderbook-sessions stopped: currentSegment=${currentSegment} targetSegments=${targetSegments.join(",")}`);
+        break;
+      }
+      console.error(`collect-orderbook-sessions session=${session}/${sessions} starting segment=${currentSegment}`);
       const result = await collectLiveOrderbookSnapshots({
         durationSeconds: numberArg(args, "duration-seconds", 300),
         intervalMs: numberArg(args, "interval-ms", 1000),
@@ -226,7 +275,7 @@ async function main() {
         onProgress: (progress) => {
           if (progress.iterations === 1 || progress.iterations % numberArg(args, "progress-every", 60) === 0) {
             console.error(
-              `collect-orderbook-sessions session=${session}/${sessions} iterations=${progress.iterations} snapshots=${progress.snapshots} errors=${progress.errors} elapsed=${progress.elapsedSeconds.toFixed(1)}s`,
+              `collect-orderbook-sessions session=${session}/${sessions} segment=${currentSegment} iterations=${progress.iterations} snapshots=${progress.snapshots} errors=${progress.errors} elapsed=${progress.elapsedSeconds.toFixed(1)}s`,
             );
           }
         },
@@ -240,6 +289,8 @@ async function main() {
         {
           sessionsRequested: sessions,
           sessionsCompleted: runs.length,
+          targetSegments,
+          waitForTargetSegment: waitForTarget,
           snapshots: runs.reduce((sum, run) => sum + run.snapshots, 0),
           errors: runs.flatMap((run) => run.errors),
           runs,
