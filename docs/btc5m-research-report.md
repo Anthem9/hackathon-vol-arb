@@ -17,6 +17,7 @@ pnpm --filter @vol-arb/api btc5m:research probe
 pnpm --filter @vol-arb/api btc5m:research collect-markets --days 7 --limit 240 --throttle-ms 25 --timeout-ms 2000 --progress-every 50
 pnpm --filter @vol-arb/api btc5m:research collect-price-history --days 7 --limit-markets 30 --throttle-ms 25 --fidelity-seconds 60 --timeout-ms 2500 --progress-every 20
 pnpm --filter @vol-arb/api btc5m:research genetic --days 7 --limit-markets 240 --generations 2 --population 6 --persist-best
+pnpm --filter @vol-arb/api btc5m:research coverage --days 7
 ```
 
 Observed:
@@ -31,6 +32,8 @@ Observed:
 No trade was selected because the historical price path was too sparse to verify limit-order entry and limit-order exit rules. The backtester correctly refused to infer fills from missing data.
 
 This is preferable to a false-positive backtest. The system currently requires observable price/book evidence before it records a fill.
+
+The `coverage` command should be used before larger GA runs. It reports executable evidence from orderbook snapshots and trades, plus Beijing time segment coverage.
 
 ## Implemented Controls
 

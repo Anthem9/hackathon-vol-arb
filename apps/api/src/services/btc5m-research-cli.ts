@@ -4,6 +4,7 @@ import {
   collectBtc5mTrades,
   collectCurrentOrderbookSnapshots,
   collectLiveOrderbookSnapshots,
+  getBtc5mResearchCoverage,
   collectRecentBtc5mMarkets,
   discoverBtc5mDataSources,
   runBtc5mBacktest,
@@ -46,11 +47,13 @@ function usage() {
   return `Usage:
   pnpm --filter @vol-arb/api btc5m:research probe
   pnpm --filter @vol-arb/api btc5m:research collect-markets --days 7 --limit 2016
+  pnpm --filter @vol-arb/api btc5m:research refresh-results --days 7 --limit 2016
   pnpm --filter @vol-arb/api btc5m:research collect-price-history --days 7 --limit-markets 2016
   pnpm --filter @vol-arb/api btc5m:research collect-trades --days 7 --limit-markets 2016 --pages-per-token 2
   pnpm --filter @vol-arb/api btc5m:research collect-btc-price --days 7
   pnpm --filter @vol-arb/api btc5m:research snapshot-orderbook
   pnpm --filter @vol-arb/api btc5m:research collect-orderbook-live --duration-seconds 3600 --interval-ms 1000
+  pnpm --filter @vol-arb/api btc5m:research coverage --days 7
   pnpm --filter @vol-arb/api btc5m:research backtest --days 7 --limit-markets 2016 --persist
   pnpm --filter @vol-arb/api btc5m:research genetic --days 7 --generations 6 --population 12 --persist-best
 
@@ -78,6 +81,26 @@ async function main() {
           onProgress: (progress) => {
             if (progress.processed === progress.total || progress.processed % numberArg(args, "progress-every", 100) === 0) {
               console.error(`collect-markets ${progress.processed}/${progress.total} stored=${progress.stored} missing=${progress.missing} errors=${progress.errors}`);
+            }
+          },
+        }),
+        null,
+        2,
+      ),
+    );
+    return;
+  }
+  if (command === "refresh-results") {
+    console.log(
+      JSON.stringify(
+        await collectRecentBtc5mMarkets({
+          days: numberArg(args, "days", 7),
+          limit: numberArg(args, "limit", 2016),
+          throttleMs: numberArg(args, "throttle-ms", 50),
+          timeoutMs: numberArg(args, "timeout-ms", 2500),
+          onProgress: (progress) => {
+            if (progress.processed === progress.total || progress.processed % numberArg(args, "progress-every", 100) === 0) {
+              console.error(`refresh-results ${progress.processed}/${progress.total} stored=${progress.stored} missing=${progress.missing} errors=${progress.errors}`);
             }
           },
         }),
@@ -174,6 +197,10 @@ async function main() {
         2,
       ),
     );
+    return;
+  }
+  if (command === "coverage") {
+    console.log(JSON.stringify(await getBtc5mResearchCoverage({ days: numberArg(args, "days", 7) }), null, 2));
     return;
   }
   if (command === "genetic") {

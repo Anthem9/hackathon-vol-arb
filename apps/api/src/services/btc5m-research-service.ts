@@ -246,7 +246,12 @@ function normalizeMarket(event: JsonRecord): Btc5mMarket | null {
   const startEpoch = parseEpochFromSlug(slug);
   const endTime = Date.parse(asString(market.endDate || event.endDate));
   if (!slug || !upTokenId || !downTokenId || !startEpoch || !Number.isFinite(endTime)) return null;
-  const winner = asString(market.outcome || market.result || event.outcome || event.result).toLowerCase();
+  const closed = event.closed === true || market.closed === true;
+  const explicitWinner = asString(market.outcome || market.result || event.outcome || event.result).toLowerCase();
+  const outcomePrices = parseJsonArray(market.outcomePrices).map((value) => asNumber(value));
+  const resolvedPriceWinnerIndex = closed && outcomePrices.length >= 2 ? outcomePrices.findIndex((price) => price >= 0.99) : -1;
+  const priceWinner = resolvedPriceWinnerIndex >= 0 ? outcomes[resolvedPriceWinnerIndex] : "";
+  const winner = explicitWinner || priceWinner;
   const winningOutcome = winner === "up" || winner === "down" ? winner : null;
   return {
     slug,
@@ -258,8 +263,8 @@ function normalizeMarket(event: JsonRecord): Btc5mMarket | null {
     endTime,
     upTokenId,
     downTokenId,
-    closed: event.closed === true || market.closed === true,
-    resolved: Boolean(event.closed === true || market.closed === true || winningOutcome),
+    closed,
+    resolved: Boolean(closed || winningOutcome),
     winningOutcome,
     raw: event,
   };
@@ -698,6 +703,73 @@ export async function collectAuxiliaryBtcOneMinute(input: { days?: number; throt
   if (binance.stored > 0) return { primary: "binance_1m_close", binance, coinbase: null };
   const coinbase = await collectCoinbaseBtcOneMinute(input);
   return { primary: coinbase.stored > 0 ? "coinbase_1m_close" : "none", binance, coinbase };
+}
+
+export async function getBtc5mResearchCoverage(input: { days?: number } = {}) {
+  const days = Math.max(1, input.days ?? 7);
+  const summary = await runDatabaseQuery<{
+    markets: string;
+    resolved_markets: string;
+    price_points: string;
+    orderbook_snapshots: string;
+    trades: string;
+    btc_ticks: string;
+  }>(
+    `with recent_markets as (
+       select slug
+       from polymarket_btc5m_markets
+       where start_time >= now() - ($1::text)::interval
+     )
+     select
+       (select count(*) from recent_markets) as markets,
+       (select count(*) from polymarket_btc5m_markets where slug in (select slug from recent_markets) and winning_outcome is not null) as resolved_markets,
+       (select count(*) from polymarket_btc5m_price_history where market_slug in (select slug from recent_markets)) as price_points,
+       (select count(*) from polymarket_btc5m_orderbook_snapshots where market_slug in (select slug from recent_markets)) as orderbook_snapshots,
+       (select count(*) from polymarket_btc5m_trades where market_slug in (select slug from recent_markets)) as trades,
+       (select count(*) from btc_price_ticks where source_timestamp >= now() - ($1::text)::interval) as btc_ticks`,
+    [`${days} days`],
+  );
+  const segmentRows = await runDatabaseQuery<{ segment: string; snapshots: string }>(
+    `select
+       case
+         when extract(dow from snapshot_time at time zone 'Asia/Shanghai') in (0, 6) then 'weekend' else 'weekday'
+       end || '_' ||
+       case
+         when extract(hour from snapshot_time at time zone 'Asia/Shanghai') >= 8
+          and extract(hour from snapshot_time at time zone 'Asia/Shanghai') < 18 then 'beijing_day'
+         else 'beijing_night'
+       end as segment,
+       count(*) as snapshots
+     from polymarket_btc5m_orderbook_snapshots
+     where snapshot_time >= now() - ($1::text)::interval
+     group by 1
+     order by 1`,
+    [`${days} days`],
+  );
+  const row = summary?.rows[0];
+  const markets = Number(row?.markets ?? 0);
+  const pricePoints = Number(row?.price_points ?? 0);
+  const snapshots = Number(row?.orderbook_snapshots ?? 0);
+  const trades = Number(row?.trades ?? 0);
+  const executablePoints = snapshots + trades;
+  const minimumExecutablePoints = Math.max(500, markets * 6);
+  return {
+    days,
+    markets,
+    resolvedMarkets: Number(row?.resolved_markets ?? 0),
+    pricePoints,
+    orderbookSnapshots: snapshots,
+    trades,
+    btcTicks: Number(row?.btc_ticks ?? 0),
+    executablePoints,
+    minimumExecutablePoints,
+    readyForGeneticSearch: executablePoints >= minimumExecutablePoints,
+    segmentSnapshots: Object.fromEntries((segmentRows?.rows ?? []).map((segment) => [segment.segment, Number(segment.snapshots)])),
+    nextAction:
+      executablePoints >= minimumExecutablePoints
+        ? "Run btc5m:research genetic with a larger population and validation split."
+        : "Continue collect-orderbook-live until executable orderbook/trade evidence is dense enough for limit-order fills.",
+  };
 }
 
 async function readPricePoints(days: number, limitMarkets: number): Promise<{ markets: Btc5mMarket[]; points: PricePoint[] }> {

@@ -67,6 +67,12 @@ Run a managed live orderbook collector:
 pnpm --filter @vol-arb/api btc5m:research collect-orderbook-live --duration-seconds 3600 --interval-ms 1000 --progress-every 30
 ```
 
+Check whether the dataset is dense enough for executable limit-order backtests:
+
+```bash
+pnpm --filter @vol-arb/api btc5m:research coverage --days 7
+```
+
 Run a backtest:
 
 ```bash
