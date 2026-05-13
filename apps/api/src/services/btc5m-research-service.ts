@@ -1786,6 +1786,7 @@ export function runBtc5mBacktestFromData(input: { markets: Btc5mMarket[]; points
         const heldSeconds = (point.time - entryFill.time) / 1000;
         const remaining = (market.endTime - point.time) / 1000;
         const bid = priceToBid(point, params);
+        if (!Number.isFinite(bid)) continue;
         if (bid >= target && hasEnoughObservedLiquidity(point, size)) {
           exitTime = point.time;
           exitPrice = target;

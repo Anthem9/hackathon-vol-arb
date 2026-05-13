@@ -160,4 +160,31 @@ const bidAskSeparationReport = runBtc5mBacktestFromData({
 
 assert.equal(bidAskSeparationReport.tradeCount, 0);
 
+const askOnlyExitReport = runBtc5mBacktestFromData({
+  markets: [market],
+  points: [
+    { marketSlug: market.slug, tokenId: "up-token", outcome: "up", price: 0.05, size: 500, time: start + 60_000, source: "orderbook_snapshot", side: "ask" },
+    { marketSlug: market.slug, tokenId: "down-token", outcome: "down", price: 0.95, size: 500, time: start + 60_000, source: "orderbook_snapshot", side: "ask" },
+    { marketSlug: market.slug, tokenId: "up-token", outcome: "up", price: 0.05, size: 500, time: start + 61_000, source: "orderbook_snapshot", side: "ask" },
+    { marketSlug: market.slug, tokenId: "up-token", outcome: "up", price: 0.01, size: 500, time: start + 90_000, source: "orderbook_snapshot", side: "ask" },
+  ],
+  params: {
+    ...DEFAULT_BACKTEST_PARAMS,
+    initialCapital: 100,
+    maxRiskFraction: 0.1,
+    entryMinPrice: 0.01,
+    entryMaxPrice: 0.08,
+    assumedSpread: 0,
+    decisionDelaySeconds: 0,
+    entryMaxWaitSeconds: 5,
+    minSecondsRemaining: 1,
+    maxSecondsRemaining: 300,
+    allowHoldToSettlement: true,
+  },
+});
+
+assert.equal(askOnlyExitReport.tradeCount, 1);
+assert.equal(askOnlyExitReport.trades[0]?.status, "settled");
+assert.notEqual(askOnlyExitReport.trades[0]?.exitPrice, Number.NEGATIVE_INFINITY);
+
 console.log("btc5m-research-service tests passed");
