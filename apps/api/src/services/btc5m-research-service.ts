@@ -945,6 +945,68 @@ export async function persistPaperSignal(report: PaperSignalReport) {
   );
 }
 
+export async function evaluateResolvedPaperSignals(input: { limit?: number } = {}) {
+  const limit = Math.max(1, Math.min(1000, Math.trunc(input.limit ?? 200)));
+  const rows = await runDatabaseQuery<{
+    signal_id: string;
+    market_slug: string;
+    outcome: "up" | "down" | null;
+    size: string | null;
+    expected_risk: string | null;
+    winning_outcome: "up" | "down";
+  }>(
+    `select s.signal_id, s.market_slug, s.outcome, s.size, s.expected_risk, m.winning_outcome
+     from btc5m_paper_signals s
+     join polymarket_btc5m_markets m on m.slug = s.market_slug
+     where s.evaluation_status = 'pending'
+       and s.decision = 'would_enter'
+       and m.winning_outcome is not null
+     order by s.created_at asc
+     limit $1`,
+    [limit],
+  );
+  let settled = 0;
+  let totalPnl = 0;
+  for (const row of rows?.rows ?? []) {
+    const size = Number(row.size ?? 0);
+    const expectedRisk = Number(row.expected_risk ?? 0);
+    const settlementValue = row.outcome === row.winning_outcome ? size : 0;
+    const pnl = settlementValue - expectedRisk;
+    await runDatabaseQuery(
+      `update btc5m_paper_signals
+       set evaluation_status = 'settled',
+           winning_outcome = $2,
+           settlement_value = $3,
+           realized_pnl = $4,
+           evaluated_at = now()
+       where signal_id = $1`,
+      [row.signal_id, row.winning_outcome, settlementValue, pnl],
+    );
+    settled += 1;
+    totalPnl += pnl;
+  }
+  const summary = await runDatabaseQuery<{
+    settled: string;
+    total_pnl: string | null;
+    wins: string;
+  }>(
+    `select count(*) as settled,
+            coalesce(sum(realized_pnl), 0) as total_pnl,
+            count(*) filter (where realized_pnl > 0) as wins
+     from btc5m_paper_signals
+     where evaluation_status = 'settled'`,
+  );
+  const allSettled = Number(summary?.rows[0]?.settled ?? 0);
+  const wins = Number(summary?.rows[0]?.wins ?? 0);
+  return {
+    evaluatedNow: settled,
+    pnlNow: totalPnl,
+    settledSignals: allSettled,
+    totalPnl: Number(summary?.rows[0]?.total_pnl ?? 0),
+    winRate: allSettled ? wins / allSettled : 0,
+  };
+}
+
 async function readPricePoints(days: number, limitMarkets: number): Promise<{ markets: Btc5mMarket[]; points: PricePoint[] }> {
   const markets = await readMarketsForBacktest(days, limitMarkets);
   if (markets.length === 0) return { markets, points: [] };

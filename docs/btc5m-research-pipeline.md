@@ -85,6 +85,12 @@ Record a real-time paper signal without submitting any order:
 pnpm --filter @vol-arb/api btc5m:research paper-signal --persist
 ```
 
+Evaluate settled paper signals after market resolution:
+
+```bash
+pnpm --filter @vol-arb/api btc5m:research evaluate-paper-signals --limit 200
+```
+
 Run a backtest:
 
 ```bash

@@ -5,6 +5,7 @@ import {
   collectCurrentOrderbookSnapshots,
   collectLiveOrderbookSnapshots,
   evaluateLatestBtc5mPaperSignal,
+  evaluateResolvedPaperSignals,
   getBtc5mResearchCoverage,
   observeLiveBtc5m,
   collectRecentBtc5mMarkets,
@@ -58,6 +59,7 @@ function usage() {
   pnpm --filter @vol-arb/api btc5m:research observe-live --duration-seconds 3600 --interval-ms 1000
   pnpm --filter @vol-arb/api btc5m:research coverage --days 7
   pnpm --filter @vol-arb/api btc5m:research paper-signal --persist
+  pnpm --filter @vol-arb/api btc5m:research evaluate-paper-signals --limit 200
   pnpm --filter @vol-arb/api btc5m:research backtest --days 7 --limit-markets 2016 --persist
   pnpm --filter @vol-arb/api btc5m:research genetic --days 7 --generations 6 --population 12 --validation-fraction 0.2857 --persist-best
 
@@ -241,6 +243,10 @@ async function main() {
   }
   if (command === "paper-signal") {
     console.log(JSON.stringify(await evaluateLatestBtc5mPaperSignal({ persist: boolArg(args, "persist") }), null, 2));
+    return;
+  }
+  if (command === "evaluate-paper-signals") {
+    console.log(JSON.stringify(await evaluateResolvedPaperSignals({ limit: numberArg(args, "limit", 200) }), null, 2));
     return;
   }
   if (command === "genetic") {

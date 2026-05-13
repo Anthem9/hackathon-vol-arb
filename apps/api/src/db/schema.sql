@@ -247,9 +247,29 @@ create table if not exists btc5m_paper_signals (
   expected_risk numeric(20, 8),
   reason text not null,
   segment text not null,
+  evaluation_status text not null default 'pending' check (evaluation_status in ('pending', 'settled', 'ignored')),
+  winning_outcome text check (winning_outcome in ('up', 'down')),
+  settlement_value numeric(20, 8),
+  realized_pnl numeric(20, 8),
+  evaluated_at timestamptz,
   payload jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
 );
+
+alter table btc5m_paper_signals
+  add column if not exists evaluation_status text not null default 'pending';
+
+alter table btc5m_paper_signals
+  add column if not exists winning_outcome text;
+
+alter table btc5m_paper_signals
+  add column if not exists settlement_value numeric(20, 8);
+
+alter table btc5m_paper_signals
+  add column if not exists realized_pnl numeric(20, 8);
+
+alter table btc5m_paper_signals
+  add column if not exists evaluated_at timestamptz;
 
 create index if not exists dashboard_snapshots_created_at_idx
   on dashboard_snapshots (created_at desc);
