@@ -73,6 +73,12 @@ Check whether the dataset is dense enough for executable limit-order backtests:
 pnpm --filter @vol-arb/api btc5m:research coverage --days 7
 ```
 
+Record a real-time paper signal without submitting any order:
+
+```bash
+pnpm --filter @vol-arb/api btc5m:research paper-signal --persist
+```
+
 Run a backtest:
 
 ```bash

@@ -234,6 +234,23 @@ create table if not exists btc5m_backtest_orders (
   created_at timestamptz not null default now()
 );
 
+create table if not exists btc5m_paper_signals (
+  id bigserial primary key,
+  signal_id text not null unique,
+  market_slug text not null,
+  token_id text,
+  outcome text check (outcome in ('up', 'down')),
+  decision text not null,
+  strategy text not null,
+  limit_price numeric(20, 8),
+  size numeric(32, 8),
+  expected_risk numeric(20, 8),
+  reason text not null,
+  segment text not null,
+  payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
 create index if not exists dashboard_snapshots_created_at_idx
   on dashboard_snapshots (created_at desc);
 
@@ -297,3 +314,9 @@ create index if not exists btc5m_backtest_runs_created_idx
 
 create index if not exists btc5m_backtest_orders_run_idx
   on btc5m_backtest_orders (run_id, market_slug);
+
+create index if not exists btc5m_paper_signals_created_idx
+  on btc5m_paper_signals (created_at desc);
+
+create index if not exists btc5m_paper_signals_market_idx
+  on btc5m_paper_signals (market_slug, created_at desc);

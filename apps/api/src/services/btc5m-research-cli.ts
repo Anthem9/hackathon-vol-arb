@@ -4,6 +4,7 @@ import {
   collectBtc5mTrades,
   collectCurrentOrderbookSnapshots,
   collectLiveOrderbookSnapshots,
+  evaluateLatestBtc5mPaperSignal,
   getBtc5mResearchCoverage,
   collectRecentBtc5mMarkets,
   discoverBtc5mDataSources,
@@ -54,6 +55,7 @@ function usage() {
   pnpm --filter @vol-arb/api btc5m:research snapshot-orderbook
   pnpm --filter @vol-arb/api btc5m:research collect-orderbook-live --duration-seconds 3600 --interval-ms 1000
   pnpm --filter @vol-arb/api btc5m:research coverage --days 7
+  pnpm --filter @vol-arb/api btc5m:research paper-signal --persist
   pnpm --filter @vol-arb/api btc5m:research backtest --days 7 --limit-markets 2016 --persist
   pnpm --filter @vol-arb/api btc5m:research genetic --days 7 --generations 6 --population 12 --validation-fraction 0.2857 --persist-best
 
@@ -201,6 +203,10 @@ async function main() {
   }
   if (command === "coverage") {
     console.log(JSON.stringify(await getBtc5mResearchCoverage({ days: numberArg(args, "days", 7) }), null, 2));
+    return;
+  }
+  if (command === "paper-signal") {
+    console.log(JSON.stringify(await evaluateLatestBtc5mPaperSignal({ persist: boolArg(args, "persist") }), null, 2));
     return;
   }
   if (command === "genetic") {

@@ -88,6 +88,21 @@ export type BacktestReport = {
   notes: string[];
 };
 
+export type PaperSignalReport = {
+  signalId: string;
+  marketSlug: string | null;
+  decision: "would_enter" | "no_signal" | "blocked";
+  strategy: BacktestParams["strategy"];
+  outcome: "up" | "down" | null;
+  tokenId: string | null;
+  limitPrice: number | null;
+  size: number | null;
+  expectedRisk: number | null;
+  reason: string;
+  segment: string;
+  payload: Record<string, unknown>;
+};
+
 const DEFAULT_GAMMA_URL = "https://gamma-api.polymarket.com";
 const DEFAULT_CLOB_URL = "https://clob.polymarket.com";
 const DEFAULT_PRICE_HISTORY_FIDELITY_SECONDS = 60;
@@ -776,6 +791,106 @@ export async function getBtc5mResearchCoverage(input: { days?: number } = {}) {
   };
 }
 
+export async function evaluateLatestBtc5mPaperSignal(input: { params?: Partial<BacktestParams>; persist?: boolean } = {}): Promise<PaperSignalReport> {
+  const params = { ...DEFAULT_BACKTEST_PARAMS, ...(input.params ?? {}) };
+  const now = Date.now();
+  const markets = await readMarketsForBacktest(1, 12);
+  let activeMarket: Btc5mMarket | null = markets
+    .filter((market) => market.startTime <= now && now < market.endTime)
+    .sort((a, b) => b.startTime - a.startTime)[0];
+  if (!activeMarket) {
+    const slug = `btc-updown-5m-${floorToFiveMinuteEpoch(now)}`;
+    activeMarket = await fetchBtc5mMarketBySlug(slug, 2500).catch(() => null);
+    if (activeMarket) await upsertBtc5mMarket(activeMarket);
+  }
+  const signalId = `btc5m-paper-${now}`;
+  if (!activeMarket) {
+    return {
+      signalId,
+      marketSlug: null,
+      decision: "blocked",
+      strategy: params.strategy,
+      outcome: null,
+      tokenId: null,
+      limitPrice: null,
+      size: null,
+      expectedRisk: null,
+      reason: "No active BTC 5m market with stored metadata.",
+      segment: beijingSegment(now),
+      payload: {},
+    };
+  }
+
+  const data = await readPricePoints(1, 12);
+  const points = data.points.filter((point) => point.marketSlug === activeMarket.slug);
+  const up = bestBookPrice(points, "up");
+  const down = bestBookPrice(points, "down");
+  const candidate = chooseOutcome(params, up, down);
+  const secondsRemaining = (activeMarket.endTime - now) / 1000;
+  let report: PaperSignalReport;
+  if (!candidate || secondsRemaining < params.minSecondsRemaining || secondsRemaining > params.maxSecondsRemaining) {
+    report = {
+      signalId,
+      marketSlug: activeMarket.slug,
+      decision: "no_signal",
+      strategy: params.strategy,
+      outcome: null,
+      tokenId: null,
+      limitPrice: null,
+      size: null,
+      expectedRisk: null,
+      reason: candidate ? "Candidate exists but time window guard blocked it." : "No strategy candidate from latest UP/DOWN book points.",
+      segment: beijingSegment(now),
+      payload: { secondsRemaining, up, down, params },
+    };
+  } else {
+    const ask = priceToAsk(candidate.price, params, candidate.source);
+    const limitPrice = Math.max(0.01, Math.min(0.99, ask - params.entryLimitOffset));
+    const riskBudget = params.initialCapital * params.maxRiskFraction;
+    const size = Math.floor((riskBudget / limitPrice) * 100) / 100;
+    const enter = limitPrice >= params.entryMinPrice && limitPrice <= params.entryMaxPrice;
+    report = {
+      signalId,
+      marketSlug: activeMarket.slug,
+      decision: enter ? "would_enter" : "no_signal",
+      strategy: params.strategy,
+      outcome: candidate.outcome,
+      tokenId: candidate.tokenId,
+      limitPrice,
+      size,
+      expectedRisk: limitPrice * size,
+      reason: enter ? "Limit-entry criteria passed in paper mode." : "Candidate limit price is outside entry bounds.",
+      segment: beijingSegment(now),
+      payload: { secondsRemaining, up, down, candidate, params },
+    };
+  }
+  if (input.persist) await persistPaperSignal(report);
+  return report;
+}
+
+export async function persistPaperSignal(report: PaperSignalReport) {
+  await runDatabaseQuery(
+    `insert into btc5m_paper_signals
+      (signal_id, market_slug, token_id, outcome, decision, strategy, limit_price, size, expected_risk, reason, segment, payload)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+     on conflict (signal_id) do nothing`,
+    [
+      report.signalId,
+      report.marketSlug ?? "none",
+      report.tokenId,
+      report.outcome,
+      report.decision,
+      report.strategy,
+      report.limitPrice,
+      report.size,
+      report.expectedRisk,
+      report.reason,
+      report.segment,
+      JSON.stringify(report.payload),
+    ],
+  );
+}
+
 async function readPricePoints(days: number, limitMarkets: number): Promise<{ markets: Btc5mMarket[]; points: PricePoint[] }> {
   const markets = await readMarketsForBacktest(days, limitMarkets);
   if (markets.length === 0) return { markets, points: [] };
@@ -833,6 +948,12 @@ function priceToAsk(price: number, params: BacktestParams, source: PricePoint["s
 function priceToBid(price: number, params: BacktestParams, source: PricePoint["source"]) {
   if (source === "orderbook_snapshot") return price;
   return Math.max(0.01, price - params.assumedSpread / 2);
+}
+
+function bestBookPrice(points: PricePoint[], outcome: "up" | "down") {
+  return points
+    .filter((point) => point.outcome === outcome)
+    .sort((a, b) => b.time - a.time)[0];
 }
 
 function beijingSegment(timestamp: number) {
