@@ -52,6 +52,13 @@ pnpm --filter @vol-arb/api btc5m:research collect-trades --days 7 --limit-market
 Use `--stride` greater than `1` to sample across the full time window instead of only the
 most recent contiguous markets.
 
+Use `--missing-only` after an initial collection pass to skip markets that already have
+stored trades:
+
+```bash
+pnpm --filter @vol-arb/api btc5m:research collect-trades --days 7 --limit-markets 1500 --pages-per-market 1 --missing-only --throttle-ms 25
+```
+
 Collect auxiliary BTC spot:
 
 ```bash

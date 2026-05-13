@@ -535,6 +535,7 @@ export async function collectBtc5mTrades(input: {
   days?: number;
   limitMarkets?: number;
   stride?: number;
+  missingOnly?: boolean;
   throttleMs?: number;
   pagesPerMarket?: number;
   pagesPerToken?: number;
@@ -542,7 +543,17 @@ export async function collectBtc5mTrades(input: {
 } = {}) {
   const stride = Math.max(1, Math.trunc(input.stride ?? 1));
   const requestedMarkets = Math.max(1, input.limitMarkets ?? 2500);
-  const markets = (await readMarketsForBacktest(input.days ?? 7, requestedMarkets * stride)).filter((_, index) => index % stride === 0).slice(-requestedMarkets);
+  let markets = (await readMarketsForBacktest(input.days ?? 7, requestedMarkets * stride)).filter((_, index) => index % stride === 0).slice(-requestedMarkets);
+  if (input.missingOnly && markets.length > 0) {
+    const rows = await runDatabaseQuery<{ market_slug: string }>(
+      `select distinct market_slug
+       from polymarket_btc5m_trades
+       where market_slug = any($1)`,
+      [markets.map((market) => market.slug)],
+    );
+    const existing = new Set((rows?.rows ?? []).map((row) => row.market_slug));
+    markets = markets.filter((market) => !existing.has(market.slug));
+  }
   const result = { markets: markets.length, trades: 0, errors: [] as string[] };
   const pagesPerMarket = Math.max(1, input.pagesPerMarket ?? input.pagesPerToken ?? 2);
   for (let index = 0; index < markets.length; index += 1) {

@@ -53,7 +53,7 @@ function usage() {
   pnpm --filter @vol-arb/api btc5m:research collect-markets --days 7 --limit 2016
   pnpm --filter @vol-arb/api btc5m:research refresh-results --days 7 --limit 2016
   pnpm --filter @vol-arb/api btc5m:research collect-price-history --days 7 --limit-markets 2016
-  pnpm --filter @vol-arb/api btc5m:research collect-trades --days 7 --limit-markets 2016 --pages-per-market 2 [--stride 1]
+  pnpm --filter @vol-arb/api btc5m:research collect-trades --days 7 --limit-markets 2016 --pages-per-market 2 [--stride 1] [--missing-only]
   pnpm --filter @vol-arb/api btc5m:research collect-btc-price --days 7
   pnpm --filter @vol-arb/api btc5m:research snapshot-orderbook
   pnpm --filter @vol-arb/api btc5m:research collect-orderbook-live --duration-seconds 3600 --interval-ms 1000
@@ -147,6 +147,7 @@ async function main() {
           days: numberArg(args, "days", 7),
           limitMarkets: numberArg(args, "limit-markets", 2016),
           stride: numberArg(args, "stride", 1),
+          missingOnly: boolArg(args, "missing-only"),
           throttleMs: numberArg(args, "throttle-ms", 100),
           pagesPerMarket: numberArg(args, "pages-per-market", numberArg(args, "pages-per-token", 2)),
           onProgress: (progress) => {

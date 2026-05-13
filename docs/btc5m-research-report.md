@@ -153,6 +153,19 @@ Additional forward collection run:
   - interpretation: the collector works, but one minute only adds one active market. Robust
     execution testing requires collection across many 5-minute markets and multiple Beijing
     day/night plus weekday/weekend sessions.
+- Trade coverage was expanded with additional Data API collection:
+  - `collect-trades --days 7 --limit-markets 400 --pages-per-market 1 --stride 3`
+    stored `200000` fetched trade rows with `0` errors.
+  - `collect-trades --days 7 --limit-markets 600 --pages-per-market 1 --stride 2`
+    stored `300000` fetched trade rows with `0` errors.
+  - `collect-trades --days 7 --limit-markets 1500 --pages-per-market 1 --missing-only`
+    targeted `566` markets missing trades and fetched `282549` rows with `0` errors.
+  - latest trade market coverage: `1531/2007` markets, `76.28%`.
+  - latest execution quality: `trade_proxy_only`.
+  - latest status smoke check: `tradeMarketCoverage=0.7632`,
+    `orderbookMarketCoverage=0.0045`, `coverageAccepted=false`, `gaAccepted=false`.
+  - interpretation: historical trade coverage is now broad enough for research, but
+    real orderbook coverage remains the gating weakness for live-quality acceptance.
 - Train/validation splitting now uses a time-ordered split inside each Beijing segment,
   instead of a single global time split. This avoids accepting a candidate that only trades
   a segment present in train but absent from validation.
