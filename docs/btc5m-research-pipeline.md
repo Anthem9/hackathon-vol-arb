@@ -125,6 +125,10 @@ Use `segmentMarketCoverage` to check whether coverage is balanced across
 `weekend_beijing_night`. A global orderbook percentage is not enough if all snapshots come
 from only one segment.
 
+Coverage also reports `collectionRecommendation`, which compares the current Beijing
+segment against the weakest orderbook segments and tells whether current collection should
+continue or future collection should be prioritized in another segment.
+
 Run a compact research status report:
 
 ```bash

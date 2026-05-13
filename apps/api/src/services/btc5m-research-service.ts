@@ -976,6 +976,15 @@ export async function getBtc5mResearchCoverage(input: { days?: number } = {}) {
     .sort(([, left], [, right]) => left.orderbookMarketCoverage - right.orderbookMarketCoverage || right.markets - left.markets)
     .slice(0, 2)
     .map(([segment, value]) => ({ segment, orderbookMarketCoverage: value.orderbookMarketCoverage, marketsWithOrderbook: value.marketsWithOrderbook, markets: value.markets }));
+  const currentBeijingSegment = beijingSegment(Date.now());
+  const currentSegmentCoverage = segmentMarketCoverage[currentBeijingSegment];
+  const currentSegmentIsWeak = weakestOrderbookSegments.some((segment) => segment.segment === currentBeijingSegment);
+  const collectionRecommendation =
+    executionQuality === "partial_orderbook" || executionQuality === "orderbook_backtest_ready"
+      ? "Coverage gate is met; run larger seeded GA and inspect validation plus stress validation."
+      : currentSegmentIsWeak
+        ? `Keep collecting now; current segment ${currentBeijingSegment} is one of the weakest orderbook segments.`
+        : `Keep background collection running, but prioritize future collection during weakest segments: ${weakestOrderbookSegments.map((segment) => segment.segment).join(", ")}.`;
   return {
     days,
     markets,
@@ -1005,6 +1014,9 @@ export async function getBtc5mResearchCoverage(input: { days?: number } = {}) {
     segmentTrades: Object.fromEntries((tradeSegmentRows?.rows ?? []).map((segment) => [segment.segment, Number(segment.trades)])),
     segmentMarketCoverage,
     weakestOrderbookSegments,
+    currentBeijingSegment,
+    currentSegmentCoverage,
+    collectionRecommendation,
     nextAction:
       executionQuality === "orderbook_backtest_ready" || executionQuality === "partial_orderbook"
         ? "Run btc5m:research genetic with a larger population and validation split."

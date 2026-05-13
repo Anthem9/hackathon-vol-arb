@@ -184,6 +184,10 @@ Additional forward collection run:
 - Coverage now reports `weakestOrderbookSegments`; current weakest segments are
   `weekday_beijing_day` and `weekend_beijing_night`, both with `0` markets covered by
   orderbook snapshots.
+- Coverage now reports `collectionRecommendation`. Current segment is
+  `weekday_beijing_night` with `16/832` orderbook-covered markets; recommendation is to
+  keep background collection running but prioritize future collection during
+  `weekday_beijing_day` and `weekend_beijing_night`.
 - Added background orderbook collector helpers:
   - `pnpm btc5m:orderbook:start`
   - `pnpm btc5m:orderbook:collector`
