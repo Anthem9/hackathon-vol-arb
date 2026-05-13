@@ -202,6 +202,12 @@ Additional forward collection run:
 - Background collector status now distinguishes `configuredCaffeinate` from
   `launchCaffeinate` and writes launch metadata to `.local/run`. The currently running
   collector was started before metadata existed, so `launchCaffeinate=null` until restart.
+- The background collector was restarted after adding launch metadata and macOS sleep
+  prevention:
+  - new PID: `38702`.
+  - `launchCaffeinate=true`.
+  - launch command uses `caffeinate -dimsu pnpm ...`.
+  - old collector PID `35971` was stopped before the restart.
 - Trade coverage was expanded with additional Data API collection:
   - `collect-trades --days 7 --limit-markets 400 --pages-per-market 1 --stride 3`
     stored `200000` fetched trade rows with `0` errors.
