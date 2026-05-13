@@ -129,7 +129,7 @@ collection, and a hard readiness gate before any live trading.
 | Respect Beijing daytime/nighttime and weekday/weekend differences | `segmentMarketCoverage`, `targetSegment`, `weakestOrderbookSegments`, `nextWeakSegmentWindows` | Implemented; weakest segments are surfaced for targeted collection |
 | Use only limit orders in simulation | Backtest entry/exit logic, docs, readiness checks | Implemented for entry, take-profit, stop-loss, time exit, and settlement fallback gates |
 | Simulate with `100 USDC` initial capital and `10%` max single-trade loss | `DEFAULT_BACKTEST_PARAMS`, CLI usage, `docs/btc5m-research-pipeline.md` | Implemented as defaults |
-| Add trader-style risk controls | Max daily loss, max drawdown, max consecutive losses, max open markets, max daily trades | Implemented and exposed in reports/search space |
+| Add trader-style risk controls | Max daily loss, max drawdown, max consecutive losses, max open markets, max daily trades, visible-liquidity participation | Implemented, exposed in reports/search space, bounded in GA search, and enforced by GA acceptance blockers |
 | Optionally use Kelly sizing | `useKellySizing`, `kellyFraction`, GA mutation space | Implemented, clipped by hard risk limits |
 | Add probability-cone baseline strategy | `probability_cone`, `longshot_cone` | Implemented |
 | Add genetic algorithm strategy search | `genetic`, `genetic-sweep`, seeded runs, report saving | Implemented with train/validation, stress validation, walk-forward validation, and multi-seed sweeps |

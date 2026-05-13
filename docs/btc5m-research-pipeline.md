@@ -385,6 +385,11 @@ The genetic search mutates these parameters:
 - `targetSegment`: `all`, `weekday_beijing_day`, `weekday_beijing_night`,
   `weekend_beijing_day`, or `weekend_beijing_night`
 
+The GA search space is bounded by the same operator risk caps used for acceptance. It can
+search a smaller daily trade count or visible-liquidity participation, but accepted
+candidates cannot exceed the default `24` trades per day or `25%` visible-liquidity
+participation cap.
+
 Fitness is:
 
 ```text
@@ -398,6 +403,9 @@ stress validation. Final `accepted` also requires `executionQuality` to be
 `thin_trade_proxy`, or `insufficient` evidence remains research-only even if PnL gates pass.
 Acceptance also requires at least 500 markets in the GA dataset, so small smoke runs cannot
 be mistaken for production-ready evidence.
+Accepted candidates must also retain the hard risk limits: `100 USDC` initial capital,
+`<=10%` per-trade risk, `<=20%` daily loss, `<=25%` drawdown, `<=6` consecutive losses,
+`<=1` open market, `<=24` daily trades, and `<=25%` visible-liquidity participation.
 
 Execution coverage is also checked by Beijing regime. If `targetSegment` is a specific
 segment, that segment must reach `partial_orderbook`. If `targetSegment=all`, at least 3
