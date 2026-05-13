@@ -82,6 +82,12 @@ Check whether the dataset is dense enough for executable limit-order backtests:
 pnpm --filter @vol-arb/api btc5m:research coverage --days 7
 ```
 
+Coverage reports both point count and market-level execution quality. `readyForGeneticSearch`
+only means there are enough executable points to run the GA. A strategy should not be
+treated as robust unless `executionQuality` is at least `partial_orderbook`, because
+`trade_proxy_only`, `thin_trade_proxy`, and `insufficient` indicate sparse historical
+orderbook evidence.
+
 Record a real-time paper signal without submitting any order:
 
 ```bash
@@ -214,6 +220,7 @@ The final result includes:
 - `stressValidation`
 - `accepted`
 - dataset counts for train and validation slices
+- coverage quality should be checked before interpreting `accepted`
 - paper-signal summary gates; a strategy with enough settled negative paper signals cannot be accepted
 
 ## Risk Model

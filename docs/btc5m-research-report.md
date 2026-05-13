@@ -135,6 +135,16 @@ Additional forward collection run:
   - price points: `25`; orderbook snapshots: `1998`; trades: `78116`; BTC ticks: `9598`.
   - executable points: `80114` vs required `12072`.
   - `readyForGeneticSearch: true`.
+- Coverage now reports market-level execution quality in addition to raw point count.
+  Latest diagnostic:
+  - markets: `2011`; resolved markets: `2011`.
+  - markets with trades: `190` (`9.45%`).
+  - markets with orderbook snapshots: `8` (`0.40%`).
+  - execution quality: `insufficient`.
+  - warning: historical orderbook snapshot coverage is sparse, and trade history covers
+    less than half of recent markets.
+  - interpretation: GA can run, but output must be treated as research-only until forward
+    orderbook coverage improves materially.
 - Train/validation splitting now uses a time-ordered split inside each Beijing segment,
   instead of a single global time split. This avoids accepting a candidate that only trades
   a segment present in train but absent from validation.

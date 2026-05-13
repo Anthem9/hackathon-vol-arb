@@ -820,6 +820,8 @@ export async function getBtc5mResearchCoverage(input: { days?: number } = {}) {
   const summary = await runDatabaseQuery<{
     markets: string;
     resolved_markets: string;
+    markets_with_trades: string;
+    markets_with_orderbook: string;
     price_points: string;
     orderbook_snapshots: string;
     trades: string;
@@ -833,6 +835,8 @@ export async function getBtc5mResearchCoverage(input: { days?: number } = {}) {
      select
        (select count(*) from recent_markets) as markets,
        (select count(*) from polymarket_btc5m_markets where slug in (select slug from recent_markets) and winning_outcome is not null) as resolved_markets,
+       (select count(distinct market_slug) from polymarket_btc5m_trades where market_slug in (select slug from recent_markets)) as markets_with_trades,
+       (select count(distinct market_slug) from polymarket_btc5m_orderbook_snapshots where market_slug in (select slug from recent_markets)) as markets_with_orderbook,
        (select count(*) from polymarket_btc5m_price_history where market_slug in (select slug from recent_markets)) as price_points,
        (select count(*) from polymarket_btc5m_orderbook_snapshots where market_slug in (select slug from recent_markets)) as orderbook_snapshots,
        (select count(*) from polymarket_btc5m_trades where market_slug in (select slug from recent_markets)) as trades,
@@ -878,12 +882,34 @@ export async function getBtc5mResearchCoverage(input: { days?: number } = {}) {
   const pricePoints = Number(row?.price_points ?? 0);
   const snapshots = Number(row?.orderbook_snapshots ?? 0);
   const trades = Number(row?.trades ?? 0);
+  const marketsWithTrades = Number(row?.markets_with_trades ?? 0);
+  const marketsWithOrderbook = Number(row?.markets_with_orderbook ?? 0);
   const executablePoints = snapshots + trades;
   const minimumExecutablePoints = Math.max(500, markets * 6);
+  const tradeMarketCoverage = markets ? marketsWithTrades / markets : 0;
+  const orderbookMarketCoverage = markets ? marketsWithOrderbook / markets : 0;
+  const executionQuality =
+    orderbookMarketCoverage >= 0.5
+      ? "orderbook_backtest_ready"
+      : orderbookMarketCoverage >= 0.1
+        ? "partial_orderbook"
+        : tradeMarketCoverage >= 0.5
+          ? "trade_proxy_only"
+          : tradeMarketCoverage >= 0.1
+            ? "thin_trade_proxy"
+            : "insufficient";
+  const qualityWarnings = [
+    orderbookMarketCoverage < 0.1 ? "Historical orderbook snapshot coverage is sparse; limit-order fills are mostly inferred from trade_proxy evidence." : "",
+    tradeMarketCoverage < 0.5 ? "Trade history covers less than half of recent markets; GA candidates may overfit markets with available data." : "",
+  ].filter(Boolean);
   return {
     days,
     markets,
     resolvedMarkets: Number(row?.resolved_markets ?? 0),
+    marketsWithTrades,
+    marketsWithOrderbook,
+    tradeMarketCoverage,
+    orderbookMarketCoverage,
     pricePoints,
     orderbookSnapshots: snapshots,
     trades,
@@ -891,12 +917,14 @@ export async function getBtc5mResearchCoverage(input: { days?: number } = {}) {
     executablePoints,
     minimumExecutablePoints,
     readyForGeneticSearch: executablePoints >= minimumExecutablePoints,
+    executionQuality,
+    qualityWarnings,
     segmentSnapshots: Object.fromEntries((segmentRows?.rows ?? []).map((segment) => [segment.segment, Number(segment.snapshots)])),
     segmentTrades: Object.fromEntries((tradeSegmentRows?.rows ?? []).map((segment) => [segment.segment, Number(segment.trades)])),
     nextAction:
-      executablePoints >= minimumExecutablePoints
+      executionQuality === "orderbook_backtest_ready" || executionQuality === "partial_orderbook"
         ? "Run btc5m:research genetic with a larger population and validation split."
-        : "Continue collect-orderbook-live until executable orderbook/trade evidence is dense enough for limit-order fills.",
+        : "Continue collect-orderbook-live and collect-trades across more markets before treating GA output as robust.",
   };
 }
 
@@ -1793,12 +1821,37 @@ function filterPointsForMarkets(points: PricePoint[], markets: Btc5mMarket[]) {
   return points.filter((point) => slugs.has(point.marketSlug));
 }
 
+function summarizeExecutionCoverage(markets: Btc5mMarket[], points: PricePoint[]) {
+  const marketsWithTrades = new Set(points.filter((point) => point.source === "trade_proxy").map((point) => point.marketSlug)).size;
+  const marketsWithOrderbook = new Set(points.filter((point) => point.source === "orderbook_snapshot").map((point) => point.marketSlug)).size;
+  const tradeMarketCoverage = markets.length ? marketsWithTrades / markets.length : 0;
+  const orderbookMarketCoverage = markets.length ? marketsWithOrderbook / markets.length : 0;
+  const executionQuality =
+    orderbookMarketCoverage >= 0.5
+      ? "orderbook_backtest_ready"
+      : orderbookMarketCoverage >= 0.1
+        ? "partial_orderbook"
+        : tradeMarketCoverage >= 0.5
+          ? "trade_proxy_only"
+          : tradeMarketCoverage >= 0.1
+            ? "thin_trade_proxy"
+            : "insufficient";
+  return {
+    marketsWithTrades,
+    marketsWithOrderbook,
+    tradeMarketCoverage,
+    orderbookMarketCoverage,
+    executionQuality,
+  };
+}
+
 export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets?: number; generations?: number; population?: number; validationFraction?: number; persistBest?: boolean; seed?: number } = {}) {
   const generations = Math.max(1, Math.min(50, input.generations ?? 6));
   const populationSize = Math.max(4, Math.min(60, input.population ?? 12));
   const seed = input.seed !== undefined && Number.isFinite(input.seed) ? Math.floor(input.seed) : undefined;
   const random = seed === undefined ? Math.random : createSeededRandom(seed);
   const dataset = await readPricePoints(input.days ?? 7, input.limitMarkets ?? 2500);
+  const executionCoverage = summarizeExecutionCoverage(dataset.markets, dataset.points);
   const { trainMarkets, validationMarkets } = splitMarketsForValidation(dataset.markets, input.validationFraction ?? 2 / 7, dataset.points);
   const trainPoints = filterPointsForMarkets(dataset.points, trainMarkets);
   const validationPoints = filterPointsForMarkets(dataset.points, validationMarkets);
@@ -1857,6 +1910,7 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
     dataset: {
       markets: dataset.markets.length,
       points: dataset.points.length,
+      ...executionCoverage,
       trainMarkets: trainMarkets.length,
       trainPoints: trainPoints.length,
       validationMarkets: validationMarkets.length,
