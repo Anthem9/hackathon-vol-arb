@@ -531,8 +531,11 @@ async function buildBtcFiveMinuteMonitor(options: MonitorOptions = {}): Promise<
   if (!tick) blockers.push("No Chainlink BTC/USD RTDS tick is available.");
   const ageSeconds = tick ? Math.max(0, (now - tick.timestamp) / 1000) : null;
   if (ageSeconds !== null && ageSeconds > 10) warnings.push(`Chainlink tick is stale by ${ageSeconds.toFixed(1)}s.`);
-  if (upBook.ask === null) blockers.push("UP ask is unavailable from CLOB order book.");
-  if (downBook.ask === null) blockers.push("DOWN ask is unavailable from CLOB order book.");
+  if (upBook.ask === null && downBook.ask === null) blockers.push("Both UP and DOWN asks are unavailable from CLOB order book.");
+  else {
+    if (upBook.ask === null) warnings.push("UP ask is unavailable from CLOB order book.");
+    if (downBook.ask === null) warnings.push("DOWN ask is unavailable from CLOB order book.");
+  }
 
   const secondsRemaining = market ? Math.max(0, (market.endTime - now) / 1000) : null;
   if (secondsRemaining !== null && secondsRemaining < 15) blockers.push("Current 5m market is inside the final 15 seconds.");
