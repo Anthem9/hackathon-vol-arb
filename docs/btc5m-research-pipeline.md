@@ -214,6 +214,8 @@ Override defaults with `BTC5M_CHECKPOINT_DAYS`,
 `BTC5M_CHECKPOINT_REPORT_FILE`. Keep GA enabled for final acceptance; disabling it is only
 for cheap coverage/status checkpoints while waiting for orderbook data.
 `pnpm btc5m:checkpoint:status` is the no-GA shortcut.
+Use `--require-live-ready` for automated final gates; it exits non-zero unless
+`liveReady=true`.
 
 Record a real-time paper signal without submitting any order:
 

@@ -40,6 +40,7 @@ const generations = process.env.BTC5M_CHECKPOINT_GENERATIONS ?? "1";
 const population = process.env.BTC5M_CHECKPOINT_POPULATION ?? "4";
 const seed = process.env.BTC5M_CHECKPOINT_SEED ?? "7";
 const withGa = process.env.BTC5M_CHECKPOINT_WITH_GA !== "false" && !process.argv.includes("--no-ga");
+const requireLiveReady = process.argv.includes("--require-live-ready");
 
 const orderbookPlan = runJson("pnpm", ["--silent", "btc5m:orderbook:plan"]);
 const readinessArgs = [
@@ -82,6 +83,7 @@ const output = {
     population: Number(population),
     seed: Number(seed),
     withGa,
+    requireLiveReady,
   },
   summary: {
     liveReady: Boolean(readiness.liveReady),
@@ -108,3 +110,6 @@ const output = {
 mkdirSync(dirname(filePath), { recursive: true });
 writeFileSync(filePath, `${JSON.stringify(output, null, 2)}\n`);
 console.log(JSON.stringify(output, null, 2));
+if (requireLiveReady && !output.liveReady) {
+  process.exitCode = 2;
+}
