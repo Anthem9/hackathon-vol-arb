@@ -23,7 +23,7 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "secret:scan": "node scripts/secret-scan.mjs",
-    "test": "node scripts/env-check-boundary.test.mjs && node scripts/polymarket-credentials-cli.test.mjs && turbo test",
+    "test": "node scripts/env-check-boundary.test.mjs && node scripts/polymarket-credentials-cli.test.mjs && node scripts/btc5m-checkpoint-help.test.mjs && turbo test",
     "test:e2e": "playwright test",
     "typecheck": "turbo typecheck"
   },
