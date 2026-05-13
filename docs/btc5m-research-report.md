@@ -199,6 +199,9 @@ Additional forward collection run:
     `.local/logs`.
 - New background collector starts use `caffeinate -dimsu` on macOS by default to reduce
   sleep risk during long collection. Set `BTC5M_ORDERBOOK_CAFFEINATE=false` to disable it.
+- Background collector status now distinguishes `configuredCaffeinate` from
+  `launchCaffeinate` and writes launch metadata to `.local/run`. The currently running
+  collector was started before metadata existed, so `launchCaffeinate=null` until restart.
 - Trade coverage was expanded with additional Data API collection:
   - `collect-trades --days 7 --limit-markets 400 --pages-per-market 1 --stride 3`
     stored `200000` fetched trade rows with `0` errors.

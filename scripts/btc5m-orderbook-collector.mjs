@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path";
 
 const root = resolve(new URL("..", import.meta.url).pathname);
 const pidFile = resolve(root, ".local/run/btc5m-orderbook-collector.pid");
+const metaFile = resolve(root, ".local/run/btc5m-orderbook-collector.json");
 const logFile = resolve(root, ".local/logs/btc5m-orderbook-collector.log");
 
 function ensureDirs() {
@@ -37,6 +38,15 @@ function logSizeBytes() {
   return statSync(logFile).size;
 }
 
+function readMeta() {
+  if (!existsSync(metaFile)) return null;
+  try {
+    return JSON.parse(readFileSync(metaFile, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
 function useCaffeinate() {
   return process.platform === "darwin" && process.env.BTC5M_ORDERBOOK_CAFFEINATE !== "false";
 }
@@ -45,7 +55,7 @@ function start() {
   ensureDirs();
   const existing = readPid();
   if (existing && isRunning(existing)) {
-    console.log(JSON.stringify({ status: "already_running", pid: existing, pidFile, logFile }, null, 2));
+    console.log(JSON.stringify({ status: "already_running", pid: existing, pidFile, metaFile, logFile, meta: readMeta() }, null, 2));
     return;
   }
   if (existing) rmSync(pidFile, { force: true });
@@ -75,8 +85,16 @@ function start() {
     env: process.env,
   });
   writeFileSync(pidFile, `${child.pid}\n`);
+  const meta = {
+    pid: child.pid,
+    startedAt: new Date().toISOString(),
+    caffeinate: useCaffeinate(),
+    command,
+    args: commandArgs,
+  };
+  writeFileSync(metaFile, `${JSON.stringify(meta, null, 2)}\n`);
   child.unref();
-  console.log(JSON.stringify({ status: "started", pid: child.pid, pidFile, logFile, caffeinate: useCaffeinate(), args: [command, ...commandArgs] }, null, 2));
+  console.log(JSON.stringify({ status: "started", pid: child.pid, pidFile, metaFile, logFile, meta }, null, 2));
 }
 
 function stop() {
@@ -87,19 +105,24 @@ function stop() {
   }
   if (isRunning(pid)) process.kill(pid, "SIGTERM");
   rmSync(pidFile, { force: true });
-  console.log(JSON.stringify({ status: "stopped", pid, pidFile, logFile }, null, 2));
+  rmSync(metaFile, { force: true });
+  console.log(JSON.stringify({ status: "stopped", pid, pidFile, metaFile, logFile }, null, 2));
 }
 
 function status() {
   const pid = readPid();
+  const meta = readMeta();
   console.log(
     JSON.stringify(
       {
         status: pid && isRunning(pid) ? "running" : "not_running",
         pid,
         pidFile,
+        metaFile,
         logFile,
-        caffeinate: useCaffeinate(),
+        configuredCaffeinate: useCaffeinate(),
+        launchCaffeinate: meta?.pid === pid ? meta.caffeinate : null,
+        meta,
         logSizeBytes: logSizeBytes(),
         lastLogLines: readLastLogLines(),
       },

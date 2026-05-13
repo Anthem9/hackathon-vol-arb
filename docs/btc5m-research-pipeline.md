@@ -100,7 +100,9 @@ enough to target roughly 16 hours of forward collection; override them with
 
 On macOS, new background collector starts are wrapped with `caffeinate -dimsu` by default
 to reduce sleep risk during long collection. Set `BTC5M_ORDERBOOK_CAFFEINATE=false` to
-disable that wrapper.
+disable that wrapper. Status reports both `configuredCaffeinate` and `launchCaffeinate`;
+if an older collector was started before launch metadata existed, `launchCaffeinate` may be
+`null` until the collector is restarted.
 
 Run live observation, which captures orderbook snapshots and persists paper signals after each iteration:
 
