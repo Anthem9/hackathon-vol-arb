@@ -109,6 +109,7 @@ export type PaperSignalReport = {
 
 const DEFAULT_GAMMA_URL = "https://gamma-api.polymarket.com";
 const DEFAULT_CLOB_URL = "https://clob.polymarket.com";
+const DEFAULT_POLYMARKET_DATA_API_URL = "https://data-api.polymarket.com";
 const DEFAULT_PRICE_HISTORY_FIDELITY_SECONDS = 60;
 const FIVE_MINUTES_SECONDS = 300;
 
@@ -152,6 +153,10 @@ function gammaUrl() {
 
 function clobUrl() {
   return envValue("POLYMARKET_API_BASE") || DEFAULT_CLOB_URL;
+}
+
+function polymarketDataApiUrl() {
+  return envValue("POLYMARKET_DATA_API_BASE") || DEFAULT_POLYMARKET_DATA_API_URL;
 }
 
 function asRecord(value: unknown): JsonRecord {
@@ -517,50 +522,65 @@ export async function collectBtc5mPriceHistory(input: { days?: number; limitMark
   return result;
 }
 
-export async function collectBtc5mTrades(input: { days?: number; limitMarkets?: number; throttleMs?: number; pagesPerToken?: number } = {}) {
+export async function collectBtc5mTrades(input: {
+  days?: number;
+  limitMarkets?: number;
+  throttleMs?: number;
+  pagesPerMarket?: number;
+  pagesPerToken?: number;
+  onProgress?: (progress: { processed: number; total: number; trades: number; errors: number }) => void;
+} = {}) {
   const markets = await readMarketsForBacktest(input.days ?? 7, input.limitMarkets ?? 2500);
   const result = { markets: markets.length, trades: 0, errors: [] as string[] };
-  for (const market of markets) {
-    for (const outcome of ["up", "down"] as const) {
-      const tokenId = outcome === "up" ? market.upTokenId : market.downTokenId;
-      let nextCursor = "MA==";
-      for (let page = 0; page < Math.max(1, input.pagesPerToken ?? 2) && nextCursor !== ""; page += 1) {
-        try {
-          const payload = await fetchSignedClobJson<{ data?: unknown[]; next_cursor?: string }>("/data/trades", { asset_id: tokenId, next_cursor: nextCursor }, 8000);
-          const trades = Array.isArray(payload.data) ? payload.data.map(asRecord) : [];
-          for (const trade of trades) {
-            const tradeTime = asNumber(trade.timestamp ?? trade.created_at ?? trade.time);
-            const tradeTimeMs = tradeTime > 10_000_000_000 ? tradeTime : tradeTime * 1000;
-            const price = asNumber(trade.price);
-            if (!Number.isFinite(tradeTimeMs) || !Number.isFinite(price)) continue;
-            await runDatabaseQuery(
-              `insert into polymarket_btc5m_trades
-                (trade_id, market_slug, token_id, outcome, price, size, side, trade_time, transaction_hash, source, raw_json)
-               values ($1, $2, $3, $4, $5, $6, $7, to_timestamp($8 / 1000.0), $9, 'clob_data_trades', $10)
-               on conflict do nothing`,
-              [
-                asString(trade.id || trade.trade_id),
-                market.slug,
-                tokenId,
-                outcome,
-                price,
-                Number.isFinite(asNumber(trade.size)) ? asNumber(trade.size) : null,
-                asString(trade.side || trade.taker_side || trade.trader_side),
-                tradeTimeMs,
-                asString(trade.transaction_hash || trade.transactionHash),
-                JSON.stringify(trade),
-              ],
-            );
-            result.trades += 1;
-          }
-          nextCursor = payload.next_cursor ?? "";
-        } catch (error) {
-          result.errors.push(`${market.slug}/${outcome}: ${error instanceof Error ? error.message : String(error)}`);
-          break;
+  const pagesPerMarket = Math.max(1, input.pagesPerMarket ?? input.pagesPerToken ?? 2);
+  for (let index = 0; index < markets.length; index += 1) {
+    const market = markets[index];
+    if (!market) continue;
+    const limit = 500;
+    for (let page = 0; page < pagesPerMarket; page += 1) {
+      try {
+        const url = new URL("/trades", polymarketDataApiUrl());
+        url.searchParams.set("market", market.conditionId);
+        url.searchParams.set("limit", String(limit));
+        url.searchParams.set("offset", String(page * limit));
+        const payload = await fetchJson<unknown>(url.toString(), 8000);
+        const trades = (Array.isArray(payload) ? payload : Array.isArray(asRecord(payload).data) ? (asRecord(payload).data as unknown[]) : []).map(asRecord);
+        if (trades.length === 0) break;
+        for (const trade of trades) {
+          const tokenId = asString(trade.asset_id || trade.token_id || trade.asset);
+          const outcomeLabel = asString(trade.outcome).toLowerCase();
+          const outcome = outcomeLabel === "up" || tokenId === market.upTokenId ? "up" : outcomeLabel === "down" || tokenId === market.downTokenId ? "down" : null;
+          const tradeTime = asNumber(trade.match_time ?? trade.timestamp ?? trade.created_at ?? trade.time ?? trade.createdAt);
+          const tradeTimeMs = tradeTime > 10_000_000_000 ? tradeTime : tradeTime * 1000;
+          const price = asNumber(trade.price);
+          if (!outcome || !tokenId || !Number.isFinite(tradeTimeMs) || !Number.isFinite(price)) continue;
+          await runDatabaseQuery(
+            `insert into polymarket_btc5m_trades
+              (trade_id, market_slug, token_id, outcome, price, size, side, trade_time, transaction_hash, source, raw_json)
+             values ($1, $2, $3, $4, $5, $6, $7, to_timestamp($8 / 1000.0), $9, 'clob_trades', $10)
+             on conflict do nothing`,
+            [
+              asString(trade.id || trade.trade_id || trade.transaction_hash || trade.transactionHash),
+              market.slug,
+              tokenId,
+              outcome,
+              price,
+              Number.isFinite(asNumber(trade.size)) ? asNumber(trade.size) : null,
+              asString(trade.side || trade.taker_side || trade.trader_side),
+              tradeTimeMs,
+              asString(trade.transaction_hash || trade.transactionHash || trade.transactionHash),
+              JSON.stringify(trade),
+            ],
+          );
+          result.trades += 1;
         }
-        if (input.throttleMs) await sleep(input.throttleMs);
+      } catch (error) {
+        result.errors.push(`${market.slug}: ${error instanceof Error ? error.message : String(error)}`);
+        break;
       }
+      if (input.throttleMs) await sleep(input.throttleMs);
     }
+    input.onProgress?.({ processed: index + 1, total: markets.length, trades: result.trades, errors: result.errors.length });
   }
   return result;
 }
@@ -1228,6 +1248,19 @@ async function readPricePoints(days: number, limitMarkets: number): Promise<{ ma
      order by market_slug, snapshot_time asc`,
     [slugs],
   );
+  const tradeRows = await runDatabaseQuery<{
+    market_slug: string;
+    token_id: string;
+    outcome: "up" | "down";
+    price: string;
+    trade_time: Date;
+  }>(
+    `select market_slug, token_id, outcome, price, trade_time
+     from polymarket_btc5m_trades
+     where market_slug = any($1)
+     order by market_slug, trade_time asc`,
+    [slugs],
+  );
   const pricePoints = (priceRows?.rows ?? []).map((row) => ({
     marketSlug: row.market_slug,
     tokenId: row.token_id,
@@ -1242,7 +1275,15 @@ async function readPricePoints(days: number, limitMarkets: number): Promise<{ ma
     if (row.bid !== null) points.push({ marketSlug: row.market_slug, tokenId: row.token_id, outcome: row.outcome, price: Number(row.bid), time: row.snapshot_time.getTime(), source: "orderbook_snapshot" });
     return points;
   });
-  const points = [...pricePoints, ...bookPoints].sort((a, b) => a.time - b.time);
+  const tradePoints = (tradeRows?.rows ?? []).map((row) => ({
+    marketSlug: row.market_slug,
+    tokenId: row.token_id,
+    outcome: row.outcome,
+    price: Number(row.price),
+    time: row.trade_time.getTime(),
+    source: "trade_proxy" as const,
+  }));
+  const points = [...pricePoints, ...bookPoints, ...tradePoints].sort((a, b) => a.time - b.time);
   await enrichPointsWithAuxiliaryBtcBaseline(markets, points);
   return { markets, points };
 }

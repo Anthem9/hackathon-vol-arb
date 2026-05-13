@@ -43,10 +43,10 @@ Collect CLOB price history:
 pnpm --filter @vol-arb/api btc5m:research collect-price-history --days 7 --limit-markets 2016 --fidelity-seconds 60 --throttle-ms 100
 ```
 
-Collect authenticated CLOB trade history:
+Collect Polymarket Data API market trades:
 
 ```bash
-pnpm --filter @vol-arb/api btc5m:research collect-trades --days 7 --limit-markets 2016 --pages-per-token 2 --throttle-ms 100
+pnpm --filter @vol-arb/api btc5m:research collect-trades --days 7 --limit-markets 2016 --pages-per-market 2 --throttle-ms 100
 ```
 
 Collect auxiliary BTC spot:

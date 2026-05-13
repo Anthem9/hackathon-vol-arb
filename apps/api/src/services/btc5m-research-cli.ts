@@ -53,7 +53,7 @@ function usage() {
   pnpm --filter @vol-arb/api btc5m:research collect-markets --days 7 --limit 2016
   pnpm --filter @vol-arb/api btc5m:research refresh-results --days 7 --limit 2016
   pnpm --filter @vol-arb/api btc5m:research collect-price-history --days 7 --limit-markets 2016
-  pnpm --filter @vol-arb/api btc5m:research collect-trades --days 7 --limit-markets 2016 --pages-per-token 2
+  pnpm --filter @vol-arb/api btc5m:research collect-trades --days 7 --limit-markets 2016 --pages-per-market 2
   pnpm --filter @vol-arb/api btc5m:research collect-btc-price --days 7
   pnpm --filter @vol-arb/api btc5m:research snapshot-orderbook
   pnpm --filter @vol-arb/api btc5m:research collect-orderbook-live --duration-seconds 3600 --interval-ms 1000
@@ -146,7 +146,12 @@ async function main() {
           days: numberArg(args, "days", 7),
           limitMarkets: numberArg(args, "limit-markets", 2016),
           throttleMs: numberArg(args, "throttle-ms", 100),
-          pagesPerToken: numberArg(args, "pages-per-token", 2),
+          pagesPerMarket: numberArg(args, "pages-per-market", numberArg(args, "pages-per-token", 2)),
+          onProgress: (progress) => {
+            if (progress.processed === progress.total || progress.processed % numberArg(args, "progress-every", 25) === 0) {
+              console.error(`collect-trades ${progress.processed}/${progress.total} trades=${progress.trades} errors=${progress.errors}`);
+            }
+          },
         }),
         null,
         2,

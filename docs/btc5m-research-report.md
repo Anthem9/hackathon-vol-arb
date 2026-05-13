@@ -62,14 +62,22 @@ Additional forward collection run:
   - these ticks are used only as auxiliary baseline inputs, not as Polymarket settlement truth.
 - `probability_cone` now uses BTC open price, current price, remaining time, and rolling
   volatility to estimate baseline UP probability before comparing against contract prices.
+- Polymarket Data API market trades are now collected through `/trades?market=<conditionId>`.
+  The earlier authenticated CLOB `/data/trades` path is account-scoped and returned no useful
+  market history for this research task.
+- After collecting one Data API page for 20 recent BTC 5m markets:
+  - stored trade rows visible in 7-day coverage: `8136`.
+  - executable points: `10134` vs required `7428`.
+  - `readyForGeneticSearch: true`.
 - Latest small GA run:
-  - best train candidate: `probability_cone`, `2` trades, `9.4326` PnL.
-  - validation: `1` trade, `0` PnL.
+  - dataset: `11745` points, including `trade_proxy`.
+  - best train candidate: `probability_cone`, `8` trades, `27.1715` PnL.
+  - validation: `6` trades, `-14.3451` PnL.
   - accepted: `false`.
 - Latest coverage:
-  - markets: `1239`; resolved markets: `78`.
-  - price points: `25`; orderbook snapshots: `1998`; trades: `0`; BTC ticks: `9643`.
-  - executable points: `1998` vs required `7434`.
+  - markets: `1238`; resolved markets: `78`.
+  - price points: `25`; orderbook snapshots: `1998`; trades: `8136`; BTC ticks: `9634`.
+  - executable points: `10134` vs required `7428`.
   - segment coverage is still only `weekday_beijing_night`.
 - GA after live observer used `3585` points:
   - train: `7` markets, `2307` points, `0` selected trades for the best train candidate.
