@@ -210,7 +210,7 @@ Git commit, dirty-worktree status, Node version, and pnpm version for reproducib
 Override defaults with `BTC5M_CHECKPOINT_DAYS`,
 `BTC5M_CHECKPOINT_LIMIT_MARKETS`,
 `BTC5M_CHECKPOINT_GENERATIONS`, `BTC5M_CHECKPOINT_POPULATION`,
-`BTC5M_CHECKPOINT_SEED`, `BTC5M_CHECKPOINT_WITH_GA=false`, or
+`BTC5M_CHECKPOINT_SEED`, `--no-ga`, `BTC5M_CHECKPOINT_WITH_GA=false`, or
 `BTC5M_CHECKPOINT_REPORT_FILE`. Keep GA enabled for final acceptance; disabling it is only
 for cheap coverage/status checkpoints while waiting for orderbook data.
 `pnpm btc5m:checkpoint:status` is the no-GA shortcut.

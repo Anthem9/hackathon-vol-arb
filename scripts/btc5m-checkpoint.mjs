@@ -39,7 +39,7 @@ const limitMarkets = process.env.BTC5M_CHECKPOINT_LIMIT_MARKETS ?? "2016";
 const generations = process.env.BTC5M_CHECKPOINT_GENERATIONS ?? "1";
 const population = process.env.BTC5M_CHECKPOINT_POPULATION ?? "4";
 const seed = process.env.BTC5M_CHECKPOINT_SEED ?? "7";
-const withGa = process.env.BTC5M_CHECKPOINT_WITH_GA !== "false";
+const withGa = process.env.BTC5M_CHECKPOINT_WITH_GA !== "false" && !process.argv.includes("--no-ga");
 
 const orderbookPlan = runJson("pnpm", ["--silent", "btc5m:orderbook:plan"]);
 const readinessArgs = [
