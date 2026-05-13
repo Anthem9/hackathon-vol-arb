@@ -1412,9 +1412,11 @@ async function readPricePoints(days: number, limitMarkets: number): Promise<{ ma
     outcome: "up" | "down";
     bid: string | null;
     ask: string | null;
+    bid_size: string | null;
+    ask_size: string | null;
     snapshot_time: Date;
   }>(
-    `select market_slug, token_id, outcome, bid, ask, snapshot_time
+    `select market_slug, token_id, outcome, bid, ask, bid_size, ask_size, snapshot_time
      from polymarket_btc5m_orderbook_snapshots
      where market_slug = any($1)
      order by market_slug, snapshot_time asc`,
@@ -1444,8 +1446,28 @@ async function readPricePoints(days: number, limitMarkets: number): Promise<{ ma
   }));
   const bookPoints = (bookRows?.rows ?? []).flatMap((row) => {
     const points: PricePoint[] = [];
-    if (row.ask !== null) points.push({ marketSlug: row.market_slug, tokenId: row.token_id, outcome: row.outcome, price: Number(row.ask), time: row.snapshot_time.getTime(), source: "orderbook_snapshot" });
-    if (row.bid !== null) points.push({ marketSlug: row.market_slug, tokenId: row.token_id, outcome: row.outcome, price: Number(row.bid), time: row.snapshot_time.getTime(), source: "orderbook_snapshot" });
+    if (row.ask !== null) {
+      points.push({
+        marketSlug: row.market_slug,
+        tokenId: row.token_id,
+        outcome: row.outcome,
+        price: Number(row.ask),
+        size: row.ask_size === null ? undefined : Number(row.ask_size),
+        time: row.snapshot_time.getTime(),
+        source: "orderbook_snapshot",
+      });
+    }
+    if (row.bid !== null) {
+      points.push({
+        marketSlug: row.market_slug,
+        tokenId: row.token_id,
+        outcome: row.outcome,
+        price: Number(row.bid),
+        size: row.bid_size === null ? undefined : Number(row.bid_size),
+        time: row.snapshot_time.getTime(),
+        source: "orderbook_snapshot",
+      });
+    }
     return points;
   });
   const tradePoints = (tradeRows?.rows ?? []).map((row) => ({
@@ -1650,11 +1672,15 @@ const MIN_STRESS_VALIDATION_TRADES = 4;
 const MIN_WALK_FORWARD_WINDOWS = 3;
 const MIN_BALANCED_ORDERBOOK_SEGMENTS = 3;
 
-function findLimitBuyFill(points: PricePoint[], submittedAt: number, limitPrice: number, params: BacktestParams) {
+function hasEnoughObservedLiquidity(point: PricePoint, requestedSize: number) {
+  return point.size === undefined || !Number.isFinite(point.size) || point.size >= requestedSize;
+}
+
+function findLimitBuyFill(points: PricePoint[], submittedAt: number, limitPrice: number, requestedSize: number, params: BacktestParams) {
   const deadline = submittedAt + params.entryMaxWaitSeconds * 1000;
   return points.find((point) => {
     if (point.time < submittedAt || point.time > deadline) return false;
-    return priceToAsk(point.price, params, point.source) <= limitPrice;
+    return priceToAsk(point.price, params, point.source) <= limitPrice && hasEnoughObservedLiquidity(point, requestedSize);
   });
 }
 
@@ -1721,8 +1747,6 @@ export function runBtc5mBacktestFromData(input: { markets: Btc5mMarket[]; points
       const ask = priceToAsk(candidate.price, params, candidate.source);
       const entryLimit = Math.max(0.01, Math.min(0.99, ask - params.entryLimitOffset));
       if (entryLimit < params.entryMinPrice || entryLimit > params.entryMaxPrice) continue;
-      const entryFill = findLimitBuyFill(candidatePoints, delayedTime, entryLimit, params);
-      if (!entryFill) continue;
       const risk = capital * params.maxRiskFraction;
       const target = Math.min(0.99, entryLimit * params.takeProfitMultiple);
       const kellyRisk = params.useKellySizing
@@ -1731,6 +1755,8 @@ export function runBtc5mBacktestFromData(input: { markets: Btc5mMarket[]; points
       const effectiveRisk = Math.min(risk, Math.max(0, kellyRisk));
       const size = Math.floor((effectiveRisk / entryLimit) * 100) / 100;
       if (size <= 0) continue;
+      const entryFill = findLimitBuyFill(candidatePoints, delayedTime, entryLimit, size, params);
+      if (!entryFill) continue;
       const entryCost = entryLimit * size;
       capital -= entryCost;
 
@@ -1745,7 +1771,7 @@ export function runBtc5mBacktestFromData(input: { markets: Btc5mMarket[]; points
         const heldSeconds = (point.time - entryFill.time) / 1000;
         const remaining = (market.endTime - point.time) / 1000;
         const bid = priceToBid(point.price, params, point.source);
-        if (bid >= target) {
+        if (bid >= target && hasEnoughObservedLiquidity(point, size)) {
           exitTime = point.time;
           exitPrice = target;
           exitLimit = target;
@@ -1753,7 +1779,7 @@ export function runBtc5mBacktestFromData(input: { markets: Btc5mMarket[]; points
           status = "sold";
           break;
         }
-        if (bid <= stop && heldSeconds >= 5) {
+        if (bid <= stop && heldSeconds >= 5 && hasEnoughObservedLiquidity(point, size)) {
           exitTime = point.time;
           exitPrice = bid;
           exitLimit = bid;
@@ -1761,7 +1787,7 @@ export function runBtc5mBacktestFromData(input: { markets: Btc5mMarket[]; points
           status = "sold";
           break;
         }
-        if (heldSeconds >= params.maxHoldSeconds || remaining <= params.forceExitBeforeEndSeconds) {
+        if ((heldSeconds >= params.maxHoldSeconds || remaining <= params.forceExitBeforeEndSeconds) && hasEnoughObservedLiquidity(point, size)) {
           exitTime = point.time;
           exitPrice = bid;
           exitLimit = bid;
@@ -1850,6 +1876,7 @@ export function runBtc5mBacktestFromData(input: { markets: Btc5mMarket[]; points
       "All entries and exits are modeled as limit orders.",
       "Historical CLOB price-history points are used as a conservative proxy when full orderbook snapshots are unavailable.",
       "Live orderbook snapshots, when present, are included and counted separately in sourceBreakdown.",
+      "Observed size is enforced for trade_proxy and orderbook_snapshot fills when size data is present.",
       "Stop-loss exits are modeled as limit sells at the observed bid after the stop is crossed, not as guaranteed fills at the stop price.",
       "Performance is segmented by Beijing day/night and weekday/weekend where trades exist.",
       "Trader-style hard risk limits cap sizing before any optional fractional Kelly sizing is applied.",

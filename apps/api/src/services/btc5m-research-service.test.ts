@@ -112,4 +112,28 @@ assert.equal(stopLossReport.trades[0]?.exitLimit, 0.02);
 assert.equal(stopLossReport.trades[0]?.exitPrice, 0.02);
 assert.ok(stopLossReport.totalPnl < 0);
 
+const thinLiquidityReport = runBtc5mBacktestFromData({
+  markets: [market],
+  points: [
+    { marketSlug: market.slug, tokenId: "up-token", outcome: "up", price: 0.05, size: 50, time: start + 60_000, source: "orderbook_snapshot" },
+    { marketSlug: market.slug, tokenId: "down-token", outcome: "down", price: 0.95, size: 500, time: start + 60_000, source: "orderbook_snapshot" },
+    { marketSlug: market.slug, tokenId: "up-token", outcome: "up", price: 0.05, size: 50, time: start + 61_000, source: "orderbook_snapshot" },
+    { marketSlug: market.slug, tokenId: "up-token", outcome: "up", price: 0.16, size: 500, time: start + 90_000, source: "orderbook_snapshot" },
+  ],
+  params: {
+    ...DEFAULT_BACKTEST_PARAMS,
+    initialCapital: 100,
+    maxRiskFraction: 0.1,
+    entryMinPrice: 0.01,
+    entryMaxPrice: 0.08,
+    assumedSpread: 0,
+    decisionDelaySeconds: 0,
+    entryMaxWaitSeconds: 5,
+    minSecondsRemaining: 1,
+    maxSecondsRemaining: 300,
+  },
+});
+
+assert.equal(thinLiquidityReport.tradeCount, 0);
+
 console.log("btc5m-research-service tests passed");

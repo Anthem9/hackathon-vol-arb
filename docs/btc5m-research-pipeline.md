@@ -257,6 +257,8 @@ Both strategies support:
 - dynamic position sizing from current equity,
 - limit-only entry,
 - limit-entry fill verification from subsequent market data within `entryMaxWaitSeconds`,
+- observed size checks for `trade_proxy` and `orderbook_snapshot` fills when size data is
+  available,
 - optional recent same-outcome trade-volume filtering before entry,
 - take-profit limit exit,
 - stop-loss limit exit,

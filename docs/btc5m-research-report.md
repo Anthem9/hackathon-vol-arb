@@ -97,6 +97,9 @@ Additional forward collection run:
 - Stop-loss backtest fills are now more conservative: when a stop is crossed, the model
   exits with a limit sell at the observed bid instead of assuming a guaranteed fill at the
   original stop price.
+- Backtest fills now enforce observed size for `trade_proxy` and `orderbook_snapshot`
+  points when size data is present, so a strategy cannot assume a larger fill than visible
+  liquidity.
 - GA acceptance now checks orderbook coverage by Beijing regime. Targeted strategies need
   `partial_orderbook` coverage in their selected segment, and `targetSegment=all`
   strategies need at least 3 Beijing regimes with `partial_orderbook` coverage.
