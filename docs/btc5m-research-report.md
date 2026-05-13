@@ -44,6 +44,13 @@ Additional forward collection run:
   - total PnL if held to settlement: `-1329.9854`.
   - win rate: `0`.
   - interpretation: the default paper signal parameters are not acceptable and should not be traded.
+- Paper signal summary now blocks strategies with enough settled negative paper evidence:
+  - `lottery_reprice` is blocked by `133` settled signals, `-1329.9854` PnL, `0` win rate.
+- GA now includes paper-signal summary in its output and cannot accept a strategy blocked by settled paper evidence.
+- Latest small GA run:
+  - best train candidate: `probability_cone`, `3` trades, `-5.0588` PnL.
+  - validation: `0` trades.
+  - accepted: `false`.
 - GA after live observer used `3585` points:
   - train: `7` markets, `2307` points, `0` selected trades for the best train candidate.
   - validation: `2` markets, `1278` points, `0` trades.

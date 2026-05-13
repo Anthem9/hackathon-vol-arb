@@ -1007,6 +1007,47 @@ export async function evaluateResolvedPaperSignals(input: { limit?: number } = {
   };
 }
 
+export async function summarizePaperSignals() {
+  const rows = await runDatabaseQuery<{
+    strategy: string;
+    segment: string;
+    settled: string;
+    total_pnl: string;
+    wins: string;
+  }>(
+    `select strategy,
+            segment,
+            count(*) as settled,
+            coalesce(sum(realized_pnl), 0) as total_pnl,
+            count(*) filter (where realized_pnl > 0) as wins
+     from btc5m_paper_signals
+     where evaluation_status = 'settled'
+     group by strategy, segment
+     order by strategy, segment`,
+  );
+  const byStrategy: Record<string, { settled: number; totalPnl: number; winRate: number; segments: Record<string, { settled: number; totalPnl: number; winRate: number }> }> = {};
+  for (const row of rows?.rows ?? []) {
+    const settled = Number(row.settled);
+    const totalPnl = Number(row.total_pnl);
+    const wins = Number(row.wins);
+    const current = byStrategy[row.strategy] ?? { settled: 0, totalPnl: 0, winRate: 0, segments: {} };
+    current.settled += settled;
+    current.totalPnl += totalPnl;
+    current.segments[row.segment] = { settled, totalPnl, winRate: settled ? wins / settled : 0 };
+    byStrategy[row.strategy] = current;
+  }
+  for (const value of Object.values(byStrategy)) {
+    const wins = Object.values(value.segments).reduce((sum, segment) => sum + segment.winRate * segment.settled, 0);
+    value.winRate = value.settled ? wins / value.settled : 0;
+  }
+  return {
+    byStrategy,
+    blockedStrategies: Object.entries(byStrategy)
+      .filter(([, value]) => value.settled >= 20 && value.totalPnl < 0)
+      .map(([strategy]) => strategy),
+  };
+}
+
 async function readPricePoints(days: number, limitMarkets: number): Promise<{ markets: Btc5mMarket[]; points: PricePoint[] }> {
   const markets = await readMarketsForBacktest(days, limitMarkets);
   if (markets.length === 0) return { markets, points: [] };
@@ -1403,6 +1444,9 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
   }
   const bestTrain = history.map((item) => item.best).sort((a, b) => scoreReport(b) - scoreReport(a))[0] ?? runBtc5mBacktestFromData({ markets: trainMarkets, points: trainPoints });
   const validation = runBtc5mBacktestFromData({ markets: validationMarkets, points: validationPoints, params: bestTrain.parameters });
+  const paperSummary = await summarizePaperSignals();
+  const strategyPaper = paperSummary.byStrategy[validation.strategy];
+  const paperBlocked = Boolean(strategyPaper && strategyPaper.settled >= 20 && strategyPaper.totalPnl < 0);
   if (input.persistBest) await persistBacktestReport({ ...validation, runId: `${validation.runId}-validation`, strategy: `${validation.strategy}_validation` });
   return {
     generations,
@@ -1418,7 +1462,8 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
     },
     bestTrain,
     validation,
-    accepted: validation.tradeCount >= 5 && validation.totalPnl > 0 && validation.maxDrawdown <= validation.initialCapital * validation.parameters.maxDrawdownFraction,
+    paperSummary,
+    accepted: !paperBlocked && validation.tradeCount >= 5 && validation.totalPnl > 0 && validation.maxDrawdown <= validation.initialCapital * validation.parameters.maxDrawdownFraction,
     history: history.map((item) => ({
       generation: item.generation,
       bestScore: item.bestScore,

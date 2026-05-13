@@ -91,6 +91,12 @@ Evaluate settled paper signals after market resolution:
 pnpm --filter @vol-arb/api btc5m:research evaluate-paper-signals --limit 200
 ```
 
+Summarize settled paper signals by strategy and Beijing segment:
+
+```bash
+pnpm --filter @vol-arb/api btc5m:research paper-summary
+```
+
 Run a backtest:
 
 ```bash
@@ -167,6 +173,7 @@ The final result includes:
 - `validation`
 - `accepted`
 - dataset counts for train and validation slices
+- paper-signal summary gates; a strategy with enough settled negative paper signals cannot be accepted
 
 ## Risk Model
 
