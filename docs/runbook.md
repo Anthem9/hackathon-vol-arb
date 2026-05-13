@@ -182,10 +182,12 @@ pnpm btc5m:orderbook:status
 pnpm btc5m:orderbook:plan
 ```
 
-`orderbook:status` includes `logHealth`. Treat `logHealth.health=warning` as a reason
-to inspect `latestProgress` and `lastLogLines`, not as an automatic restart signal. If
-`latestProgress.snapshots` keeps increasing and recent latest-session errors are zero,
-let the collector continue unless `orderbook:plan` recommends switching.
+`orderbook:status` includes `logHealth`. `healthy` means recent progress lines have no
+errors, `recovering` means older recent lines had errors but the latest progress line is
+clean, and `warning` means the latest progress line still has errors. Treat non-healthy
+states as a reason to inspect `latestProgress` and `lastLogLines`, not as an automatic
+restart signal. If `latestProgress.snapshots` keeps increasing and latest-session errors
+are zero, let the collector continue unless `orderbook:plan` recommends switching.
 
 Do not restart a healthy untargeted collector if `plan.recommendedAction` says
 `keep_current_collector_running`; let it continue through the next weak Beijing segment.

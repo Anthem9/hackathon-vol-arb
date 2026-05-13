@@ -58,8 +58,9 @@ function logHealth(lines) {
   const progress = lines.map(parseProgressLine).filter(Boolean);
   const latestProgress = progress.at(-1) ?? null;
   const recentErrorLines = progress.filter((line) => line.errors > 0).length;
+  const health = recentErrorLines === 0 ? "healthy" : latestProgress?.errors === 0 ? "recovering" : "warning";
   return {
-    health: recentErrorLines > 0 ? "warning" : "healthy",
+    health,
     latestProgress,
     recentProgressLines: progress.length,
     recentErrorLines,

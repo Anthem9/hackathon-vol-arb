@@ -39,7 +39,7 @@ try {
   assert.equal(result.status, 0, result.stderr || result.stdout);
   const status = JSON.parse(result.stdout);
   assert.equal(status.status, "not_running");
-  assert.equal(status.logHealth.health, "warning");
+  assert.equal(status.logHealth.health, "recovering");
   assert.equal(status.logHealth.recentProgressLines, 3);
   assert.equal(status.logHealth.recentErrorLines, 1);
   assert.deepEqual(status.logHealth.latestProgress, {
