@@ -243,4 +243,34 @@ const executionQualityBlockers = buildBtc5mAcceptanceBlockers({
 
 assert.ok(executionQualityBlockers.some((blocker) => blocker.code === "execution_quality_below_partial_orderbook"));
 
+const candidateRiskBlockers = buildBtc5mAcceptanceBlockers({
+  datasetMarkets: 500,
+  targetSegment: "all",
+  paperBlocked: false,
+  validation: {
+    ...acceptanceReadyReport,
+    parameters: {
+      ...DEFAULT_BACKTEST_PARAMS,
+      maxLiquidityParticipation: 0.4,
+    },
+  },
+  stressValidation: acceptanceReadyReport,
+  walkForwardValidation: {
+    requestedWindows: 4,
+    windows: [],
+    accepted: true,
+    windowCount: 4,
+    totalPnl: 1,
+    totalTrades: 100,
+    profitableWindows: 3,
+    losingWindows: 1,
+  },
+  coverageAccepted: true,
+  executionQuality: "partial_orderbook",
+  segmentCoverage: {},
+  partialOrderbookSegments: ["weekday_beijing_day", "weekday_beijing_night", "weekend_beijing_day"],
+});
+
+assert.ok(candidateRiskBlockers.some((blocker) => blocker.code === "candidate_liquidity_participation_above_limit"));
+
 console.log("btc5m-research-service tests passed");

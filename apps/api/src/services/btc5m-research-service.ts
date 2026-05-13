@@ -1989,7 +1989,7 @@ function mutateParams(parent: BacktestParams, random: RandomSource): BacktestPar
     maxSignalStalenessSeconds: Math.max(5, Math.min(90, Math.round(parent.maxSignalStalenessSeconds + randomBetween(-8, 8, random)))),
     entryMaxWaitSeconds: Math.max(1, Math.min(60, Math.round(parent.entryMaxWaitSeconds + randomBetween(-5, 5, random)))),
     maxDailyTrades: Math.max(3, Math.min(96, Math.round(parent.maxDailyTrades + randomBetween(-6, 6, random)))),
-    maxLiquidityParticipation: Math.max(0.05, Math.min(0.75, parent.maxLiquidityParticipation + randomBetween(-0.05, 0.05, random))),
+    maxLiquidityParticipation: Math.max(0.05, Math.min(DEFAULT_BACKTEST_PARAMS.maxLiquidityParticipation, parent.maxLiquidityParticipation + randomBetween(-0.05, 0.05, random))),
     kellyFraction: Math.max(0.05, Math.min(0.5, parent.kellyFraction + randomBetween(-0.05, 0.05, random))),
     coneVolatilityMultiplier: Math.max(0.25, Math.min(4, parent.coneVolatilityMultiplier + randomBetween(-0.25, 0.25, random))),
     minRecentTradeVolume: Math.max(0, Math.min(5000, parent.minRecentTradeVolume + randomBetween(-150, 150, random))),
@@ -2200,6 +2200,63 @@ export function buildBtc5mAcceptanceBlockers(input: {
       required: "non-negative settled paper evidence or insufficient settled sample",
     });
   }
+  const candidateParams = input.validation.parameters;
+  if (candidateParams.initialCapital !== DEFAULT_BACKTEST_PARAMS.initialCapital) {
+    blockers.push({
+      code: "candidate_initial_capital_not_default",
+      message: "Accepted candidates must use the configured small-capital research bankroll.",
+      observed: candidateParams.initialCapital,
+      required: DEFAULT_BACKTEST_PARAMS.initialCapital,
+    });
+  }
+  if (candidateParams.maxRiskFraction > DEFAULT_BACKTEST_PARAMS.maxRiskFraction) {
+    blockers.push({
+      code: "candidate_trade_risk_above_limit",
+      message: "Accepted candidates must not exceed the per-trade risk limit.",
+      observed: candidateParams.maxRiskFraction,
+      required: DEFAULT_BACKTEST_PARAMS.maxRiskFraction,
+    });
+  }
+  if (candidateParams.maxDailyLossFraction > DEFAULT_BACKTEST_PARAMS.maxDailyLossFraction) {
+    blockers.push({
+      code: "candidate_daily_loss_above_limit",
+      message: "Accepted candidates must not exceed the daily loss limit.",
+      observed: candidateParams.maxDailyLossFraction,
+      required: DEFAULT_BACKTEST_PARAMS.maxDailyLossFraction,
+    });
+  }
+  if (candidateParams.maxDrawdownFraction > DEFAULT_BACKTEST_PARAMS.maxDrawdownFraction) {
+    blockers.push({
+      code: "candidate_drawdown_above_limit",
+      message: "Accepted candidates must not exceed the max drawdown limit.",
+      observed: candidateParams.maxDrawdownFraction,
+      required: DEFAULT_BACKTEST_PARAMS.maxDrawdownFraction,
+    });
+  }
+  if (candidateParams.maxConsecutiveLosses > DEFAULT_BACKTEST_PARAMS.maxConsecutiveLosses) {
+    blockers.push({
+      code: "candidate_consecutive_losses_above_limit",
+      message: "Accepted candidates must not exceed the consecutive-loss stop.",
+      observed: candidateParams.maxConsecutiveLosses,
+      required: DEFAULT_BACKTEST_PARAMS.maxConsecutiveLosses,
+    });
+  }
+  if (candidateParams.maxOpenMarkets > DEFAULT_BACKTEST_PARAMS.maxOpenMarkets) {
+    blockers.push({
+      code: "candidate_open_markets_above_limit",
+      message: "Accepted candidates must not exceed the max open markets limit.",
+      observed: candidateParams.maxOpenMarkets,
+      required: DEFAULT_BACKTEST_PARAMS.maxOpenMarkets,
+    });
+  }
+  if (candidateParams.maxLiquidityParticipation > DEFAULT_BACKTEST_PARAMS.maxLiquidityParticipation) {
+    blockers.push({
+      code: "candidate_liquidity_participation_above_limit",
+      message: "Accepted candidates must not consume more visible liquidity than the hard cap.",
+      observed: candidateParams.maxLiquidityParticipation,
+      required: DEFAULT_BACKTEST_PARAMS.maxLiquidityParticipation,
+    });
+  }
   if (input.validation.tradeCount < MIN_VALIDATION_TRADES) {
     blockers.push({
       code: "validation_trade_count_below_min",
@@ -2335,7 +2392,7 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
     maxSignalStalenessSeconds: Math.round(randomBetween(10, 60, random)),
     entryMaxWaitSeconds: Math.round(randomBetween(3, 30, random)),
     maxDailyTrades: Math.round(randomBetween(6, 48, random)),
-    maxLiquidityParticipation: randomBetween(0.1, 0.5, random),
+    maxLiquidityParticipation: randomBetween(0.1, DEFAULT_BACKTEST_PARAMS.maxLiquidityParticipation, random),
     useKellySizing: index % 3 === 0,
     kellyFraction: randomBetween(0.1, 0.35, random),
     coneVolatilityMultiplier: randomBetween(0.5, 2.5, random),
