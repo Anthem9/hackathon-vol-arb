@@ -19,7 +19,9 @@ if (process.argv.includes("--help") || process.argv.includes("-h")) {
 }
 
 const full = process.argv.includes("--full");
-const reportsDir = resolve(root, ".local/reports");
+const reportsDir = process.env.BTC5M_CHECKPOINT_REPORT_DIR
+  ? resolve(root, process.env.BTC5M_CHECKPOINT_REPORT_DIR)
+  : resolve(root, ".local/reports");
 
 if (!existsSync(reportsDir)) {
   throw new Error("No .local/reports directory exists. Run pnpm btc5m:checkpoint:status or pnpm btc5m:checkpoint first.");
