@@ -189,7 +189,8 @@ pnpm --filter @vol-arb/api btc5m:research readiness --days 7 --with-ga --generat
 `readiness` is stricter than `status`: it emits a checklist for market sample size, trade
 coverage, orderbook coverage, Beijing segment balance, execution quality, settled paper
 evidence, GA acceptance, and hard risk controls. `liveReady` must be `true` before any
-live order path is considered.
+live order path is considered. Add `--save-report` or `--report-file <path>` to persist
+the audit JSON under `.local/reports`.
 
 Record a real-time paper signal without submitting any order:
 

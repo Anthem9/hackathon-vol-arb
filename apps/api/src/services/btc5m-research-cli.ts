@@ -64,7 +64,7 @@ function usage() {
   pnpm --filter @vol-arb/api btc5m:research observe-live --duration-seconds 3600 --interval-ms 1000
   pnpm --filter @vol-arb/api btc5m:research coverage --days 7
   pnpm --filter @vol-arb/api btc5m:research status --days 7 [--with-ga] [--seed 42]
-  pnpm --filter @vol-arb/api btc5m:research readiness --days 7 [--with-ga] [--seed 42]
+  pnpm --filter @vol-arb/api btc5m:research readiness --days 7 [--with-ga] [--seed 42] [--save-report] [--report-file .local/reports/readiness.json]
   pnpm --filter @vol-arb/api btc5m:research paper-signal --persist
   pnpm --filter @vol-arb/api btc5m:research evaluate-paper-signals --limit 200 [--recheck-settled]
   pnpm --filter @vol-arb/api btc5m:research paper-summary
@@ -110,6 +110,10 @@ function defaultGeneticReportFile() {
 
 function defaultBacktestReportFile() {
   return resolve(workspaceRoot, ".local/reports", `btc5m-backtest-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
+}
+
+function defaultReadinessReportFile() {
+  return resolve(workspaceRoot, ".local/reports", `btc5m-readiness-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
 }
 
 function resolveWorkspacePath(path: string) {
@@ -503,32 +507,30 @@ async function main() {
     const failedChecks = checks.filter((check) => check.status === "fail").map((check) => check.id);
     const notEvaluatedChecks = checks.filter((check) => check.status === "not_evaluated").map((check) => check.id);
     const liveReady = failedChecks.length === 0 && notEvaluatedChecks.length === 0;
-    console.log(
-      JSON.stringify(
-        {
-          days,
-          liveReady,
-          failedChecks,
-          notEvaluatedChecks,
-          checks,
-          nextAction: liveReady
-            ? "Review saved GA/backtest reports manually before enabling any live order path."
-            : executionQualityAccepted
-              ? "Run readiness with --with-ga and inspect failed validation, stress, or paper-signal gates."
-              : "Continue forward orderbook collection until partial_orderbook coverage is reached across Beijing regimes.",
-          coverageSummary: {
-            executionQuality: coverage.executionQuality,
-            markets: coverage.markets,
-            marketsWithTrades: coverage.marketsWithTrades,
-            marketsWithOrderbook: coverage.marketsWithOrderbook,
-            orderbookTargets: coverage.orderbookTargets,
-            weakestOrderbookSegments: coverage.weakestOrderbookSegments,
-          },
-        },
-        null,
-        2,
-      ),
-    );
+    const reportFile = boolArg(args, "save-report") || args["report-file"] ? resolveWorkspacePath(stringArg(args, "report-file", defaultReadinessReportFile())) : null;
+    const output = {
+      days,
+      liveReady,
+      failedChecks,
+      notEvaluatedChecks,
+      checks,
+      nextAction: liveReady
+        ? "Review saved GA/backtest reports manually before enabling any live order path."
+        : executionQualityAccepted
+          ? "Run readiness with --with-ga and inspect failed validation, stress, or paper-signal gates."
+          : "Continue forward orderbook collection until partial_orderbook coverage is reached across Beijing regimes.",
+      coverageSummary: {
+        executionQuality: coverage.executionQuality,
+        markets: coverage.markets,
+        marketsWithTrades: coverage.marketsWithTrades,
+        marketsWithOrderbook: coverage.marketsWithOrderbook,
+        orderbookTargets: coverage.orderbookTargets,
+        weakestOrderbookSegments: coverage.weakestOrderbookSegments,
+      },
+      reportFile,
+    };
+    if (reportFile) saveJsonReport(reportFile, output);
+    console.log(JSON.stringify(output, null, 2));
     return;
   }
   if (command === "paper-signal") {
