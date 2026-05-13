@@ -88,11 +88,24 @@ Additional forward collection run:
     still rejects the candidate.
 - The acceptance gate now requires at least `8` validation trades, positive validation PnL,
   acceptable drawdown, and no paper-signal block.
+- Data API trade collection now supports `--stride`, allowing sparse sampling across the
+  full 7-day window instead of only the most recent contiguous markets.
+- After collecting one page for `80` recent markets and `120` stride-sampled markets:
+  - stored trade rows visible in 7-day coverage: `78116`.
+  - executable points: `80114` vs required `7416`.
+  - trade segment coverage: `weekday_beijing_day=12080`, `weekday_beijing_night=44283`,
+    `weekend_beijing_day=8435`, `weekend_beijing_night=13318`.
+- GA after stride-sampled trade coverage (`12` generations, `24` population):
+  - dataset: `81725` points.
+  - train: `9` trades, `17.0726` PnL.
+  - validation: `13` trades, `-12.5526` PnL.
+  - accepted: `false`.
+  - interpretation: wider trade coverage increases validation sample size, but the current
+    probability-cone/low-price rebound family still fails out-of-sample.
 - Latest coverage:
-  - markets: `1238`; resolved markets: `78`.
-  - price points: `25`; orderbook snapshots: `1998`; trades: `8136`; BTC ticks: `9634`.
-  - executable points: `10134` vs required `7428`.
-  - segment coverage is still only `weekday_beijing_night`.
+  - markets: `1236`; resolved markets: `78`.
+  - price points: `25`; orderbook snapshots: `1998`; trades: `78116`; BTC ticks: `9624`.
+  - executable points: `80114` vs required `7416`.
 - GA after live observer used `3585` points:
   - train: `7` markets, `2307` points, `0` selected trades for the best train candidate.
   - validation: `2` markets, `1278` points, `0` trades.

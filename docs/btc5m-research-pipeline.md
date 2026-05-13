@@ -46,8 +46,11 @@ pnpm --filter @vol-arb/api btc5m:research collect-price-history --days 7 --limit
 Collect Polymarket Data API market trades:
 
 ```bash
-pnpm --filter @vol-arb/api btc5m:research collect-trades --days 7 --limit-markets 2016 --pages-per-market 2 --throttle-ms 100
+pnpm --filter @vol-arb/api btc5m:research collect-trades --days 7 --limit-markets 2016 --pages-per-market 2 --stride 1 --throttle-ms 100
 ```
+
+Use `--stride` greater than `1` to sample across the full time window instead of only the
+most recent contiguous markets.
 
 Collect auxiliary BTC spot:
 

@@ -527,12 +527,15 @@ export async function collectBtc5mPriceHistory(input: { days?: number; limitMark
 export async function collectBtc5mTrades(input: {
   days?: number;
   limitMarkets?: number;
+  stride?: number;
   throttleMs?: number;
   pagesPerMarket?: number;
   pagesPerToken?: number;
   onProgress?: (progress: { processed: number; total: number; trades: number; errors: number }) => void;
 } = {}) {
-  const markets = await readMarketsForBacktest(input.days ?? 7, input.limitMarkets ?? 2500);
+  const stride = Math.max(1, Math.trunc(input.stride ?? 1));
+  const requestedMarkets = Math.max(1, input.limitMarkets ?? 2500);
+  const markets = (await readMarketsForBacktest(input.days ?? 7, requestedMarkets * stride)).filter((_, index) => index % stride === 0).slice(-requestedMarkets);
   const result = { markets: markets.length, trades: 0, errors: [] as string[] };
   const pagesPerMarket = Math.max(1, input.pagesPerMarket ?? input.pagesPerToken ?? 2);
   for (let index = 0; index < markets.length; index += 1) {
@@ -846,6 +849,23 @@ export async function getBtc5mResearchCoverage(input: { days?: number } = {}) {
      order by 1`,
     [`${days} days`],
   );
+  const tradeSegmentRows = await runDatabaseQuery<{ segment: string; trades: string }>(
+    `select
+       case
+         when extract(dow from trade_time at time zone 'Asia/Shanghai') in (0, 6) then 'weekend' else 'weekday'
+       end || '_' ||
+       case
+         when extract(hour from trade_time at time zone 'Asia/Shanghai') >= 8
+          and extract(hour from trade_time at time zone 'Asia/Shanghai') < 18 then 'beijing_day'
+         else 'beijing_night'
+       end as segment,
+       count(*) as trades
+     from polymarket_btc5m_trades
+     where trade_time >= now() - ($1::text)::interval
+     group by 1
+     order by 1`,
+    [`${days} days`],
+  );
   const row = summary?.rows[0];
   const markets = Number(row?.markets ?? 0);
   const pricePoints = Number(row?.price_points ?? 0);
@@ -865,6 +885,7 @@ export async function getBtc5mResearchCoverage(input: { days?: number } = {}) {
     minimumExecutablePoints,
     readyForGeneticSearch: executablePoints >= minimumExecutablePoints,
     segmentSnapshots: Object.fromEntries((segmentRows?.rows ?? []).map((segment) => [segment.segment, Number(segment.snapshots)])),
+    segmentTrades: Object.fromEntries((tradeSegmentRows?.rows ?? []).map((segment) => [segment.segment, Number(segment.trades)])),
     nextAction:
       executablePoints >= minimumExecutablePoints
         ? "Run btc5m:research genetic with a larger population and validation split."
