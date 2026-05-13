@@ -110,6 +110,9 @@ Additional forward collection run:
   paper size.
 - Fill liquidity checks now use `maxLiquidityParticipation`; the default model only lets
   simulated orders consume up to 25% of visible size, and the GA can search that limit.
+- Signal generation now rejects stale UP/DOWN executable prices via
+  `maxSignalStalenessSeconds`; backtests and paper signals should not act on a market if
+  one side of the book has not updated recently enough.
 - Latest sweep after the visible-liquidity participation cap:
   - command: `genetic-sweep --days 7 --limit-markets 2016 --seeds 2 --seed-start 91 --generations 1 --population 6 --save-report`.
   - accepted count: `0`.

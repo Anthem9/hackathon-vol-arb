@@ -52,6 +52,7 @@ export type BacktestParams = {
   probabilityEdge: number;
   assumedSpread: number;
   decisionDelaySeconds: number;
+  maxSignalStalenessSeconds: number;
   entryMaxWaitSeconds: number;
   allowHoldToSettlement: boolean;
   maxDailyLossFraction: number;
@@ -144,6 +145,7 @@ export const DEFAULT_BACKTEST_PARAMS: BacktestParams = {
   probabilityEdge: 0.08,
   assumedSpread: 0.01,
   decisionDelaySeconds: 1,
+  maxSignalStalenessSeconds: 20,
   entryMaxWaitSeconds: 10,
   allowHoldToSettlement: true,
   maxDailyLossFraction: 0.2,
@@ -1079,8 +1081,8 @@ export async function evaluateLatestBtc5mPaperSignal(input: { params?: Partial<B
 
   const data = await readPricePoints(1, 12);
   const points = data.points.filter((point) => point.marketSlug === activeMarket.slug);
-  const up = latestAskPrice(points, "up");
-  const down = latestAskPrice(points, "down");
+  const up = latestAskPrice(points, "up", now, params.maxSignalStalenessSeconds);
+  const down = latestAskPrice(points, "down", now, params.maxSignalStalenessSeconds);
   const candidate = chooseOutcome(params, up, down, activeMarket.endTime);
   const secondsRemaining = (activeMarket.endTime - now) / 1000;
   let report: PaperSignalReport;
@@ -1581,9 +1583,10 @@ function priceToBid(point: PricePoint, params: BacktestParams) {
   return Math.max(0.01, point.price - params.assumedSpread / 2);
 }
 
-function latestAskPrice(points: PricePoint[], outcome: "up" | "down", atTime = Number.POSITIVE_INFINITY) {
+function latestAskPrice(points: PricePoint[], outcome: "up" | "down", atTime = Number.POSITIVE_INFINITY, maxStalenessSeconds = Number.POSITIVE_INFINITY) {
+  const earliestTime = Number.isFinite(atTime) && Number.isFinite(maxStalenessSeconds) ? atTime - maxStalenessSeconds * 1000 : Number.NEGATIVE_INFINITY;
   return points
-    .filter((point) => point.outcome === outcome && point.time <= atTime && canUseAsAsk(point))
+    .filter((point) => point.outcome === outcome && point.time <= atTime && point.time >= earliestTime && canUseAsAsk(point))
     .sort((a, b) => b.time - a.time)[0];
 }
 
@@ -1762,8 +1765,8 @@ export function runBtc5mBacktestFromData(input: { markets: Btc5mMarket[]; points
       const secondsRemaining = (market.endTime - time) / 1000;
       if (secondsRemaining < params.minSecondsRemaining || secondsRemaining > params.maxSecondsRemaining) continue;
       const delayedTime = time + params.decisionDelaySeconds * 1000;
-      const up = latestAskPrice(upPoints, "up", delayedTime);
-      const down = latestAskPrice(downPoints, "down", delayedTime);
+      const up = latestAskPrice(upPoints, "up", delayedTime, params.maxSignalStalenessSeconds);
+      const down = latestAskPrice(downPoints, "down", delayedTime, params.maxSignalStalenessSeconds);
       const candidate = chooseOutcome(params, up, down, market.endTime);
       if (!candidate) continue;
       const candidatePoints = candidate.outcome === "up" ? upPoints : downPoints;
@@ -1983,6 +1986,7 @@ function mutateParams(parent: BacktestParams, random: RandomSource): BacktestPar
     probabilityEdge: Math.max(0, Math.min(0.4, parent.probabilityEdge + randomBetween(-0.03, 0.03, random))),
     assumedSpread: Math.max(0, Math.min(0.08, parent.assumedSpread + randomBetween(-0.005, 0.005, random))),
     decisionDelaySeconds: Math.max(0, Math.min(5, Math.round(parent.decisionDelaySeconds + randomBetween(-1, 1, random)))),
+    maxSignalStalenessSeconds: Math.max(5, Math.min(90, Math.round(parent.maxSignalStalenessSeconds + randomBetween(-8, 8, random)))),
     entryMaxWaitSeconds: Math.max(1, Math.min(60, Math.round(parent.entryMaxWaitSeconds + randomBetween(-5, 5, random)))),
     maxDailyTrades: Math.max(3, Math.min(96, Math.round(parent.maxDailyTrades + randomBetween(-6, 6, random)))),
     maxLiquidityParticipation: Math.max(0.05, Math.min(0.75, parent.maxLiquidityParticipation + randomBetween(-0.05, 0.05, random))),
@@ -2328,6 +2332,7 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
     maxSecondsRemaining: Math.round(randomBetween(120, 280, random)),
     probabilityEdge: randomBetween(0.02, 0.2, random),
     decisionDelaySeconds: Math.round(randomBetween(0, 5, random)),
+    maxSignalStalenessSeconds: Math.round(randomBetween(10, 60, random)),
     entryMaxWaitSeconds: Math.round(randomBetween(3, 30, random)),
     maxDailyTrades: Math.round(randomBetween(6, 48, random)),
     maxLiquidityParticipation: randomBetween(0.1, 0.5, random),

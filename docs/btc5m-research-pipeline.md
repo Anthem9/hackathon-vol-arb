@@ -260,6 +260,8 @@ Both strategies support:
 
 - dynamic position sizing from current equity,
 - limit-only entry,
+- signal freshness checks; a candidate needs recent same-market UP and DOWN executable
+  prices within `maxSignalStalenessSeconds`,
 - limit-entry fill verification from subsequent market data within `entryMaxWaitSeconds`,
 - observed size checks for `trade_proxy` and `orderbook_snapshot` fills when size data is
   available,
@@ -309,6 +311,7 @@ The genetic search mutates these parameters:
 - `probabilityEdge`
 - `assumedSpread`
 - `decisionDelaySeconds`
+- `maxSignalStalenessSeconds`
 - `entryMaxWaitSeconds`
 - `maxDailyTrades`
 - `maxLiquidityParticipation`
