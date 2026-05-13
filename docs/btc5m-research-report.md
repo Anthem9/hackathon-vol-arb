@@ -173,6 +173,14 @@ Additional forward collection run:
   - estimated continuous collection time until `partial_orderbook`: `15.7` hours.
   - `orderbook_backtest_ready` target: `1003` markets.
   - estimated continuous collection time until `orderbook_backtest_ready`: `82.5` hours.
+- Coverage now reports `segmentMarketCoverage`.
+  Latest segment market coverage:
+  - `weekday_beijing_day`: `599` markets, `374` with trades, `0` with orderbook.
+  - `weekday_beijing_night`: `832` markets, `581` with trades, `15` with orderbook.
+  - `weekend_beijing_day`: `240` markets, `240` with trades, `0` with orderbook.
+  - `weekend_beijing_night`: `336` markets, `336` with trades, `0` with orderbook.
+  - interpretation: current orderbook evidence is concentrated in Beijing weekday night.
+    Future forward collection must deliberately cover Beijing daytime and weekend sessions.
 - Added background orderbook collector helpers:
   - `pnpm btc5m:orderbook:start`
   - `pnpm btc5m:orderbook:collector`

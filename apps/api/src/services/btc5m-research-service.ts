@@ -888,6 +888,42 @@ export async function getBtc5mResearchCoverage(input: { days?: number } = {}) {
      order by 1`,
     [`${days} days`],
   );
+  const segmentMarketRows = await runDatabaseQuery<{
+    segment: string;
+    markets: string;
+    markets_with_trades: string;
+    markets_with_orderbook: string;
+  }>(
+    `with recent_markets as (
+       select slug,
+              case
+                when extract(dow from start_time at time zone 'Asia/Shanghai') in (0, 6) then 'weekend' else 'weekday'
+              end || '_' ||
+              case
+                when extract(hour from start_time at time zone 'Asia/Shanghai') >= 8
+                 and extract(hour from start_time at time zone 'Asia/Shanghai') < 18 then 'beijing_day'
+                else 'beijing_night'
+              end as segment
+       from polymarket_btc5m_markets
+       where start_time >= now() - ($1::text)::interval
+     ),
+     trade_markets as (
+       select distinct market_slug from polymarket_btc5m_trades
+     ),
+     orderbook_markets as (
+       select distinct market_slug from polymarket_btc5m_orderbook_snapshots
+     )
+     select r.segment,
+            count(*) as markets,
+            count(*) filter (where t.market_slug is not null) as markets_with_trades,
+            count(*) filter (where o.market_slug is not null) as markets_with_orderbook
+     from recent_markets r
+     left join trade_markets t on t.market_slug = r.slug
+     left join orderbook_markets o on o.market_slug = r.slug
+     group by r.segment
+     order by r.segment`,
+    [`${days} days`],
+  );
   const row = summary?.rows[0];
   const markets = Number(row?.markets ?? 0);
   const pricePoints = Number(row?.price_points ?? 0);
@@ -946,6 +982,23 @@ export async function getBtc5mResearchCoverage(input: { days?: number } = {}) {
     qualityWarnings,
     segmentSnapshots: Object.fromEntries((segmentRows?.rows ?? []).map((segment) => [segment.segment, Number(segment.snapshots)])),
     segmentTrades: Object.fromEntries((tradeSegmentRows?.rows ?? []).map((segment) => [segment.segment, Number(segment.trades)])),
+    segmentMarketCoverage: Object.fromEntries(
+      (segmentMarketRows?.rows ?? []).map((segment) => {
+        const segmentMarkets = Number(segment.markets);
+        const segmentMarketsWithTrades = Number(segment.markets_with_trades);
+        const segmentMarketsWithOrderbook = Number(segment.markets_with_orderbook);
+        return [
+          segment.segment,
+          {
+            markets: segmentMarkets,
+            marketsWithTrades: segmentMarketsWithTrades,
+            marketsWithOrderbook: segmentMarketsWithOrderbook,
+            tradeMarketCoverage: segmentMarkets ? segmentMarketsWithTrades / segmentMarkets : 0,
+            orderbookMarketCoverage: segmentMarkets ? segmentMarketsWithOrderbook / segmentMarkets : 0,
+          },
+        ];
+      }),
+    ),
     nextAction:
       executionQuality === "orderbook_backtest_ready" || executionQuality === "partial_orderbook"
         ? "Run btc5m:research genetic with a larger population and validation split."

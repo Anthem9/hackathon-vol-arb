@@ -120,6 +120,11 @@ Coverage also reports `orderbookTargets`, including how many additional 5-minute
 must be forward-collected to reach `partial_orderbook` (`10%`) and
 `orderbook_backtest_ready` (`50%`), plus an approximate continuous collection time.
 
+Use `segmentMarketCoverage` to check whether coverage is balanced across
+`weekday_beijing_day`, `weekday_beijing_night`, `weekend_beijing_day`, and
+`weekend_beijing_night`. A global orderbook percentage is not enough if all snapshots come
+from only one segment.
+
 Run a compact research status report:
 
 ```bash
