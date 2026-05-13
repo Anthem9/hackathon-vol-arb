@@ -137,14 +137,22 @@ Additional forward collection run:
   - `readyForGeneticSearch: true`.
 - Coverage now reports market-level execution quality in addition to raw point count.
   Latest diagnostic:
-  - markets: `2011`; resolved markets: `2011`.
+  - markets: `2011`; resolved markets: `2010`.
   - markets with trades: `190` (`9.45%`).
-  - markets with orderbook snapshots: `8` (`0.40%`).
+  - markets with orderbook snapshots: `9` (`0.45%`).
   - execution quality: `insufficient`.
   - warning: historical orderbook snapshot coverage is sparse, and trade history covers
     less than half of recent markets.
   - interpretation: GA can run, but output must be treated as research-only until forward
     orderbook coverage improves materially.
+- Short forward orderbook collector smoke test:
+  - command: `collect-orderbook-live --duration-seconds 60 --interval-ms 1000 --max-snapshots 240 --progress-every 15`.
+  - result: `55` iterations, `109` snapshots, `1` aborted UP book request.
+  - coverage impact: orderbook snapshots increased to `2107`, markets with orderbook
+    snapshots increased from `8` to `9`.
+  - interpretation: the collector works, but one minute only adds one active market. Robust
+    execution testing requires collection across many 5-minute markets and multiple Beijing
+    day/night plus weekday/weekend sessions.
 - Train/validation splitting now uses a time-ordered split inside each Beijing segment,
   instead of a single global time split. This avoids accepting a candidate that only trades
   a segment present in train but absent from validation.
@@ -226,10 +234,14 @@ The `coverage` command should be used before larger GA runs. It reports executab
 
 To actually evaluate whether a profitable strategy exists, the project needs denser historical or forward-collected data:
 
-1. Run the live orderbook snapshot collector continuously at 1-second cadence.
-2. Collect authenticated CLOB trade pages for each BTC 5m token.
+1. Run the live orderbook snapshot collector at 1-second cadence across multiple sessions
+   until `orderbookMarketCoverage` reaches at least `10%` (`partial_orderbook`) and then
+   preferably `50%` (`orderbook_backtest_ready`).
+2. Collect Data API trade pages across more BTC 5m markets until `tradeMarketCoverage`
+   reaches at least `50%`.
 3. Continue saving auxiliary BTC spot prices.
-4. Re-run GA after enough `orderbook_snapshot` and trade data exists.
+4. Re-run seeded GA after enough `orderbook_snapshot` and trade data exists, then require
+   ordinary validation and stress validation to pass.
 
 Suggested forward collector schedule:
 
