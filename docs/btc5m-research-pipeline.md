@@ -265,6 +265,9 @@ Both strategies support:
 Backtest reports include gross profit, gross loss, profit factor, average trade PnL,
 return on capital, and drawdown fraction in addition to total PnL and win rate.
 
+Stop-loss exits are conservative: after the stop is crossed, the model exits with a limit
+sell at the observed bid, not with a guaranteed fill at the original stop price.
+
 ## Genetic Algorithm
 
 The genetic search reads the dataset once, then performs a time-ordered train/validation

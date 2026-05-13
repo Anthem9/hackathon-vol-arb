@@ -81,4 +81,35 @@ assert.equal(settleReport.trades[0]?.status, "settled");
 assert.equal(settleReport.trades[0]?.exitPrice, 1);
 assert.ok(settleReport.finalCapital > report.finalCapital);
 
+const stopLossReport = runBtc5mBacktestFromData({
+  markets: [{ ...market, winningOutcome: "down" }],
+  points: [
+    { marketSlug: market.slug, tokenId: "up-token", outcome: "up", price: 0.05, time: start + 60_000, source: "clob_prices_history" },
+    { marketSlug: market.slug, tokenId: "down-token", outcome: "down", price: 0.95, time: start + 60_000, source: "clob_prices_history" },
+    { marketSlug: market.slug, tokenId: "up-token", outcome: "up", price: 0.05, time: start + 61_000, source: "clob_prices_history" },
+    { marketSlug: market.slug, tokenId: "up-token", outcome: "up", price: 0.02, time: start + 90_000, source: "clob_prices_history" },
+    { marketSlug: market.slug, tokenId: "down-token", outcome: "down", price: 0.98, time: start + 90_000, source: "clob_prices_history" },
+  ],
+  params: {
+    ...DEFAULT_BACKTEST_PARAMS,
+    initialCapital: 100,
+    maxRiskFraction: 0.1,
+    entryMinPrice: 0.01,
+    entryMaxPrice: 0.08,
+    assumedSpread: 0,
+    takeProfitMultiple: 4,
+    stopLossFraction: 0.5,
+    decisionDelaySeconds: 0,
+    entryMaxWaitSeconds: 5,
+    minSecondsRemaining: 1,
+    maxSecondsRemaining: 300,
+  },
+});
+
+assert.equal(stopLossReport.tradeCount, 1);
+assert.equal(stopLossReport.trades[0]?.reason, "stop_loss_limit");
+assert.equal(stopLossReport.trades[0]?.exitLimit, 0.02);
+assert.equal(stopLossReport.trades[0]?.exitPrice, 0.02);
+assert.ok(stopLossReport.totalPnl < 0);
+
 console.log("btc5m-research-service tests passed");

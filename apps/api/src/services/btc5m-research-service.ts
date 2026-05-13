@@ -1754,8 +1754,8 @@ export function runBtc5mBacktestFromData(input: { markets: Btc5mMarket[]; points
         }
         if (bid <= stop && heldSeconds >= 5) {
           exitTime = point.time;
-          exitPrice = Math.max(0.01, stop);
-          exitLimit = Math.max(0.01, stop);
+          exitPrice = bid;
+          exitLimit = bid;
           reason = "stop_loss_limit";
           status = "sold";
           break;
@@ -1849,6 +1849,7 @@ export function runBtc5mBacktestFromData(input: { markets: Btc5mMarket[]; points
       "All entries and exits are modeled as limit orders.",
       "Historical CLOB price-history points are used as a conservative proxy when full orderbook snapshots are unavailable.",
       "Live orderbook snapshots, when present, are included and counted separately in sourceBreakdown.",
+      "Stop-loss exits are modeled as limit sells at the observed bid after the stop is crossed, not as guaranteed fills at the stop price.",
       "Performance is segmented by Beijing day/night and weekday/weekend where trades exist.",
       "Trader-style hard risk limits cap sizing before any optional fractional Kelly sizing is applied.",
     ],

@@ -94,6 +94,9 @@ Additional forward collection run:
 - Backtest and GA reports now include additional risk/performance metrics: return on
   capital, drawdown fraction, gross profit, gross loss, profit factor, and average trade
   PnL.
+- Stop-loss backtest fills are now more conservative: when a stop is crossed, the model
+  exits with a limit sell at the observed bid instead of assuming a guaranteed fill at the
+  original stop price.
 - Latest 3-seed full-window sweep after adding `longshot_cone`:
   - command: `genetic-sweep --days 7 --limit-markets 2016 --seeds 3 --seed-start 41 --generations 2 --population 9`.
   - accepted count: `0`.
