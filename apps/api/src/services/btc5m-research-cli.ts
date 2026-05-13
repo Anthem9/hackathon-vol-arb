@@ -3,6 +3,7 @@ import {
   collectBtc5mPriceHistory,
   collectBtc5mTrades,
   collectCurrentOrderbookSnapshots,
+  collectLiveOrderbookSnapshots,
   collectRecentBtc5mMarkets,
   discoverBtc5mDataSources,
   runBtc5mBacktest,
@@ -49,6 +50,7 @@ function usage() {
   pnpm --filter @vol-arb/api btc5m:research collect-trades --days 7 --limit-markets 2016 --pages-per-token 2
   pnpm --filter @vol-arb/api btc5m:research collect-btc-price --days 7
   pnpm --filter @vol-arb/api btc5m:research snapshot-orderbook
+  pnpm --filter @vol-arb/api btc5m:research collect-orderbook-live --duration-seconds 3600 --interval-ms 1000
   pnpm --filter @vol-arb/api btc5m:research backtest --days 7 --limit-markets 2016 --persist
   pnpm --filter @vol-arb/api btc5m:research genetic --days 7 --generations 6 --population 12 --persist-best
 
@@ -127,6 +129,37 @@ async function main() {
   }
   if (command === "snapshot-orderbook") {
     console.log(JSON.stringify(await collectCurrentOrderbookSnapshots(), null, 2));
+    return;
+  }
+  if (command === "collect-orderbook-live") {
+    let stop = false;
+    process.once("SIGINT", () => {
+      stop = true;
+      console.error("Stopping live orderbook collector after current iteration...");
+    });
+    process.once("SIGTERM", () => {
+      stop = true;
+      console.error("Stopping live orderbook collector after current iteration...");
+    });
+    console.log(
+      JSON.stringify(
+        await collectLiveOrderbookSnapshots({
+          durationSeconds: numberArg(args, "duration-seconds", 300),
+          intervalMs: numberArg(args, "interval-ms", 1000),
+          maxSnapshots: numberArg(args, "max-snapshots", Number.MAX_SAFE_INTEGER),
+          shouldStop: () => stop,
+          onProgress: (progress) => {
+            if (progress.iterations === 1 || progress.iterations % numberArg(args, "progress-every", 30) === 0) {
+              console.error(
+                `collect-orderbook-live iterations=${progress.iterations} snapshots=${progress.snapshots} errors=${progress.errors} elapsed=${progress.elapsedSeconds.toFixed(1)}s`,
+              );
+            }
+          },
+        }),
+        null,
+        2,
+      ),
+    );
     return;
   }
   if (command === "backtest") {

@@ -59,13 +59,10 @@ To actually evaluate whether a profitable strategy exists, the project needs den
 Suggested forward collector schedule:
 
 ```bash
-while true; do
-  pnpm --filter @vol-arb/api btc5m:research snapshot-orderbook
-  sleep 1
-done
+pnpm --filter @vol-arb/api btc5m:research collect-orderbook-live --duration-seconds 3600 --interval-ms 1000 --progress-every 30
 ```
 
-For longer operation, this should be wrapped in a managed process with log rotation instead of a shell loop.
+For longer operation, run repeated one-hour sessions under a process manager with log rotation.
 
 ## Current Conclusion
 

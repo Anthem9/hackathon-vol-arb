@@ -582,6 +582,47 @@ export async function collectCurrentOrderbookSnapshots() {
   return { markets: activeMarkets.length, snapshots: stored, errors };
 }
 
+export async function collectLiveOrderbookSnapshots(input: {
+  durationSeconds?: number;
+  intervalMs?: number;
+  maxSnapshots?: number;
+  onProgress?: (progress: { iterations: number; snapshots: number; errors: number; elapsedSeconds: number }) => void;
+  shouldStop?: () => boolean;
+} = {}) {
+  const startedAt = Date.now();
+  const durationMs = Math.max(1, input.durationSeconds ?? 300) * 1000;
+  const intervalMs = Math.max(250, input.intervalMs ?? 1000);
+  const maxSnapshots = Math.max(1, input.maxSnapshots ?? Number.MAX_SAFE_INTEGER);
+  const result = { iterations: 0, snapshots: 0, errors: [] as string[], startedAt, finishedAt: startedAt };
+
+  while (Date.now() - startedAt < durationMs && result.snapshots < maxSnapshots && !input.shouldStop?.()) {
+    const iterationStartedAt = Date.now();
+    try {
+      const snapshot = await collectCurrentOrderbookSnapshots();
+      result.iterations += 1;
+      result.snapshots += snapshot.snapshots;
+      result.errors.push(...snapshot.errors);
+    } catch (error) {
+      result.iterations += 1;
+      result.errors.push(error instanceof Error ? error.message : String(error));
+    }
+    result.finishedAt = Date.now();
+    input.onProgress?.({
+      iterations: result.iterations,
+      snapshots: result.snapshots,
+      errors: result.errors.length,
+      elapsedSeconds: (result.finishedAt - startedAt) / 1000,
+    });
+    const sleepMs = Math.max(0, intervalMs - (Date.now() - iterationStartedAt));
+    if (sleepMs > 0) await sleep(sleepMs);
+  }
+  result.finishedAt = Date.now();
+  return {
+    ...result,
+    elapsedSeconds: (result.finishedAt - result.startedAt) / 1000,
+  };
+}
+
 export async function collectBinanceBtcOneMinute(input: { days?: number; throttleMs?: number } = {}) {
   const end = Date.now();
   let start = end - Math.max(1, input.days ?? 7) * 24 * 60 * 60 * 1000;

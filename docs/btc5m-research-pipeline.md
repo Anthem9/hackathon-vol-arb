@@ -61,6 +61,12 @@ Take one live orderbook snapshot:
 pnpm --filter @vol-arb/api btc5m:research snapshot-orderbook
 ```
 
+Run a managed live orderbook collector:
+
+```bash
+pnpm --filter @vol-arb/api btc5m:research collect-orderbook-live --duration-seconds 3600 --interval-ms 1000 --progress-every 30
+```
+
 Run a backtest:
 
 ```bash
