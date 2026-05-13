@@ -1902,6 +1902,7 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
   if (input.persistBest) await persistBacktestReport({ ...validation, runId: `${validation.runId}-validation`, strategy: `${validation.strategy}_validation` });
   const validationAccepted = validation.tradeCount >= 8 && validation.totalPnl > 0 && validation.maxDrawdown <= validation.initialCapital * validation.parameters.maxDrawdownFraction;
   const stressAccepted = stressValidation.tradeCount >= 4 && stressValidation.totalPnl > 0 && stressValidation.maxDrawdown <= stressValidation.initialCapital * stressValidation.parameters.maxDrawdownFraction;
+  const coverageAccepted = executionCoverage.executionQuality === "partial_orderbook" || executionCoverage.executionQuality === "orderbook_backtest_ready";
   return {
     generations,
     population: populationSize,
@@ -1920,7 +1921,13 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
     validation,
     stressValidation,
     paperSummary,
-    accepted: !paperBlocked && validationAccepted && stressAccepted,
+    acceptanceGates: {
+      paperBlocked,
+      validationAccepted,
+      stressAccepted,
+      coverageAccepted,
+    },
+    accepted: !paperBlocked && validationAccepted && stressAccepted && coverageAccepted,
     history: history.map((item) => ({
       generation: item.generation,
       bestScore: item.bestScore,

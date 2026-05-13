@@ -193,6 +193,12 @@ Additional forward collection run:
   - two runs matched exactly after ignoring timestamp-derived `runId` fields.
   - result: train `14` trades / `-0.0548` PnL; validation `3` trades / `-2.6093` PnL;
     stress validation `3` trades / `-3.2767` PnL; accepted `false`.
+- GA acceptance now includes an explicit coverage gate:
+  - `accepted` requires `coverageAccepted=true`.
+  - `coverageAccepted` is true only when execution quality is `partial_orderbook` or
+    `orderbook_backtest_ready`.
+  - latest smoke check with `--seed 7`: `executionQuality=insufficient`,
+    `coverageAccepted=false`, `accepted=false`.
 - Latest coverage:
   - markets: `2012`; resolved markets: `2012`.
   - price points: `25`; orderbook snapshots: `1998`; trades: `78116`; BTC ticks: `9598`.
