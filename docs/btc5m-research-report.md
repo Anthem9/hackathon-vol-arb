@@ -105,6 +105,9 @@ Additional forward collection run:
   executable entry asks.
 - Backtest risk controls now include `maxDailyTrades`, and the GA can search that limit to
   reduce overtrading risk.
+- Paper signals now apply the same visible-liquidity check as backtests when candidate
+  size data is present, so `would_enter` is blocked if visible size is below requested
+  paper size.
 - GA acceptance now checks orderbook coverage by Beijing regime. Targeted strategies need
   `partial_orderbook` coverage in their selected segment, and `targetSegment=all`
   strategies need at least 3 Beijing regimes with `partial_orderbook` coverage.

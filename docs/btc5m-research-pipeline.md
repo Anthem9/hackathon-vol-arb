@@ -179,6 +179,10 @@ Record a real-time paper signal without submitting any order:
 pnpm --filter @vol-arb/api btc5m:research paper-signal --persist
 ```
 
+Paper signals use the same visible-liquidity check as backtests when the candidate point
+has size data, so `would_enter` is not emitted for a larger paper size than visible
+liquidity.
+
 Evaluate paper signals. This first checks subsequent orderbook snapshots for limit-only exits
 (`take_profit_limit`, `stop_loss_limit`, `time_exit_limit`), then falls back to settlement
 when no earlier exit is observed:

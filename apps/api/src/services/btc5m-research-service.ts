@@ -1102,7 +1102,9 @@ export async function evaluateLatestBtc5mPaperSignal(input: { params?: Partial<B
     const limitPrice = Math.max(0.01, Math.min(0.99, ask - params.entryLimitOffset));
     const riskBudget = params.initialCapital * params.maxRiskFraction;
     const size = Math.floor((riskBudget / limitPrice) * 100) / 100;
-    const enter = limitPrice >= params.entryMinPrice && limitPrice <= params.entryMaxPrice;
+    const priceInBounds = limitPrice >= params.entryMinPrice && limitPrice <= params.entryMaxPrice;
+    const enoughLiquidity = hasEnoughObservedLiquidity(candidate, size);
+    const enter = priceInBounds && enoughLiquidity;
     report = {
       signalId,
       marketSlug: activeMarket.slug,
@@ -1113,9 +1115,13 @@ export async function evaluateLatestBtc5mPaperSignal(input: { params?: Partial<B
       limitPrice,
       size,
       expectedRisk: limitPrice * size,
-      reason: enter ? "Limit-entry criteria passed in paper mode." : "Candidate limit price is outside entry bounds.",
+      reason: enter
+        ? "Limit-entry criteria passed in paper mode."
+        : priceInBounds
+          ? "Candidate visible liquidity is below requested paper size."
+          : "Candidate limit price is outside entry bounds.",
       segment: beijingSegment(now),
-      payload: { secondsRemaining, up, down, candidate, params },
+      payload: { secondsRemaining, up, down, candidate, params, priceInBounds, enoughLiquidity },
     };
   }
   if (input.persist) await persistPaperSignal(report);
