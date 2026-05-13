@@ -94,6 +94,8 @@ Run the segmented collector in the background:
 ```bash
 pnpm btc5m:orderbook:start
 pnpm btc5m:orderbook:start:auto
+pnpm btc5m:orderbook:status
+pnpm btc5m:orderbook:plan
 pnpm btc5m:orderbook:collector
 pnpm btc5m:orderbook:stop
 ```
@@ -115,6 +117,11 @@ Beijing segment is not yet in the target list. Set
 Use `pnpm btc5m:orderbook:start:auto` to inspect current coverage first and automatically
 target the weakest orderbook segments. `BTC5M_ORDERBOOK_AUTO_TARGET_COUNT` controls how
 many weak segments are targeted; the default is `2`.
+
+Use `pnpm btc5m:orderbook:plan` before changing a long-running collector. It reports the
+current execution quality, weak Beijing segments, next weak segment windows, whether the
+running collector is targeted or untargeted, and the exact command to switch to automatic
+weak-segment collection.
 
 On macOS, new background collector starts are wrapped with `caffeinate -dimsu` by default
 to reduce sleep risk during long collection. Set `BTC5M_ORDERBOOK_CAFFEINATE=false` to

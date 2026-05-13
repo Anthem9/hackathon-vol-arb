@@ -52,6 +52,12 @@ function useCaffeinate() {
 }
 
 function autoTargetSegments() {
+  const coverage = readCoverage();
+  const segments = Array.isArray(coverage.weakestOrderbookSegments) ? coverage.weakestOrderbookSegments.map((segment) => segment.segment).filter(Boolean) : [];
+  return segments.slice(0, Math.max(1, Number(process.env.BTC5M_ORDERBOOK_AUTO_TARGET_COUNT ?? "2")));
+}
+
+function readCoverage() {
   const result = spawnSync("pnpm", ["--silent", "--filter", "@vol-arb/api", "btc5m:research", "coverage", "--days", process.env.BTC5M_ORDERBOOK_COVERAGE_DAYS ?? "7"], {
     cwd: root,
     encoding: "utf8",
@@ -61,9 +67,7 @@ function autoTargetSegments() {
   if (result.status !== 0) {
     throw new Error(`Failed to inspect BTC 5m coverage for auto target segments: ${result.stderr || result.stdout}`);
   }
-  const coverage = JSON.parse(result.stdout);
-  const segments = Array.isArray(coverage.weakestOrderbookSegments) ? coverage.weakestOrderbookSegments.map((segment) => segment.segment).filter(Boolean) : [];
-  return segments.slice(0, Math.max(1, Number(process.env.BTC5M_ORDERBOOK_AUTO_TARGET_COUNT ?? "2")));
+  return JSON.parse(result.stdout);
 }
 
 function start(options = {}) {
@@ -163,12 +167,74 @@ function status() {
   );
 }
 
+function plan() {
+  const pid = readPid();
+  const meta = readMeta();
+  const running = Boolean(pid && isRunning(pid));
+  const coverage = readCoverage();
+  const weakestSegments = Array.isArray(coverage.weakestOrderbookSegments) ? coverage.weakestOrderbookSegments.map((segment) => segment.segment).filter(Boolean) : [];
+  const targetSegments = meta?.pid === pid && Array.isArray(meta.targetSegments) ? meta.targetSegments : [];
+  const runningTargetsWeakSegments = targetSegments.length > 0 && weakestSegments.every((segment) => targetSegments.includes(segment));
+  const activeCollectorIsUntargeted = running && targetSegments.length === 0;
+  const suggestedTargetSegments = weakestSegments.slice(0, Math.max(1, Number(process.env.BTC5M_ORDERBOOK_AUTO_TARGET_COUNT ?? "2")));
+  const nextWeakSegment = coverage.nextWeakSegmentWindows?.[0]?.segment ?? null;
+  const canCaptureNextWeakWindow = running && (activeCollectorIsUntargeted || (nextWeakSegment ? targetSegments.includes(nextWeakSegment) : runningTargetsWeakSegments));
+  const recommendedAction = !running
+    ? "start_auto_targeted_collector"
+    : canCaptureNextWeakWindow
+      ? "keep_current_collector_running"
+      : "switch_to_auto_targeted_collector";
+  console.log(
+    JSON.stringify(
+      {
+        status: running ? "running" : "not_running",
+        pid,
+        coverage: {
+          days: coverage.days,
+          executionQuality: coverage.executionQuality,
+          markets: coverage.markets,
+          marketsWithTrades: coverage.marketsWithTrades,
+          marketsWithOrderbook: coverage.marketsWithOrderbook,
+          orderbookMarketCoverage: coverage.orderbookMarketCoverage,
+          readyForGeneticSearch: coverage.readyForGeneticSearch,
+          orderbookTargets: coverage.orderbookTargets,
+          currentBeijingSegment: coverage.currentBeijingSegment,
+          currentSegmentCoverage: coverage.currentSegmentCoverage,
+          weakestOrderbookSegments: coverage.weakestOrderbookSegments,
+          nextWeakSegmentWindows: coverage.nextWeakSegmentWindows,
+          collectionRecommendation: coverage.collectionRecommendation,
+        },
+        runningCollector: {
+          targetSegments,
+          autoTarget: meta?.autoTarget ?? false,
+          caffeinate: meta?.caffeinate ?? null,
+          command: meta?.command ?? null,
+        },
+        plan: {
+          recommendedAction,
+          suggestedTargetSegments,
+          canCaptureNextWeakWindow,
+          runningTargetsWeakSegments,
+          activeCollectorIsUntargeted,
+          startAutoCommand: "pnpm btc5m:orderbook:start:auto",
+          switchToAutoTargetCommand: running ? "pnpm btc5m:orderbook:stop && pnpm btc5m:orderbook:start:auto" : "pnpm btc5m:orderbook:start:auto",
+          statusCommand: "pnpm btc5m:orderbook:status",
+          coverageCommand: "pnpm --filter @vol-arb/api btc5m:research coverage --days 7",
+        },
+      },
+      null,
+      2,
+    ),
+  );
+}
+
 const command = process.argv[2] ?? "status";
 if (command === "start") start();
 else if (command === "start-auto") start({ autoTarget: true });
 else if (command === "stop") stop();
 else if (command === "status") status();
+else if (command === "plan") plan();
 else {
-  console.error("Usage: node scripts/btc5m-orderbook-collector.mjs <start|start-auto|stop|status>");
+  console.error("Usage: node scripts/btc5m-orderbook-collector.mjs <start|start-auto|stop|status|plan>");
   process.exit(1);
 }
