@@ -134,7 +134,7 @@ collection, and a hard readiness gate before any live trading.
 | Add probability-cone baseline strategy | `probability_cone`, `longshot_cone` | Implemented |
 | Add genetic algorithm strategy search | `genetic`, `genetic-sweep`, seeded runs, report saving | Implemented with train/validation, stress validation, walk-forward validation, and multi-seed sweeps |
 | Prevent stale or non-executable signals | `maxSignalStalenessSeconds`, bid/ask side separation, visible liquidity participation, observed-size checks | Implemented and tested |
-| Preserve experiment evidence | `--save-report` for backtest, genetic, genetic-sweep, readiness; `pnpm btc5m:checkpoint` | Implemented; reports write under ignored `.local/reports`, and checkpoint combines orderbook plan plus readiness in one artifact |
+| Preserve experiment evidence | `--save-report` for backtest, genetic, genetic-sweep, readiness; `pnpm btc5m:checkpoint`; `pnpm btc5m:checkpoint:status` | Implemented; reports write under ignored `.local/reports`, checkpoint combines orderbook plan plus readiness in one artifact, and `checkpoint:status` provides a no-GA status shortcut while waiting for data |
 | Gate live use on real evidence instead of in-sample PnL | `btc5m:research readiness --with-ga`, `acceptanceBlockers`, orderbook coverage gates | Implemented; current result is correctly not live-ready |
 
 ### BTC 5m Current Evidence
@@ -159,6 +159,9 @@ collection, and a hard readiness gate before any live trading.
 - Latest checkpoint smoke command: `pnpm btc5m:checkpoint` with reduced GA smoke
   parameters. It wrote an ignored report under `.local/reports` and returned
   `recommendedAction=keep_current_collector_running`.
+- Low-cost checkpoint command: `pnpm btc5m:checkpoint:status`, equivalent to
+  `node scripts/btc5m-checkpoint.mjs --no-ga`; use it for frequent coverage checks while
+  waiting for orderbook data, but keep GA enabled for final acceptance.
 
 ### BTC 5m Completion Decision
 
@@ -172,10 +175,11 @@ However, the strategy itself is not proven real-usable because execution evidenc
 coverage is unbalanced, and the readiness audit correctly returns `liveReady=false`.
 
 The next required action is continued forward orderbook collection through weak Beijing
-segments, then rerun `pnpm btc5m:checkpoint`, saved backtest, seeded GA, multi-seed sweep,
-and readiness reports. Only a readiness/checkpoint result with `liveReady=true` and no
-acceptance blockers should be treated as evidence for moving toward controlled live
-operation.
+segments, using `pnpm btc5m:checkpoint:status` for cheap interim checks. Once orderbook
+coverage reaches the required threshold, rerun `pnpm btc5m:checkpoint`, saved backtest,
+seeded GA, multi-seed sweep, and readiness reports. Only a readiness/checkpoint result
+with `liveReady=true` and no acceptance blockers should be treated as evidence for moving
+toward controlled live operation.
 
 ## DeepBook Completion Decision
 
