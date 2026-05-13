@@ -110,6 +110,22 @@ Additional forward collection run:
   paper size.
 - Fill liquidity checks now use `maxLiquidityParticipation`; the default model only lets
   simulated orders consume up to 25% of visible size, and the GA can search that limit.
+- Latest sweep after the visible-liquidity participation cap:
+  - command: `genetic-sweep --days 7 --limit-markets 2016 --seeds 2 --seed-start 91 --generations 1 --population 6 --save-report`.
+  - accepted count: `0`.
+  - execution quality: `trade_proxy_only`.
+  - strategy counts: `probability_cone=1`, `longshot_cone=1`.
+  - best validation run: seed `91`, `probability_cone`, `targetSegment=all`,
+    validation PnL `0`, `0` validation trades.
+  - blocker counts: validation trade count below minimum `2/2`, validation PnL not
+    positive `2/2`, stress PnL not positive `2/2`, walk-forward PnL not positive `2/2`,
+    walk-forward profitable windows not dominant `2/2`, execution quality below
+    `partial_orderbook` `2/2`.
+  - saved report:
+    `.local/reports/btc5m-genetic-sweep-2026-05-13T19-54-35-455Z.json`.
+  - interpretation: after enforcing bid/ask side separation, visible size, and capped
+    liquidity participation, the current GA settings did not find executable trades that
+    pass validation. More orderbook coverage and/or a broader strategy family is required.
 - GA acceptance now checks orderbook coverage by Beijing regime. Targeted strategies need
   `partial_orderbook` coverage in their selected segment, and `targetSegment=all`
   strategies need at least 3 Beijing regimes with `partial_orderbook` coverage.
