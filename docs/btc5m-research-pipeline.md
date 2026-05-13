@@ -93,6 +93,7 @@ Run the segmented collector in the background:
 
 ```bash
 pnpm btc5m:orderbook:start
+pnpm btc5m:orderbook:start:auto
 pnpm btc5m:orderbook:collector
 pnpm btc5m:orderbook:stop
 ```
@@ -110,6 +111,10 @@ captures those regimes. When target segments are configured, the launcher adds
 `--wait-for-target-segment` by default, so it waits instead of exiting if the current
 Beijing segment is not yet in the target list. Set
 `BTC5M_ORDERBOOK_WAIT_FOR_TARGET_SEGMENT=false` to disable waiting.
+
+Use `pnpm btc5m:orderbook:start:auto` to inspect current coverage first and automatically
+target the weakest orderbook segments. `BTC5M_ORDERBOOK_AUTO_TARGET_COUNT` controls how
+many weak segments are targeted; the default is `2`.
 
 On macOS, new background collector starts are wrapped with `caffeinate -dimsu` by default
 to reduce sleep risk during long collection. Set `BTC5M_ORDERBOOK_CAFFEINATE=false` to

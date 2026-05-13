@@ -100,6 +100,8 @@ Additional forward collection run:
 - GA acceptance now checks orderbook coverage by Beijing regime. Targeted strategies need
   `partial_orderbook` coverage in their selected segment, and `targetSegment=all`
   strategies need at least 3 Beijing regimes with `partial_orderbook` coverage.
+- Added `pnpm btc5m:orderbook:start:auto`, which inspects current coverage and starts a
+  background collector targeting the weakest orderbook segments by default.
 - Latest 3-seed full-window sweep after adding `longshot_cone`:
   - command: `genetic-sweep --days 7 --limit-markets 2016 --seeds 3 --seed-start 41 --generations 2 --population 9`.
   - accepted count: `0`.

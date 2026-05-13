@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, openSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
@@ -51,7 +51,22 @@ function useCaffeinate() {
   return process.platform === "darwin" && process.env.BTC5M_ORDERBOOK_CAFFEINATE !== "false";
 }
 
-function start() {
+function autoTargetSegments() {
+  const result = spawnSync("pnpm", ["--silent", "--filter", "@vol-arb/api", "btc5m:research", "coverage", "--days", process.env.BTC5M_ORDERBOOK_COVERAGE_DAYS ?? "7"], {
+    cwd: root,
+    encoding: "utf8",
+    env: process.env,
+    timeout: 60_000,
+  });
+  if (result.status !== 0) {
+    throw new Error(`Failed to inspect BTC 5m coverage for auto target segments: ${result.stderr || result.stdout}`);
+  }
+  const coverage = JSON.parse(result.stdout);
+  const segments = Array.isArray(coverage.weakestOrderbookSegments) ? coverage.weakestOrderbookSegments.map((segment) => segment.segment).filter(Boolean) : [];
+  return segments.slice(0, Math.max(1, Number(process.env.BTC5M_ORDERBOOK_AUTO_TARGET_COUNT ?? "2")));
+}
+
+function start(options = {}) {
   ensureDirs();
   const existing = readPid();
   if (existing && isRunning(existing)) {
@@ -59,6 +74,7 @@ function start() {
     return;
   }
   if (existing) rmSync(pidFile, { force: true });
+  const targetSegments = process.env.BTC5M_ORDERBOOK_TARGET_SEGMENTS || (options.autoTarget ? autoTargetSegments().join(",") : "");
   const args = [
     "--filter",
     "@vol-arb/api",
@@ -75,8 +91,8 @@ function start() {
     "--progress-every",
     process.env.BTC5M_ORDERBOOK_PROGRESS_EVERY ?? "60",
   ];
-  if (process.env.BTC5M_ORDERBOOK_TARGET_SEGMENTS) {
-    args.push("--target-segments", process.env.BTC5M_ORDERBOOK_TARGET_SEGMENTS);
+  if (targetSegments) {
+    args.push("--target-segments", targetSegments);
     if (process.env.BTC5M_ORDERBOOK_WAIT_FOR_TARGET_SEGMENT !== "false") {
       args.push("--wait-for-target-segment");
       args.push("--target-segment-check-seconds", process.env.BTC5M_ORDERBOOK_TARGET_SEGMENT_CHECK_SECONDS ?? "60");
@@ -96,6 +112,8 @@ function start() {
     pid: child.pid,
     startedAt: new Date().toISOString(),
     caffeinate: useCaffeinate(),
+    autoTarget: Boolean(options.autoTarget),
+    targetSegments: targetSegments ? targetSegments.split(",").map((segment) => segment.trim()).filter(Boolean) : [],
     command,
     args: commandArgs,
   };
@@ -147,9 +165,10 @@ function status() {
 
 const command = process.argv[2] ?? "status";
 if (command === "start") start();
+else if (command === "start-auto") start({ autoTarget: true });
 else if (command === "stop") stop();
 else if (command === "status") status();
 else {
-  console.error("Usage: node scripts/btc5m-orderbook-collector.mjs <start|stop|status>");
+  console.error("Usage: node scripts/btc5m-orderbook-collector.mjs <start|start-auto|stop|status>");
   process.exit(1);
 }

@@ -13,6 +13,7 @@
     "env:check": "node scripts/env-check.mjs",
     "btc5m:orderbook:collector": "node scripts/btc5m-orderbook-collector.mjs status",
     "btc5m:orderbook:start": "node scripts/btc5m-orderbook-collector.mjs start",
+    "btc5m:orderbook:start:auto": "node scripts/btc5m-orderbook-collector.mjs start-auto",
     "btc5m:orderbook:stop": "node scripts/btc5m-orderbook-collector.mjs stop",
     "build": "turbo build",
     "lint": "turbo lint",
