@@ -338,8 +338,9 @@ export type BtcFiveMinuteMonitor = {
       expectedMove95: number | null;
     };
     minEdge: number;
-    decision: "watch_up" | "watch_down" | "no_edge" | "blocked";
+    decision: "strong_up" | "strong_down" | "lean_up" | "lean_down" | "no_edge" | "blocked";
     reasons: string[];
+    warnings: string[];
   };
   notes: string[];
 };

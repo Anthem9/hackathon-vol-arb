@@ -643,8 +643,10 @@ function BtcFiveMinuteMonitorPanel() {
     return () => window.clearInterval(interval);
   }, [loadMonitor]);
 
-  const decisionTone = monitor?.model.decision === "watch_up" || monitor?.model.decision === "watch_down"
+  const decisionTone = monitor?.model.decision === "strong_up" || monitor?.model.decision === "strong_down"
     ? "green"
+    : monitor?.model.decision === "lean_up" || monitor?.model.decision === "lean_down"
+      ? "cyan"
     : monitor?.status === "critical"
       ? "red"
       : monitor?.status === "warning"
@@ -667,18 +669,18 @@ function BtcFiveMinuteMonitorPanel() {
 
       <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
-          label="Settlement Price"
-          value={formatMonitorUsd(monitor?.rtds.price)}
-          detail={`${monitor?.rtds.connected ? "RTDS live" : "RTDS disconnected"} · age ${monitor?.rtds.ageSeconds?.toFixed(1) ?? "--"}s`}
-          icon={<Activity className="h-5 w-5" />}
-          tone={monitor?.rtds.connected ? "cyan" : "amber"}
-        />
-        <MetricCard
           label="Open Price"
           value={formatMonitorUsd(monitor?.model.openPrice)}
           detail={`${monitor?.model.openPriceSource === "chainlink_window_start" ? "window start" : "fallback"} · ${secondsRemaining === null || secondsRemaining === undefined ? "--" : `${Math.max(0, Math.floor(secondsRemaining))}s left`}`}
           icon={<Gauge className="h-5 w-5" />}
           tone={monitor?.model.openPriceSource === "chainlink_window_start" ? "green" : "amber"}
+        />
+        <MetricCard
+          label="Settlement Price"
+          value={formatMonitorUsd(monitor?.rtds.price)}
+          detail={`${monitor?.rtds.connected ? "RTDS live" : "RTDS disconnected"} · age ${monitor?.rtds.ageSeconds?.toFixed(1) ?? "--"}s`}
+          icon={<Activity className="h-5 w-5" />}
+          tone={monitor?.rtds.connected ? "cyan" : "amber"}
         />
         <MetricCard
           label="Fast Reference"
@@ -768,6 +770,12 @@ function BtcFiveMinuteMonitorPanel() {
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-terminal-muted">Gate</p>
         <p className="mt-2 text-sm text-slate-200">
           {monitor?.model.reasons.length ? monitor.model.reasons.join("; ") : "No probability-monitor blockers."}
+        </p>
+        {monitor?.model.warnings.length ? (
+          <p className="mt-2 text-sm text-terminal-amber">{monitor.model.warnings.join("; ")}</p>
+        ) : null}
+        <p className="mt-2 text-xs text-terminal-muted">
+          STRONG means edge is at least {formatMonitorPercent(monitor?.model.minEdge)}; LEAN means positive edge below that threshold.
         </p>
       </div>
     </section>

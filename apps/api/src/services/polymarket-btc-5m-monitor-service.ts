@@ -77,8 +77,9 @@ export type BtcFiveMinuteMonitor = {
       expectedMove95: number | null;
     };
     minEdge: number;
-    decision: "watch_up" | "watch_down" | "no_edge" | "blocked";
+    decision: "strong_up" | "strong_down" | "lean_up" | "lean_down" | "no_edge" | "blocked";
     reasons: string[];
+    warnings: string[];
   };
   notes: string[];
 };
@@ -93,7 +94,8 @@ type MonitorOptions = {
   fetchFastReference?: () => Promise<FastReferencePrice>;
 };
 
-const DEFAULT_MIN_EDGE = 0.03;
+const DEFAULT_MIN_EDGE = 0.01;
+const DEFAULT_LEAN_EDGE = 0;
 const DEFAULT_ANNUAL_VOL = 0.65;
 const SECONDS_PER_YEAR = 365 * 24 * 60 * 60;
 const chainlinkTicks: ChainlinkTick[] = [];
@@ -442,31 +444,34 @@ export async function getBtcFiveMinuteMonitor(options: MonitorOptions = {}): Pro
     fetchOrderbook(clobUrl, market?.downTokenId),
   ]);
 
-  const reasons: string[] = [];
+  const blockers: string[] = [];
+  const warnings: string[] = [];
   const notes: string[] = [
     "Polymarket BTC 5m settlement source is Chainlink BTC/USD data stream via public RTDS.",
     "This monitor is read-only and never signs or submits Polymarket orders.",
   ];
-  if (!market) reasons.push("No active btc-updown-5m market was discovered in the current window scan.");
-  if (!tick) reasons.push("No Chainlink BTC/USD RTDS tick is available.");
+  if (!market) blockers.push("No active btc-updown-5m market was discovered in the current window scan.");
+  if (!tick) blockers.push("No Chainlink BTC/USD RTDS tick is available.");
   const ageSeconds = tick ? Math.max(0, (now - tick.timestamp) / 1000) : null;
-  if (ageSeconds !== null && ageSeconds > 10) reasons.push(`Chainlink tick is stale by ${ageSeconds.toFixed(1)}s.`);
-  if (upBook.ask === null) reasons.push("UP ask is unavailable from CLOB order book.");
-  if (downBook.ask === null) reasons.push("DOWN ask is unavailable from CLOB order book.");
+  if (ageSeconds !== null && ageSeconds > 10) warnings.push(`Chainlink tick is stale by ${ageSeconds.toFixed(1)}s.`);
+  if (upBook.ask === null) blockers.push("UP ask is unavailable from CLOB order book.");
+  if (downBook.ask === null) blockers.push("DOWN ask is unavailable from CLOB order book.");
 
   const secondsRemaining = market ? Math.max(0, (market.endTime - now) / 1000) : null;
-  if (secondsRemaining !== null && secondsRemaining < 30) reasons.push("Current 5m market is inside the final 30 seconds.");
+  if (secondsRemaining !== null && secondsRemaining < 15) blockers.push("Current 5m market is inside the final 15 seconds.");
+  else if (secondsRemaining !== null && secondsRemaining < 30) warnings.push("Current 5m market is inside the final 30 seconds.");
   const spot = tick?.price ?? null;
   const openPrice = resolveStrike(market, spot);
-  if (openPrice.source === "current_tick_fallback") reasons.push("Window-start Chainlink tick is not cached yet; using current tick as neutral fallback.");
-  if (openPrice.source === "unavailable") reasons.push("No usable opening price is available.");
+  if (openPrice.source === "current_tick_fallback") warnings.push("Window-start Chainlink tick is not cached yet; using current tick as neutral fallback.");
+  if (openPrice.source === "unavailable") blockers.push("No usable opening price is available.");
   const vol = estimateVariancePerSecond();
-  if (vol.fallback) reasons.push("Using fallback BTC annualized volatility until enough RTDS samples are cached.");
+  if (vol.fallback) warnings.push("Using fallback BTC annualized volatility until enough RTDS samples are cached.");
 
   const fastReference = options.fetchFastReference ? await options.fetchFastReference() : await fetchFastReferencePrice(spot, now);
   if (fastReference.price !== null && spot !== null && Math.abs(fastReference.price - spot) > 20) {
-    reasons.push(`Fast reference differs from Chainlink by $${Math.abs(fastReference.price - spot).toFixed(2)}; settlement feed may be lagging.`);
+    warnings.push(`Fast reference differs from Chainlink by $${Math.abs(fastReference.price - spot).toFixed(2)}; settlement feed may be lagging.`);
   }
+  if (fastReference.error) warnings.push(`Fast reference unavailable: ${fastReference.error}`);
 
   let pUp: number | null = null;
   let pDown: number | null = null;
@@ -481,13 +486,17 @@ export async function getBtcFiveMinuteMonitor(options: MonitorOptions = {}): Pro
   const cone = buildCone(spot, vol.variance, secondsRemaining);
 
   let decision: BtcFiveMinuteMonitor["model"]["decision"] = "blocked";
-  if (reasons.length === 0) {
-    if ((edgeUp ?? -Infinity) >= minEdge && (edgeUp ?? -Infinity) >= (edgeDown ?? -Infinity)) decision = "watch_up";
-    else if ((edgeDown ?? -Infinity) >= minEdge) decision = "watch_down";
+  if (blockers.length === 0) {
+    const upEdge = edgeUp ?? -Infinity;
+    const downEdge = edgeDown ?? -Infinity;
+    if (upEdge >= minEdge && upEdge >= downEdge) decision = "strong_up";
+    else if (downEdge >= minEdge) decision = "strong_down";
+    else if (upEdge > DEFAULT_LEAN_EDGE && upEdge >= downEdge) decision = "lean_up";
+    else if (downEdge > DEFAULT_LEAN_EDGE) decision = "lean_down";
     else decision = "no_edge";
   }
 
-  const status: BtcFiveMinuteMonitor["status"] = reasons.some((reason) => reason.includes("No active") || reason.includes("No Chainlink")) ? "critical" : reasons.length > 0 ? "warning" : "healthy";
+  const status: BtcFiveMinuteMonitor["status"] = blockers.length > 0 ? "critical" : warnings.length > 0 ? "warning" : "healthy";
   return {
     mode: "read_only",
     status,
@@ -522,7 +531,8 @@ export async function getBtcFiveMinuteMonitor(options: MonitorOptions = {}): Pro
       cone,
       minEdge,
       decision,
-      reasons,
+      reasons: blockers,
+      warnings,
     },
     notes,
   };
