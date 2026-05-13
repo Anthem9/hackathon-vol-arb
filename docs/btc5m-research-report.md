@@ -188,6 +188,9 @@ Additional forward collection run:
   `weekday_beijing_night` with `16/832` orderbook-covered markets; recommendation is to
   keep background collection running but prioritize future collection during
   `weekday_beijing_day` and `weekend_beijing_night`.
+- Coverage now reports `nextWeakSegmentWindows`; current next priority windows are:
+  - `weekday_beijing_day`: Beijing `2026-05-14 08:00:00` to `2026-05-14 18:00:00`.
+  - `weekend_beijing_night`: Beijing `2026-05-16 00:00:00` to `2026-05-16 08:00:00`.
 - Added background orderbook collector helpers:
   - `pnpm btc5m:orderbook:start`
   - `pnpm btc5m:orderbook:collector`

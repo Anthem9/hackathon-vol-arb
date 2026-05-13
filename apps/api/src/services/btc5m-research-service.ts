@@ -976,6 +976,7 @@ export async function getBtc5mResearchCoverage(input: { days?: number } = {}) {
     .sort(([, left], [, right]) => left.orderbookMarketCoverage - right.orderbookMarketCoverage || right.markets - left.markets)
     .slice(0, 2)
     .map(([segment, value]) => ({ segment, orderbookMarketCoverage: value.orderbookMarketCoverage, marketsWithOrderbook: value.marketsWithOrderbook, markets: value.markets }));
+  const nextWeakSegmentWindows = weakestOrderbookSegments.map((segment) => nextBeijingSegmentWindow(segment.segment)).filter((window) => window !== null);
   const currentBeijingSegment = beijingSegment(Date.now());
   const currentSegmentCoverage = segmentMarketCoverage[currentBeijingSegment];
   const currentSegmentIsWeak = weakestOrderbookSegments.some((segment) => segment.segment === currentBeijingSegment);
@@ -1014,6 +1015,7 @@ export async function getBtc5mResearchCoverage(input: { days?: number } = {}) {
     segmentTrades: Object.fromEntries((tradeSegmentRows?.rows ?? []).map((segment) => [segment.segment, Number(segment.trades)])),
     segmentMarketCoverage,
     weakestOrderbookSegments,
+    nextWeakSegmentWindows,
     currentBeijingSegment,
     currentSegmentCoverage,
     collectionRecommendation,
@@ -1533,6 +1535,43 @@ function beijingSegment(timestamp: number) {
   const dayType = day === 0 || day === 6 ? "weekend" : "weekday";
   const session = hour >= 8 && hour < 18 ? "beijing_day" : "beijing_night";
   return `${dayType}_${session}`;
+}
+
+function beijingIso(timestamp: number) {
+  return new Date(timestamp + 8 * 60 * 60 * 1000).toISOString().replace("T", " ").slice(0, 19);
+}
+
+function nextBeijingSegmentWindow(segment: string, now = Date.now()) {
+  const shifted = new Date(now + 8 * 60 * 60 * 1000);
+  const startOfBeijingDay = Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate());
+  const windows: Array<{ start: number; end: number }> = [];
+  for (let dayOffset = 0; dayOffset < 14; dayOffset += 1) {
+    const dayStartShifted = startOfBeijingDay + dayOffset * 24 * 60 * 60 * 1000;
+    const day = new Date(dayStartShifted).getUTCDay();
+    const dayType = day === 0 || day === 6 ? "weekend" : "weekday";
+    const candidates = [
+      { segment: `${dayType}_beijing_night`, startHour: 0, endHour: 8 },
+      { segment: `${dayType}_beijing_day`, startHour: 8, endHour: 18 },
+      { segment: `${dayType}_beijing_night`, startHour: 18, endHour: 24 },
+    ];
+    for (const candidate of candidates) {
+      if (candidate.segment !== segment) continue;
+      const start = dayStartShifted + candidate.startHour * 60 * 60 * 1000 - 8 * 60 * 60 * 1000;
+      const end = dayStartShifted + candidate.endHour * 60 * 60 * 1000 - 8 * 60 * 60 * 1000;
+      if (end > now) windows.push({ start: Math.max(start, now), end });
+    }
+  }
+  const next = windows.sort((a, b) => a.start - b.start)[0];
+  if (!next) return null;
+  return {
+    segment,
+    startTime: new Date(next.start).toISOString(),
+    endTime: new Date(next.end).toISOString(),
+    beijingStart: beijingIso(next.start),
+    beijingEnd: beijingIso(next.end),
+    hoursUntilStart: Math.max(0, (next.start - now) / 3600000),
+    durationHours: Math.max(0, (next.end - next.start) / 3600000),
+  };
 }
 
 function utcDayKey(timestamp: number) {

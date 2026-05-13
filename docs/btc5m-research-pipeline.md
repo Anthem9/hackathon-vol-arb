@@ -129,6 +129,10 @@ Coverage also reports `collectionRecommendation`, which compares the current Bei
 segment against the weakest orderbook segments and tells whether current collection should
 continue or future collection should be prioritized in another segment.
 
+`nextWeakSegmentWindows` lists the next Beijing-time windows for the weakest orderbook
+segments, so long-running collection can be scheduled around the missing sessions instead
+of blindly collecting only the current regime.
+
 Run a compact research status report:
 
 ```bash
