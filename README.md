@@ -148,7 +148,7 @@ pnpm btc5m:checkpoint:last
 pnpm btc5m:checkpoint:status
 ```
 
-`checkpoint:last` only reads the latest local `.local/reports` checkpoint JSON and does not run network checks, readiness, GA, or collectors. `checkpoint:status` is the low-cost no-GA status check while waiting for data. Final acceptance must use the full checkpoint gate:
+`checkpoint:last` only reads the latest local `.local/reports` checkpoint JSON and does not run network checks, readiness, GA, or collectors. It prints `reportMatchesCurrentHead`; when that is `false`, rerun `checkpoint:status` before treating the report as current. `checkpoint:status` is the low-cost no-GA status check while waiting for data. Final acceptance must use the full checkpoint gate:
 
 ```bash
 pnpm btc5m:checkpoint

@@ -165,7 +165,7 @@ pnpm btc5m:checkpoint:status
 
 Expected result:
 
-- `btc5m:checkpoint:last` only reads the latest saved local checkpoint report and does not run network checks, readiness, GA, or collectors.
+- `btc5m:checkpoint:last` only reads the latest saved local checkpoint report and does not run network checks, readiness, GA, or collectors. If `reportMatchesCurrentHead=false`, rerun `btc5m:checkpoint:status` before treating the status as current.
 - `summary.liveReady=false` until real orderbook coverage and GA acceptance pass.
 - `summary.recommendedAction=keep_current_collector_running` when the active collector can cover the next weak Beijing segment.
 - `summary.failedChecks` usually includes `orderbook_market_coverage`, `balanced_beijing_orderbook_segments`, and `execution_quality` while coverage is sparse.
