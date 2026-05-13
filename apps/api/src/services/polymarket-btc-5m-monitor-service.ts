@@ -94,7 +94,7 @@ type MonitorOptions = {
   fetchFastReference?: () => Promise<FastReferencePrice>;
 };
 
-const DEFAULT_MIN_EDGE = 0.01;
+const DEFAULT_MIN_EDGE = 0.08;
 const DEFAULT_LEAN_EDGE = 0;
 const DEFAULT_ANNUAL_VOL = 0.65;
 const SECONDS_PER_YEAR = 365 * 24 * 60 * 60;
