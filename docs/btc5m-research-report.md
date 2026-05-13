@@ -86,6 +86,9 @@ Additional forward collection run:
   earlier limit-order exit.
 - `genetic-sweep` now reports aggregate blocker counts, strategy counts, target segment
   counts, best validation run, and best walk-forward run across seeds.
+- Added `longshot_cone`, a convex payout strategy family that uses probability-cone
+  estimates but selects by relative expected return (`probability / price - 1`) instead
+  of absolute probability edge.
 - Auxiliary BTC 1m data was collected for baseline volatility:
   - Binance was unavailable from the current network.
   - Coinbase stored `9645` 1m close ticks.

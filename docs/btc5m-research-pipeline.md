@@ -237,6 +237,8 @@ The first implemented strategies are:
 - `probability_cone`: builds a baseline UP probability from auxiliary BTC open price,
   current price, remaining time, and rolling volatility, then compares that baseline
   against the UP/DOWN contract prices.
+- `longshot_cone`: uses the same probability cone, but ranks candidates by relative
+  expected return (`probability / price - 1`) to test low-priced convex payout setups.
 
 Both strategies support:
 

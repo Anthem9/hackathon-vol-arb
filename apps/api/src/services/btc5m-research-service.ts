@@ -35,7 +35,7 @@ export type PricePoint = {
 };
 
 export type BacktestParams = {
-  strategy: "lottery_reprice" | "probability_cone";
+  strategy: "lottery_reprice" | "probability_cone" | "longshot_cone";
   targetSegment: "all" | "weekday_beijing_day" | "weekday_beijing_night" | "weekend_beijing_day" | "weekend_beijing_night";
   initialCapital: number;
   maxRiskFraction: number;
@@ -1623,6 +1623,13 @@ function chooseOutcome(params: BacktestParams, up: PricePoint | undefined, down:
   if (params.strategy === "lottery_reprice") return up.price <= down.price ? up : down;
   const coneProbabilityUp = marketEndTime === undefined ? null : probabilityConeUp(up, marketEndTime, params) ?? probabilityConeUp(down, marketEndTime, params);
   const probabilityUp = coneProbabilityUp ?? Math.min(0.99, Math.max(0.01, 1 - up.price));
+  if (params.strategy === "longshot_cone") {
+    const upExpectedReturn = probabilityUp / Math.max(0.01, up.price) - 1;
+    const downExpectedReturn = (1 - probabilityUp) / Math.max(0.01, down.price) - 1;
+    if (upExpectedReturn >= params.probabilityEdge && upExpectedReturn >= downExpectedReturn) return up;
+    if (downExpectedReturn >= params.probabilityEdge) return down;
+    return null;
+  }
   const upEdge = probabilityUp - up.price;
   const downEdge = (1 - probabilityUp) - down.price;
   if (upEdge >= params.probabilityEdge && upEdge >= downEdge) return up;
@@ -2174,7 +2181,7 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
   const validationPoints = filterPointsForMarkets(dataset.points, validationMarkets);
   const paperSummary = await summarizePaperSignals();
   const blockedStrategies = new Set(paperSummary.blockedStrategies);
-  const allowedStrategies: BacktestParams["strategy"][] = (["lottery_reprice", "probability_cone"] as const).filter((strategy) => !blockedStrategies.has(strategy));
+  const allowedStrategies: BacktestParams["strategy"][] = (["lottery_reprice", "probability_cone", "longshot_cone"] as const).filter((strategy) => !blockedStrategies.has(strategy));
   const strategyPool = allowedStrategies.length > 0 ? allowedStrategies : (["probability_cone"] as const);
   let population = Array.from({ length: populationSize }, (_, index): BacktestParams => ({
     ...DEFAULT_BACKTEST_PARAMS,
