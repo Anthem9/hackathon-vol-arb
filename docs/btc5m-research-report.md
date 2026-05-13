@@ -153,6 +153,11 @@ Additional forward collection run:
   - interpretation: the collector works, but one minute only adds one active market. Robust
     execution testing requires collection across many 5-minute markets and multiple Beijing
     day/night plus weekday/weekend sessions.
+- Added `collect-orderbook-sessions` for resumable forward collection across repeated
+  short sessions. Smoke test:
+  - command: `collect-orderbook-sessions --sessions 2 --duration-seconds 20 --interval-ms 1000 --pause-seconds 1 --progress-every 10`.
+  - result: `2` sessions completed, `80` snapshots, `0` errors.
+  - orderbook market coverage after smoke test: `0.50%`.
 - Trade coverage was expanded with additional Data API collection:
   - `collect-trades --days 7 --limit-markets 400 --pages-per-market 1 --stride 3`
     stored `200000` fetched trade rows with `0` errors.

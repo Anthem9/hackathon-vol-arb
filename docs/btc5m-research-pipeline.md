@@ -77,6 +77,12 @@ Run a managed live orderbook collector:
 pnpm --filter @vol-arb/api btc5m:research collect-orderbook-live --duration-seconds 3600 --interval-ms 1000 --progress-every 30
 ```
 
+Run repeated short collector sessions with a coverage report at the end:
+
+```bash
+pnpm --filter @vol-arb/api btc5m:research collect-orderbook-sessions --sessions 12 --duration-seconds 300 --interval-ms 1000 --pause-seconds 5 --progress-every 60
+```
+
 Run live observation, which captures orderbook snapshots and persists paper signals after each iteration:
 
 ```bash

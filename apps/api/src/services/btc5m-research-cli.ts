@@ -57,6 +57,7 @@ function usage() {
   pnpm --filter @vol-arb/api btc5m:research collect-btc-price --days 7
   pnpm --filter @vol-arb/api btc5m:research snapshot-orderbook
   pnpm --filter @vol-arb/api btc5m:research collect-orderbook-live --duration-seconds 3600 --interval-ms 1000
+  pnpm --filter @vol-arb/api btc5m:research collect-orderbook-sessions --sessions 12 --duration-seconds 300 --interval-ms 1000 --pause-seconds 5
   pnpm --filter @vol-arb/api btc5m:research observe-live --duration-seconds 3600 --interval-ms 1000
   pnpm --filter @vol-arb/api btc5m:research coverage --days 7
   pnpm --filter @vol-arb/api btc5m:research status --days 7 [--with-ga] [--seed 42]
@@ -195,6 +196,54 @@ async function main() {
             }
           },
         }),
+        null,
+        2,
+      ),
+    );
+    return;
+  }
+  if (command === "collect-orderbook-sessions") {
+    let stop = false;
+    process.once("SIGINT", () => {
+      stop = true;
+      console.error("Stopping session collector after current iteration...");
+    });
+    process.once("SIGTERM", () => {
+      stop = true;
+      console.error("Stopping session collector after current iteration...");
+    });
+    const sessions = Math.max(1, Math.trunc(numberArg(args, "sessions", 12)));
+    const pauseSeconds = Math.max(0, numberArg(args, "pause-seconds", 5));
+    const runs = [];
+    for (let session = 1; session <= sessions && !stop; session += 1) {
+      console.error(`collect-orderbook-sessions session=${session}/${sessions} starting`);
+      const result = await collectLiveOrderbookSnapshots({
+        durationSeconds: numberArg(args, "duration-seconds", 300),
+        intervalMs: numberArg(args, "interval-ms", 1000),
+        maxSnapshots: numberArg(args, "max-snapshots", Number.MAX_SAFE_INTEGER),
+        shouldStop: () => stop,
+        onProgress: (progress) => {
+          if (progress.iterations === 1 || progress.iterations % numberArg(args, "progress-every", 60) === 0) {
+            console.error(
+              `collect-orderbook-sessions session=${session}/${sessions} iterations=${progress.iterations} snapshots=${progress.snapshots} errors=${progress.errors} elapsed=${progress.elapsedSeconds.toFixed(1)}s`,
+            );
+          }
+        },
+      });
+      runs.push(result);
+      if (pauseSeconds > 0 && session < sessions && !stop) await new Promise((resolve) => setTimeout(resolve, pauseSeconds * 1000));
+    }
+    const coverage = await getBtc5mResearchCoverage({ days: numberArg(args, "days", 7) });
+    console.log(
+      JSON.stringify(
+        {
+          sessionsRequested: sessions,
+          sessionsCompleted: runs.length,
+          snapshots: runs.reduce((sum, run) => sum + run.snapshots, 0),
+          errors: runs.flatMap((run) => run.errors),
+          runs,
+          coverage,
+        },
         null,
         2,
       ),
