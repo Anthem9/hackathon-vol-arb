@@ -71,6 +71,10 @@ const output = {
     shortHead: runText("git", ["rev-parse", "--short", "HEAD"]),
     dirty: Boolean(runText("git", ["status", "--short"])),
   },
+  runtime: {
+    node: process.version,
+    pnpm: runText("pnpm", ["--version"]),
+  },
   inputs: {
     days: Number(days),
     limitMarkets: Number(limitMarkets),
