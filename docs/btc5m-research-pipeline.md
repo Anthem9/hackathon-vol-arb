@@ -146,6 +146,7 @@ Both strategies support:
 - dynamic position sizing from current equity,
 - limit-only entry,
 - limit-entry fill verification from subsequent market data within `entryMaxWaitSeconds`,
+- optional recent same-outcome trade-volume filtering before entry,
 - take-profit limit exit,
 - stop-loss limit exit,
 - time-based limit exit,
@@ -173,6 +174,8 @@ The genetic search mutates these parameters:
 - `entryMaxWaitSeconds`
 - `kellyFraction`
 - `coneVolatilityMultiplier`
+- `minRecentTradeVolume`
+- `tradeVolumeLookbackSeconds`
 - `useKellySizing`
 - `targetSegment`: `all`, `weekday_beijing_day`, `weekday_beijing_night`,
   `weekend_beijing_day`, or `weekend_beijing_night`

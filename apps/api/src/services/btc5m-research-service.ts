@@ -26,6 +26,7 @@ export type PricePoint = {
   tokenId: string;
   outcome: "up" | "down";
   price: number;
+  size?: number;
   time: number;
   source: "clob_prices_history" | "orderbook_snapshot" | "trade_proxy";
   btcOpenPrice?: number;
@@ -59,6 +60,8 @@ export type BacktestParams = {
   useKellySizing: boolean;
   kellyFraction: number;
   coneVolatilityMultiplier: number;
+  minRecentTradeVolume: number;
+  tradeVolumeLookbackSeconds: number;
 };
 
 export type BacktestTrade = {
@@ -141,6 +144,8 @@ export const DEFAULT_BACKTEST_PARAMS: BacktestParams = {
   useKellySizing: false,
   kellyFraction: 0.25,
   coneVolatilityMultiplier: 1,
+  minRecentTradeVolume: 0,
+  tradeVolumeLookbackSeconds: 30,
 };
 
 function envValue(name: string) {
@@ -1278,9 +1283,10 @@ async function readPricePoints(days: number, limitMarkets: number): Promise<{ ma
     token_id: string;
     outcome: "up" | "down";
     price: string;
+    size: string | null;
     trade_time: Date;
   }>(
-    `select market_slug, token_id, outcome, price, trade_time
+    `select market_slug, token_id, outcome, price, size, trade_time
      from polymarket_btc5m_trades
      where market_slug = any($1)
      order by market_slug, trade_time asc`,
@@ -1305,6 +1311,7 @@ async function readPricePoints(days: number, limitMarkets: number): Promise<{ ma
     tokenId: row.token_id,
     outcome: row.outcome,
     price: Number(row.price),
+    size: row.size === null ? undefined : Number(row.size),
     time: row.trade_time.getTime(),
     source: "trade_proxy" as const,
   }));
@@ -1460,6 +1467,15 @@ function findLimitBuyFill(points: PricePoint[], submittedAt: number, limitPrice:
   });
 }
 
+function recentTradeVolume(points: PricePoint[], atTime: number, lookbackSeconds: number) {
+  const start = atTime - lookbackSeconds * 1000;
+  return points.reduce((sum, point) => {
+    if (point.source !== "trade_proxy" || point.time < start || point.time > atTime) return sum;
+    const size = point.size ?? 0;
+    return Number.isFinite(size) && size > 0 ? sum + size : sum;
+  }, 0);
+}
+
 export async function runBtc5mBacktest(input: { days?: number; limitMarkets?: number; params?: Partial<BacktestParams>; persist?: boolean } = {}): Promise<BacktestReport> {
   const params = { ...DEFAULT_BACKTEST_PARAMS, ...(input.params ?? {}) };
   const { markets, points } = await readPricePoints(input.days ?? 7, input.limitMarkets ?? 2500);
@@ -1509,10 +1525,11 @@ export function runBtc5mBacktestFromData(input: { markets: Btc5mMarket[]; points
       const down = downPoints.filter((point) => point.time <= delayedTime).at(-1);
       const candidate = chooseOutcome(params, up, down, market.endTime);
       if (!candidate) continue;
+      const candidatePoints = candidate.outcome === "up" ? upPoints : downPoints;
+      if (params.minRecentTradeVolume > 0 && recentTradeVolume(candidatePoints, delayedTime, params.tradeVolumeLookbackSeconds) < params.minRecentTradeVolume) continue;
       const ask = priceToAsk(candidate.price, params, candidate.source);
       const entryLimit = Math.max(0.01, Math.min(0.99, ask - params.entryLimitOffset));
       if (entryLimit < params.entryMinPrice || entryLimit > params.entryMaxPrice) continue;
-      const candidatePoints = candidate.outcome === "up" ? upPoints : downPoints;
       const entryFill = findLimitBuyFill(candidatePoints, delayedTime, entryLimit, params);
       if (!entryFill) continue;
       const risk = capital * params.maxRiskFraction;
@@ -1701,6 +1718,8 @@ function mutateParams(parent: BacktestParams): BacktestParams {
     entryMaxWaitSeconds: Math.max(1, Math.min(60, Math.round(parent.entryMaxWaitSeconds + randomBetween(-5, 5)))),
     kellyFraction: Math.max(0.05, Math.min(0.5, parent.kellyFraction + randomBetween(-0.05, 0.05))),
     coneVolatilityMultiplier: Math.max(0.25, Math.min(4, parent.coneVolatilityMultiplier + randomBetween(-0.25, 0.25))),
+    minRecentTradeVolume: Math.max(0, Math.min(5000, parent.minRecentTradeVolume + randomBetween(-150, 150))),
+    tradeVolumeLookbackSeconds: Math.max(5, Math.min(120, Math.round(parent.tradeVolumeLookbackSeconds + randomBetween(-10, 10)))),
     useKellySizing: Math.random() > 0.7 ? !parent.useKellySizing : parent.useKellySizing,
   };
 }
@@ -1755,6 +1774,8 @@ export async function runBtc5mGeneticSearch(input: { days?: number; limitMarkets
     useKellySizing: index % 3 === 0,
     kellyFraction: randomBetween(0.1, 0.35),
     coneVolatilityMultiplier: randomBetween(0.5, 2.5),
+    minRecentTradeVolume: index % 4 === 0 ? 0 : randomBetween(10, 1000),
+    tradeVolumeLookbackSeconds: Math.round(randomBetween(10, 90)),
   }));
   const history: Array<{ generation: number; bestScore: number; best: BacktestReport }> = [];
   for (let generation = 0; generation < generations; generation += 1) {

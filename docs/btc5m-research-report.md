@@ -115,6 +115,16 @@ Additional forward collection run:
     optimizer still found weak in-sample behavior that failed validation, and several
     non-night segment candidates produced no selected trades under the current strategy
     family.
+- Backtests now carry Data API trade `size` into `trade_proxy` points, and GA can search
+  `minRecentTradeVolume` plus `tradeVolumeLookbackSeconds` as a pre-entry liquidity filter.
+- First GA run after adding recent trade-volume filtering:
+  - dataset: `81725` points.
+  - best train candidate: `probability_cone` targeting `weekday_beijing_night`.
+  - train: `10` trades, `44.2242` PnL.
+  - validation: `6` trades, `-19.8199` PnL.
+  - accepted: `false`.
+  - interpretation: the best candidate reverted to `minRecentTradeVolume=0`, so this
+    filter did not improve the current probability-cone family by itself.
 - Latest coverage:
   - markets: `1236`; resolved markets: `78`.
   - price points: `25`; orderbook snapshots: `1998`; trades: `78116`; BTC ticks: `9624`.
@@ -143,6 +153,7 @@ The `coverage` command should be used before larger GA runs. It reports executab
 - Optional hold-to-settlement fallback.
 - Beijing weekday/day, weekday/night, weekend/day, weekend/night segmentation.
 - Optional strategy targeting of one Beijing segment during GA search.
+- Optional recent same-outcome trade-volume filtering before entry.
 - Hard risk controls:
   - max daily loss,
   - max drawdown stop,
