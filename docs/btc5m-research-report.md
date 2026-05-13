@@ -199,6 +199,11 @@ Additional forward collection run:
     `orderbook_backtest_ready`.
   - latest smoke check with `--seed 7`: `executionQuality=insufficient`,
     `coverageAccepted=false`, `accepted=false`.
+- Added `btc5m:research status` as a compact gate report. With `--with-ga`, it runs
+  coverage, paper summary, and a small seeded GA smoke check in one command.
+  Latest status smoke check returned `executionQuality=insufficient`,
+  `gaAccepted=false`, `coverageAccepted=false`, and blocked `lottery_reprice` from
+  paper evidence.
 - Latest coverage:
   - markets: `2012`; resolved markets: `2012`.
   - price points: `25`; orderbook snapshots: `1998`; trades: `78116`; BTC ticks: `9598`.

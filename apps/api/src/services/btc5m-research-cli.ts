@@ -59,6 +59,7 @@ function usage() {
   pnpm --filter @vol-arb/api btc5m:research collect-orderbook-live --duration-seconds 3600 --interval-ms 1000
   pnpm --filter @vol-arb/api btc5m:research observe-live --duration-seconds 3600 --interval-ms 1000
   pnpm --filter @vol-arb/api btc5m:research coverage --days 7
+  pnpm --filter @vol-arb/api btc5m:research status --days 7 [--with-ga] [--seed 42]
   pnpm --filter @vol-arb/api btc5m:research paper-signal --persist
   pnpm --filter @vol-arb/api btc5m:research evaluate-paper-signals --limit 200 [--recheck-settled]
   pnpm --filter @vol-arb/api btc5m:research paper-summary
@@ -247,6 +248,39 @@ async function main() {
   }
   if (command === "coverage") {
     console.log(JSON.stringify(await getBtc5mResearchCoverage({ days: numberArg(args, "days", 7) }), null, 2));
+    return;
+  }
+  if (command === "status") {
+    const days = numberArg(args, "days", 7);
+    const coverage = await getBtc5mResearchCoverage({ days });
+    const paperSummary = await summarizePaperSignals();
+    const withGa = boolArg(args, "with-ga");
+    const genetic = withGa
+      ? await runBtc5mGeneticSearch({
+          days,
+          limitMarkets: numberArg(args, "limit-markets", 2016),
+          generations: numberArg(args, "generations", 1),
+          population: numberArg(args, "population", 4),
+          validationFraction: numberArg(args, "validation-fraction", 2 / 7),
+          seed: args.seed === undefined ? 42 : numberArg(args, "seed", 42),
+        })
+      : null;
+    console.log(
+      JSON.stringify(
+        {
+          days,
+          coverage,
+          paperSummary,
+          genetic,
+          nextAction:
+            coverage.executionQuality === "partial_orderbook" || coverage.executionQuality === "orderbook_backtest_ready"
+              ? "Run a larger seeded GA and inspect validation plus stress validation."
+              : "Continue forward orderbook collection before treating GA output as robust.",
+        },
+        null,
+        2,
+      ),
+    );
     return;
   }
   if (command === "paper-signal") {

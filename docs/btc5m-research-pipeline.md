@@ -88,6 +88,18 @@ treated as robust unless `executionQuality` is at least `partial_orderbook`, bec
 `trade_proxy_only`, `thin_trade_proxy`, and `insufficient` indicate sparse historical
 orderbook evidence.
 
+Run a compact research status report:
+
+```bash
+pnpm --filter @vol-arb/api btc5m:research status --days 7
+```
+
+Include a small seeded GA smoke check when needed:
+
+```bash
+pnpm --filter @vol-arb/api btc5m:research status --days 7 --with-ga --generations 1 --population 4 --seed 7
+```
+
 Record a real-time paper signal without submitting any order:
 
 ```bash
