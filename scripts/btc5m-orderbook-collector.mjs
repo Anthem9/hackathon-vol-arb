@@ -4,9 +4,15 @@ import { existsSync, mkdirSync, openSync, readFileSync, rmSync, statSync, writeF
 import { dirname, resolve } from "node:path";
 
 const root = resolve(new URL("..", import.meta.url).pathname);
-const pidFile = resolve(root, ".local/run/btc5m-orderbook-collector.pid");
-const metaFile = resolve(root, ".local/run/btc5m-orderbook-collector.json");
-const logFile = resolve(root, ".local/logs/btc5m-orderbook-collector.log");
+const pidFile = process.env.BTC5M_ORDERBOOK_PID_FILE
+  ? resolve(root, process.env.BTC5M_ORDERBOOK_PID_FILE)
+  : resolve(root, ".local/run/btc5m-orderbook-collector.pid");
+const metaFile = process.env.BTC5M_ORDERBOOK_META_FILE
+  ? resolve(root, process.env.BTC5M_ORDERBOOK_META_FILE)
+  : resolve(root, ".local/run/btc5m-orderbook-collector.json");
+const logFile = process.env.BTC5M_ORDERBOOK_LOG_FILE
+  ? resolve(root, process.env.BTC5M_ORDERBOOK_LOG_FILE)
+  : resolve(root, ".local/logs/btc5m-orderbook-collector.log");
 
 function ensureDirs() {
   mkdirSync(dirname(pidFile), { recursive: true });
