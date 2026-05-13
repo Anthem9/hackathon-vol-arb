@@ -192,7 +192,9 @@ evidence, GA acceptance, and hard risk controls. `liveReady` must be `true` befo
 live order path is considered. Add `--save-report` or `--report-file <path>` to persist
 the audit JSON under `.local/reports`. The risk-control check reads the actual default
 backtest parameters, including starting capital, per-trade risk, daily loss, drawdown,
-consecutive-loss, open-market, daily-trade, and visible-liquidity limits.
+consecutive-loss, open-market, daily-trade, and visible-liquidity limits. When `--with-ga`
+is used, settled paper evidence is checked against the selected GA strategy rather than
+failing the whole audit because an unselected strategy family has negative history.
 
 Record a real-time paper signal without submitting any order:
 

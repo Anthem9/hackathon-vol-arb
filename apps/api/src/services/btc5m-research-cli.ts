@@ -441,6 +441,8 @@ async function main() {
     const segmentRows = Object.values(coverage.segmentMarketCoverage);
     const partialOrderbookSegments = segmentRows.filter((segment) => segment.orderbookMarketCoverage >= 0.1).length;
     const blockedStrategies = Array.isArray(paperSummary.blockedStrategies) ? paperSummary.blockedStrategies : [];
+    const selectedStrategy = genetic?.bestTrain.strategy ?? null;
+    const selectedStrategyPaperBlocked = selectedStrategy ? blockedStrategies.includes(selectedStrategy) : null;
     const defaultRiskControlsPass =
       DEFAULT_BACKTEST_PARAMS.initialCapital === 100 &&
       DEFAULT_BACKTEST_PARAMS.maxRiskFraction <= 0.1 &&
@@ -483,9 +485,13 @@ async function main() {
       },
       {
         id: "paper_signal_evidence",
-        status: passFail(blockedStrategies.length === 0),
-        observed: blockedStrategies,
-        required: "no strategy blocked by settled negative paper evidence",
+        status: selectedStrategyPaperBlocked === null ? (blockedStrategies.length === 0 ? "pass" : "not_evaluated") : passFail(!selectedStrategyPaperBlocked),
+        observed: {
+          selectedStrategy,
+          selectedStrategyPaperBlocked,
+          blockedStrategies,
+        },
+        required: "selected GA strategy is not blocked by settled negative paper evidence",
       },
       {
         id: "genetic_acceptance",
