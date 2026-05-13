@@ -125,7 +125,7 @@ collection, and a hard readiness gate before any live trading.
 | --- | --- | --- |
 | Use recent 7-day BTC 5m markets as the initial research window | `pnpm --filter @vol-arb/api btc5m:research collect-markets --days 7`, `coverage --days 7` | `2007` markets currently tracked |
 | Use Polymarket BTC 5m market data, not only external exchange BTC prices | Gamma metadata, CLOB book snapshots, CLOB price history, Data API trades in `btc5m-research-service.ts` | Implemented; external BTC ticks are auxiliary probability-cone inputs only |
-| Collect forward orderbook data for executable limit-order evidence | `collect-orderbook-live`, `collect-orderbook-sessions`, `pnpm btc5m:orderbook:*` | Background collector is running under `caffeinate`; current orderbook coverage is still sparse |
+| Collect forward orderbook data for executable limit-order evidence | `collect-orderbook-live`, `collect-orderbook-sessions`, `pnpm btc5m:orderbook:*`, `orderbook:status.logHealth` | Background collector is running under `caffeinate`; `logHealth` summarizes recent collector progress/errors; current orderbook coverage is still sparse |
 | Respect Beijing daytime/nighttime and weekday/weekend differences | `segmentMarketCoverage`, `targetSegment`, `weakestOrderbookSegments`, `nextWeakSegmentWindows` | Implemented; weakest segments are surfaced for targeted collection |
 | Use only limit orders in simulation | Backtest entry/exit logic, docs, readiness checks | Implemented for entry, take-profit, stop-loss, time exit, and settlement fallback gates |
 | Simulate with `100 USDC` initial capital and `10%` max single-trade loss | `DEFAULT_BACKTEST_PARAMS`, CLI usage, `docs/btc5m-research-pipeline.md` | Implemented as defaults |
