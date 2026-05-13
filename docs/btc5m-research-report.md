@@ -197,6 +197,8 @@ Additional forward collection run:
   - `pnpm btc5m:orderbook:stop`
   - status check verified `not_running`, with PID file under `.local/run` and logs under
     `.local/logs`.
+- New background collector starts use `caffeinate -dimsu` on macOS by default to reduce
+  sleep risk during long collection. Set `BTC5M_ORDERBOOK_CAFFEINATE=false` to disable it.
 - Trade coverage was expanded with additional Data API collection:
   - `collect-trades --days 7 --limit-markets 400 --pages-per-market 1 --stride 3`
     stored `200000` fetched trade rows with `0` errors.

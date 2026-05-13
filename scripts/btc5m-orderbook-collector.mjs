@@ -37,6 +37,10 @@ function logSizeBytes() {
   return statSync(logFile).size;
 }
 
+function useCaffeinate() {
+  return process.platform === "darwin" && process.env.BTC5M_ORDERBOOK_CAFFEINATE !== "false";
+}
+
 function start() {
   ensureDirs();
   const existing = readPid();
@@ -61,8 +65,10 @@ function start() {
     "--progress-every",
     process.env.BTC5M_ORDERBOOK_PROGRESS_EVERY ?? "60",
   ];
+  const command = useCaffeinate() ? "caffeinate" : "pnpm";
+  const commandArgs = useCaffeinate() ? ["-dimsu", "pnpm", ...args] : args;
   const logFd = openSync(logFile, "a");
-  const child = spawn("pnpm", args, {
+  const child = spawn(command, commandArgs, {
     cwd: root,
     detached: true,
     stdio: ["ignore", logFd, logFd],
@@ -70,7 +76,7 @@ function start() {
   });
   writeFileSync(pidFile, `${child.pid}\n`);
   child.unref();
-  console.log(JSON.stringify({ status: "started", pid: child.pid, pidFile, logFile, args: ["pnpm", ...args] }, null, 2));
+  console.log(JSON.stringify({ status: "started", pid: child.pid, pidFile, logFile, caffeinate: useCaffeinate(), args: [command, ...commandArgs] }, null, 2));
 }
 
 function stop() {
@@ -93,6 +99,7 @@ function status() {
         pid,
         pidFile,
         logFile,
+        caffeinate: useCaffeinate(),
         logSizeBytes: logSizeBytes(),
         lastLogLines: readLastLogLines(),
       },

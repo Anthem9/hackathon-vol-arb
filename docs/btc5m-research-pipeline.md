@@ -98,6 +98,10 @@ enough to target roughly 16 hours of forward collection; override them with
 `BTC5M_ORDERBOOK_INTERVAL_MS`, `BTC5M_ORDERBOOK_PAUSE_SECONDS`, and
 `BTC5M_ORDERBOOK_PROGRESS_EVERY`.
 
+On macOS, new background collector starts are wrapped with `caffeinate -dimsu` by default
+to reduce sleep risk during long collection. Set `BTC5M_ORDERBOOK_CAFFEINATE=false` to
+disable that wrapper.
+
 Run live observation, which captures orderbook snapshots and persists paper signals after each iteration:
 
 ```bash
