@@ -89,7 +89,6 @@ const output = full
 console.log(JSON.stringify(output, null, 2));
 if (requireCurrent && !reportMatchesCurrentHead) {
   process.exitCode = 2;
-}
-if (requireLiveReady && !latest.parsed.liveReady) {
+} else if (requireLiveReady && !latest.parsed.liveReady) {
   process.exitCode = 3;
 }

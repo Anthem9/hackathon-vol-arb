@@ -66,6 +66,12 @@ try {
   const staleSummary = JSON.parse(staleResult.stdout);
   assert.equal(staleSummary.reportMatchesCurrentHead, false);
 
+  const staleLiveResult = spawnSync("node", ["scripts/btc5m-checkpoint-last.mjs", "--require-current", "--require-live-ready"], {
+    encoding: "utf8",
+    env: { ...process.env, BTC5M_CHECKPOINT_REPORT_DIR: tempReports },
+  });
+  assert.equal(staleLiveResult.status, 2, staleLiveResult.stderr || staleLiveResult.stdout);
+
   const notLiveResult = spawnSync("node", ["scripts/btc5m-checkpoint-last.mjs", "--require-live-ready"], {
     encoding: "utf8",
     env: { ...process.env, BTC5M_CHECKPOINT_REPORT_DIR: tempReports },
