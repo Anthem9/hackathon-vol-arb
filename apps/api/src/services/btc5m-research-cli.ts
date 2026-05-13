@@ -10,6 +10,7 @@ import {
   observeLiveBtc5m,
   summarizePaperSignals,
   collectRecentBtc5mMarkets,
+  DEFAULT_BACKTEST_PARAMS,
   discoverBtc5mDataSources,
   runBtc5mBacktest,
   runBtc5mGeneticSearch,
@@ -440,6 +441,15 @@ async function main() {
     const segmentRows = Object.values(coverage.segmentMarketCoverage);
     const partialOrderbookSegments = segmentRows.filter((segment) => segment.orderbookMarketCoverage >= 0.1).length;
     const blockedStrategies = Array.isArray(paperSummary.blockedStrategies) ? paperSummary.blockedStrategies : [];
+    const defaultRiskControlsPass =
+      DEFAULT_BACKTEST_PARAMS.initialCapital === 100 &&
+      DEFAULT_BACKTEST_PARAMS.maxRiskFraction <= 0.1 &&
+      DEFAULT_BACKTEST_PARAMS.maxDailyLossFraction <= 0.2 &&
+      DEFAULT_BACKTEST_PARAMS.maxDrawdownFraction <= 0.25 &&
+      DEFAULT_BACKTEST_PARAMS.maxConsecutiveLosses <= 6 &&
+      DEFAULT_BACKTEST_PARAMS.maxOpenMarkets <= 1 &&
+      DEFAULT_BACKTEST_PARAMS.maxDailyTrades > 0 &&
+      DEFAULT_BACKTEST_PARAMS.maxLiquidityParticipation <= 0.25;
     const checks = [
       {
         id: "market_sample",
@@ -492,16 +502,19 @@ async function main() {
       },
       {
         id: "risk_controls",
-        status: "pass",
+        status: passFail(defaultRiskControlsPass),
         observed: {
-          maxRiskPerTrade: "10% current equity default",
-          maxDailyLoss: "20% initial capital default",
-          maxDrawdown: "25% initial capital default",
-          maxConsecutiveLosses: 6,
-          maxOpenMarkets: 1,
+          initialCapital: DEFAULT_BACKTEST_PARAMS.initialCapital,
+          maxRiskFraction: DEFAULT_BACKTEST_PARAMS.maxRiskFraction,
+          maxDailyLossFraction: DEFAULT_BACKTEST_PARAMS.maxDailyLossFraction,
+          maxDrawdownFraction: DEFAULT_BACKTEST_PARAMS.maxDrawdownFraction,
+          maxConsecutiveLosses: DEFAULT_BACKTEST_PARAMS.maxConsecutiveLosses,
+          maxOpenMarkets: DEFAULT_BACKTEST_PARAMS.maxOpenMarkets,
+          maxDailyTrades: DEFAULT_BACKTEST_PARAMS.maxDailyTrades,
+          maxLiquidityParticipation: DEFAULT_BACKTEST_PARAMS.maxLiquidityParticipation,
           limitOrdersOnly: true,
         },
-        required: "hard risk controls enabled before live trading",
+        required: "100 USDC default capital, <=10% per-trade risk, <=20% daily loss, <=25% drawdown, <=6 consecutive losses, <=1 open market, max daily trades set, <=25% visible liquidity participation",
       },
     ];
     const failedChecks = checks.filter((check) => check.status === "fail").map((check) => check.id);

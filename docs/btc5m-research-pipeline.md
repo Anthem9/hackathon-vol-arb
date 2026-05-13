@@ -190,7 +190,9 @@ pnpm --filter @vol-arb/api btc5m:research readiness --days 7 --with-ga --generat
 coverage, orderbook coverage, Beijing segment balance, execution quality, settled paper
 evidence, GA acceptance, and hard risk controls. `liveReady` must be `true` before any
 live order path is considered. Add `--save-report` or `--report-file <path>` to persist
-the audit JSON under `.local/reports`.
+the audit JSON under `.local/reports`. The risk-control check reads the actual default
+backtest parameters, including starting capital, per-trade risk, daily loss, drawdown,
+consecutive-loss, open-market, daily-trade, and visible-liquidity limits.
 
 Record a real-time paper signal without submitting any order:
 
